@@ -128,3 +128,7 @@ Anchor is a personal project under development. Current desktop fixes require re
 - [Android app protection](docs/mobile-blocking.md): rule precedence, daily reset, allowances, and earned leisure.
 - [Android inference implementation](docs/desktop-model-on-android.md): pinned model, JNI behavior, host verification, and pending device checks.
 - [Earlier product specification](FULL_APP.md): broader design intent; some details predate the current implementation.
+
+## License
+
+Anchor's original source code and documentation are licensed under the [MIT License](LICENSE). Third-party libraries, assets, and model weights retain their respective licenses and terms.

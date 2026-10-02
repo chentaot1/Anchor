@@ -12,7 +12,7 @@ Anchor has Android and Windows desktop clients. The shared module contains commo
 
 The workflow includes tasks and milestones, a timeline, syllabus records, focus sessions, and a progress garden. The AI studio supports task breakdown, brain-dump capture, triage, replanning, and conversation. Desktop connects pending syllabus records to the AI context and uses deterministic answers for supported deadline questions.
 
-The current source includes desktop fixes for executable/website identity, focus-only scope checks, stricter breakdown validation, syllabus context, and additional blocking/settings behavior. These changes require rebuilding an existing desktop installation. The repository also retains the earlier development history rather than presenting the project as a single polished final submission.
+The current source includes desktop fixes for executable/website identity, focus-only scope checks, stricter breakdown validation, syllabus context, and additional blocking/settings behavior. These changes require rebuilding an existing desktop installation. The public repository starts from a fresh publication snapshot; earlier development history is backed up locally.
 
 ## Decisions and tradeoffs
 

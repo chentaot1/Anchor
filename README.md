@@ -2,7 +2,7 @@
 
 **A local AI planner that connects schoolwork, a manageable next action, and a protected focus session.**
 
-Anchor is an Android and Windows application built around a familiar student problem: knowing what needs to get done, but struggling to start or return after a distraction. It combines task planning, syllabus records, local language models, native app blocking, and visual progress in one workflow.
+Anchor is an Android and Windows application built around a familiar student problem: knowing what needs to get done, but struggling to start or return after a distraction. It combines task planning, calendar-aware scheduling, syllabus extraction, an offline AI runtime, native distraction protection, and persistent progress tracking in one workflow.
 
 **Android + Windows · Kotlin + Compose · Local GGUF inference · Room + SQLite**
 
@@ -25,9 +25,13 @@ Five core workflows are implemented: **Break Down**, **Brain Dump**, **Triage**,
 
 The AI runs locally through **llama.cpp**. Windows manages a background `llama-server` process over localhost; Android runs inference through a native **C++/JNI** library. Structured workflows use **GBNF grammars** to constrain the shape of the response. Desktop task breakdown also validates the result and falls back to a task-specific draft when the model is unavailable or returns invalid steps.
 
+These workflows connect to the planner: users can turn a brain dump into tasks, save breakdown steps as milestones, and start a focus session from a suggested action. Android also keeps AI job records and chat history locally. Supported planning changes have a persisted undo stack, including task creation, completion, inbox moves, and scheduling.
+
 ### A syllabus workspace with academic context
 
 The desktop client extracts text from **PDF, DOCX, images, and text files**, with a Windows OCR fallback for scanned material. It parses course information and deliverables into records containing dates, item types, weights, and preparation steps.
+
+The workspace includes course filters, completion tracking, an upcoming major-deliverable card, and direct focus-session starts from preparation steps. Exams, projects, homework, and readings receive different preparation templates. These are planning aids based on the item type; review them against the assignment before starting work. The parser does not automatically schedule them.
 
 The AI context selects relevant incomplete items from those saved records by course and date. Supported deadline questions use deterministic answers from the saved dates. Imported text is treated as data, and missing assignment requirements still need the user's input.
 
@@ -35,13 +39,22 @@ The AI context selects relevant incomplete items from those saved records by cou
 
 **Windows:** foreground process and window monitoring, separate executable and browser-title rules, study schedules, usage allowances, rescue windows, earned leisure, and experimental focus-scope classification. Website rules apply to recognized browsers, so a desktop application and a browser tab with the same name keep separate identities. Scope checks run during active focus sessions.
 
+Scope classification combines cached keyword decisions with a local-model fallback. Its default topic policy is tailored to psychology/biology coursework. Browser matching uses window titles, so it is a heuristic rather than URL-level enforcement.
+
 **Android:** an Accessibility service enforces app rules, focus protection, standing shields, overnight curfews, weekday study windows, individual or grouped daily allowances, rule freezes, and a lock until the next local 4 AM. Foreground usage and earned leisure persist across restarts. [Full Android policy and precedence](docs/mobile-blocking.md).
 
 The two clients use separate local data and settings. Android protection operates on apps; desktop website matching and scope classification are platform-specific.
 
 ### Planning, recovery, and visible progress
 
-Tasks, assignments, routines, milestones, inbox/someday work, focus timers, and replanning support the work around each session. The garden, companion, and harbor screens give progress a visual form. Android also includes a home-screen widget, share-to-inbox capture, backup export, and optional read-only Google Calendar import.
+Tasks, assignments, routines, milestones, inbox/someday work, focus timers, and replanning support the work around each session. Android adds several connected systems:
+
+- **Calendar-aware scheduling:** find the next gap that fits a task or a sequence of subtasks, accounting for scheduled work and imported events. Work that cannot fit before the configured shutdown stays unscheduled. Workload calculations merge overlapping time intervals to avoid counting the same busy time twice.
+- **A recovery flow:** the Airlock captures a brain dump, parks secondary tasks, selects a primary task and a physical starting action, then starts focus. A deterministic starter is available immediately; local AI can refine it asynchronously, and starting focus cancels that refinement.
+- **Habit and reflection tools:** scheduled habits, weekly targets, grace allowances, a 12-week heatmap, energy/tag check-ins, weekly summaries, and planned-versus-actual focus-time statistics.
+- **Capture and integrations:** a home-screen widget, share-to-inbox capture, device-calendar occupancy, optional read-only Google Calendar import, and JSON export of tasks, assignments, and calendar records.
+
+The garden, companion, and harbor screens give progress a visual form, with saved focus rewards and shared Compose drawing/animation components. An Android Filament/SceneView plant renderer is also present as unwired infrastructure; the current shell uses Compose visuals.
 
 ## Engineering decisions
 
@@ -49,6 +62,8 @@ Tasks, assignments, routines, milestones, inbox/someday work, focus timers, and 
 - **Validation beyond output formatting.** The desktop parser checks step counts, empty or duplicate steps, preservation of the first action, and consistency of optional action/time fields. A grammatical response can still be irrelevant, so plans remain reviewable.
 - **Context tied to saved records.** Syllabus context is bounded and selected from the same records shown in the desktop workspace, rather than relying on the model to remember course deadlines.
 - **Platform-specific enforcement.** Windows uses Win32 APIs through JNA; Android uses Accessibility events and overlays. Shared Kotlin code supplies common domain logic, design components, and progress visuals.
+- **A native inference lifecycle.** Android serializes generation, reuses an already loaded model, streams tokens through JNI, supports cancellation, and unloads the warm model after an AI surface has been closed for two minutes. The native layer clears each request's KV cache, rejects invalid grammars instead of silently generating unconstrained JSON, and buffers incomplete UTF-8 token fragments before sending text to Kotlin.
+- **Bounded desktop inference.** The client manages server startup, health checks, model changes, and shutdown. Its default CPU profile uses a 2,048-token context, one server slot, quantized KV caches, and disabled reasoning. These settings bound resource use; they are not a universal latency guarantee.
 - **Verified offline model installation.** Android packages a pinned GGUF asset and verifies its size and SHA-256 before activating the extracted model. The native llama.cpp source archive is pinned and hash-checked too.
 
 A concrete debugging example: an assignment breakdown once copied unrelated prompt examples about dishes and a coding test. That led to changes in task routing, prompts, validation, and regression coverage. The [case study](docs/project-case-study.md) explains the failure, the response, and the remaining limits of semantic validation.
@@ -75,6 +90,8 @@ Useful entry points:
 - **Windows enforcement:** [DesktopProcessMonitor](desktopApp/src/main/kotlin/com/anchor/adhd/desktop/blocker/DesktopProcessMonitor.kt).
 - **Shared domain and UI:** [shared module](shared/src/commonMain/kotlin/com/anchor/adhd).
 - **Android native inference:** [C++/JNI runtime](app/src/main/cpp).
+- **Android scheduling and undo:** [PlanRepository](app/src/main/java/com/anchor/adhd/data/repository/PlanRepository.kt), [SchedulingSlots](app/src/main/java/com/anchor/adhd/domain/SchedulingSlots.kt), and [ChatUndoManager](app/src/main/java/com/anchor/adhd/domain/ChatUndoManager.kt).
+- **Recovery and progress:** [AnchorViewModel](app/src/main/java/com/anchor/adhd/ui/vm/AnchorViewModel.kt), [HabitScoreCalculator](app/src/main/java/com/anchor/adhd/domain/HabitScoreCalculator.kt), and [GrowRepository](app/src/main/java/com/anchor/adhd/data/repository/GrowRepository.kt).
 
 ## Run the desktop client
 

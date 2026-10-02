@@ -1,0 +1,46 @@
+*.iml
+*.zip
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+desktopApp/build/
+shared/build/
+app/build/
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.hprof
+.kotlin/
+
+# Model files (too large for git)
+*.gguf
+*.bin
+*.part
+*.onnx
+models/
+desktopApp/bin/
+app/src/main/assets/models/
+.cache/
+
+# Local asset staging (downloaded packs, not shipped)
+asset-staging/
+google-services.json
+keystore.properties
+*.jks
+*.keystore
+__pycache__/
+*.pyc
+
+# Local credentials and app data
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3

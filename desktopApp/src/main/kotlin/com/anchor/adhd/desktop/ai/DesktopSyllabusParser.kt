@@ -1,0 +1,865 @@
+package com.anchor.adhd.desktop.ai
+
+import com.anchor.adhd.desktop.db.SyllabusItemType
+import java.io.File
+import java.time.LocalDate
+import java.time.Month
+import java.time.ZoneId
+import java.util.Locale
+
+data class ParsedDeliverable(
+    val title: String,
+    val type: SyllabusItemType,
+    val dueDateText: String,
+    val dueDateMillis: Long,
+    val weightPercent: Int,
+    val prepSteps: List<String>,
+)
+
+data class ParsedSyllabus(
+    val courseCode: String,
+    val courseName: String,
+    val deliverables: List<ParsedDeliverable>,
+)
+
+/**
+ * On-Device Syllabus Ingestion & Backward-Chaining Engine for Anchor ADHD.
+ *
+ * Extracts course titles, exams, term papers, and problem sets from raw text or PDFs,
+ * and automatically synthesizes backward-chained "Lead-In Prep" milestones to prevent
+ * ADHD time-blindness and panic cramming.
+ */
+object DesktopSyllabusParser {
+    /**
+     * Extracts text from uploaded files (supports PDF, TXT, MD, CSV, etc.)
+     * For PDFs without selectable digital text (scanned or image prints), automatically
+     * triggers the offline Windows.Media.Ocr.OcrEngine fallback.
+     */
+    fun extractTextFromFile(file: File): String =
+        try {
+            val extension = file.extension.lowercase(Locale.ROOT)
+            when (extension) {
+                "pdf" ->
+                    com.anchor.adhd.desktop.platform.DesktopWindowsOcrHelper
+                        .extractTextWithOcrFallback(file)
+                "docx" -> extractDocxText(file)
+                "png", "jpg", "jpeg", "bmp", "webp" ->
+                    com.anchor.adhd.desktop.platform.DesktopWindowsOcrHelper
+                        .extractTextFromImage(file)
+                else -> file.readText()
+            }
+        } catch (e: Exception) {
+            "Error extracting file content: ${e.message}"
+        }
+
+    fun extractDocxText(file: File): String {
+        val zip = java.util.zip.ZipFile(file)
+        return try {
+            val entry = zip.getEntry("word/document.xml") ?: return ""
+            val xml = zip.getInputStream(entry).bufferedReader(Charsets.UTF_8).use { it.readText() }
+
+            var content =
+                xml
+                    .replace(Regex("""<w:tab[^>]*/>"""), " ")
+                    .replace(Regex("""<w:br[^>]*/>"""), " ")
+
+            // Keep table cell content inline and separated by " | "
+            content =
+                Regex("""<w:tc\b[^>]*>(.*?)</w:tc>""", RegexOption.DOT_MATCHES_ALL).replace(content) { match ->
+                    val cellXml = match.groupValues[1]
+                    val cellText =
+                        cellXml
+                            .replace(Regex("""</w:p>"""), " ")
+                            .replace(Regex("""<[^>]+>"""), "")
+                            .trim()
+                    if (cellText.isNotEmpty()) "$cellText | " else ""
+                }
+
+            // Replace row ends with newline
+            content = content.replace(Regex("""</w:tr>"""), "\n")
+
+            // Replace body paragraph ends with newline
+            content = content.replace(Regex("""</w:p>"""), "\n")
+
+            // Strip remaining XML tags
+            content = content.replace(Regex("""<[^>]+>"""), "")
+
+            // Decode XML entities
+            content
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&apos;", "'")
+                .lines()
+                .map { it.trim().replace(Regex("""\s+"""), " ") }
+                .filter { it.isNotBlank() }
+                .joinToString("\n")
+        } finally {
+            zip.close()
+        }
+    }
+
+    /**
+     * Parses raw syllabus text into structured course deliverables and generates
+     * ADHD-tailored lead-in milestones.
+     */
+    fun parseSyllabus(rawText: String): ParsedSyllabus {
+        val lines = rawText.lines().map { it.trim() }.filter { it.isNotBlank() }
+
+        // 1. Detect Course Code & Name
+        var detectedCode = "COURSE 101"
+        var detectedName = "Semester Course"
+
+        val courseCodeRegex = Regex("""\b([A-Z]{2,5}\s*[-_]?\s*\d{3,4}[A-Z]?)\b""", RegexOption.IGNORE_CASE)
+        val excludedPrefixes =
+            setOf(
+                "FALL",
+                "SPRING",
+                "WINTER",
+                "SUMMER",
+                "TERM",
+                "YEAR",
+                "WEEK",
+                "PAGE",
+                "ROOM",
+                "BLDG",
+                "DATE",
+                "CHAP",
+                "HALL",
+                "SECTION",
+                "SEC",
+                "POST",
+                "INFO",
+            )
+
+        var codeLineIndex = -1
+        outer@ for ((idx, line) in lines.take(100).withIndex()) {
+            val lower = line.lowercase(Locale.ROOT)
+            if (lower.contains("email") || lower.contains("subject") || lower.contains("prerequisite") || lower.contains("contact")) {
+                continue
+            }
+
+            for (match in courseCodeRegex.findAll(line)) {
+                val candidatePrefix = match.groupValues[1].takeWhile { it.isLetter() }.uppercase(Locale.ROOT)
+                if (candidatePrefix in excludedPrefixes) continue
+
+                detectedCode =
+                    match.groupValues[1]
+                        .uppercase(Locale.ROOT)
+                        .replace(" ", "")
+                        .replace("-", " ")
+                codeLineIndex = idx
+
+                val cleanLine =
+                    line
+                        .replace(
+                            match.value,
+                            "",
+                        ).replace(Regex("""(?i)\b(fall|spring|winter|summer|\d{4})\b"""), "")
+                        .trim(':', '-', '–', '—', ' ', '|', '(', ')')
+
+                val isJustSection =
+                    cleanLine.matches(Regex("""(?i)^(?:section|sec|lecture|lab|dis|discussion)\s*[a-z0-9]*$""")) ||
+                        cleanLine.startsWith("Section", ignoreCase = true)
+
+                if (cleanLine.length in 8..60 && !isJustSection) {
+                    detectedName = cleanLine
+                }
+                break@outer
+            }
+        }
+
+        // Check lines right before the course code (often the title is right above it, e.g. "RESEARCH METHODS: LECTURE")
+        if (detectedName == "Semester Course" && codeLineIndex > 0) {
+            for (i in (codeLineIndex - 1) downTo maxOf(0, codeLineIndex - 2)) {
+                val candidate = lines[i].trim(':', '-', '–', '—', ' ', '|')
+                val lowerCandidate = candidate.lowercase(Locale.ROOT)
+                if (lowerCandidate.startsWith("table ") ||
+                    lowerCandidate.contains("instructor:") ||
+                    lowerCandidate.contains("office:") ||
+                    lowerCandidate.contains("email:") ||
+                    lowerCandidate.contains("ta information")
+                ) {
+                    continue
+                }
+                if (candidate.length in 4..60 && !candidate.contains("syllabus", ignoreCase = true)) {
+                    detectedName =
+                        candidate
+                            .split(" ")
+                            .filter { it.isNotBlank() }
+                            .joinToString(" ") { word -> word.lowercase(Locale.ROOT).replaceFirstChar { it.uppercase(Locale.ROOT) } }
+                    break
+                }
+            }
+        }
+
+        // If detectedName is still default, look near top for title
+        if (detectedName == "Semester Course") {
+            for (line in lines.take(20)) {
+                val clean = line.replace(Regex("""(?i)\b(syllabus|fall|spring|winter|summer|\d{4})\b"""), "").trim(':', '-', '–', '—', ' ', '|')
+                val lowerClean = clean.lowercase(Locale.ROOT)
+                if (clean.length in 4..60 &&
+                    !lowerClean.startsWith("table ") &&
+                    !lowerClean.contains("team") &&
+                    !lowerClean.contains("instructor") &&
+                    !lowerClean.contains("professor") &&
+                    !lowerClean.contains("office")
+                ) {
+                    detectedName =
+                        clean
+                            .split(" ")
+                            .filter { it.isNotBlank() }
+                            .joinToString(" ") { word -> word.lowercase(Locale.ROOT).replaceFirstChar { it.uppercase(Locale.ROOT) } }
+                    break
+                }
+            }
+        }
+
+        // 2. Extract Deliverables & Deadlines
+        val items = mutableListOf<ParsedDeliverable>()
+        val yearRegex = Regex("""\b(20\d{2})\b""")
+        val detectedYear =
+            lines.take(30).firstNotNullOfOrNull { line ->
+                val ym = yearRegex.find(line)
+                ym?.groupValues?.get(1)?.toIntOrNull()
+            } ?: LocalDate.now().year
+
+        val dateMonthRegex =
+            Regex(
+                """\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b""",
+                RegexOption.IGNORE_CASE,
+            )
+        val dayMonthRegex =
+            Regex(
+                """\b(\d{1,2})(?:st|nd|rd|th)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b""",
+                RegexOption.IGNORE_CASE,
+            )
+        val slashDateRegex = Regex("""\b(\d{1,2})/(\d{1,2})(?:/\d{2,4})?\b""")
+        val hyphenDateRegex = Regex("""\b(?:20\d{2}-)?(\d{1,2})-(\d{1,2})\b""")
+        val weightRegex = Regex("""(?:\(\s*)?(\d{1,3})\s*%(?:\s*\))?""")
+
+        fun parseDateFromText(text: String): Pair<String, Long>? {
+            val dateMonthMatch = dateMonthRegex.find(text)
+            if (dateMonthMatch != null) {
+                val rawMonth = dateMonthMatch.groupValues[1]
+                val monthStr = rawMonth.take(3).lowercase(Locale.ROOT)
+                val month = parseMonth(monthStr)
+                val maxDay = month.length(false)
+                val day = (dateMonthMatch.groupValues[2].toIntOrNull() ?: 1).coerceIn(1, maxDay)
+                val localDate = LocalDate.of(detectedYear, month, day)
+                val monthLabel =
+                    month.name
+                        .take(3)
+                        .lowercase()
+                        .replaceFirstChar { it.uppercase() }
+                return "$monthLabel $day" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            }
+
+            val dayMonthMatch = dayMonthRegex.find(text)
+            if (dayMonthMatch != null) {
+                val rawMonth = dayMonthMatch.groupValues[2]
+                val monthStr = rawMonth.take(3).lowercase(Locale.ROOT)
+                val month = parseMonth(monthStr)
+                val maxDay = month.length(false)
+                val day = (dayMonthMatch.groupValues[1].toIntOrNull() ?: 1).coerceIn(1, maxDay)
+                val localDate = LocalDate.of(detectedYear, month, day)
+                val monthLabel =
+                    month.name
+                        .take(3)
+                        .lowercase()
+                        .replaceFirstChar { it.uppercase() }
+                return "$monthLabel $day" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            }
+
+            val slashMatch = slashDateRegex.find(text)
+            if (slashMatch != null) {
+                val m = slashMatch.groupValues[1].toIntOrNull()?.coerceIn(1, 12) ?: 10
+                val month = Month.of(m)
+                val maxDay = month.length(false)
+                val rawD = slashMatch.groupValues[2].toIntOrNull()?.coerceIn(1, maxDay) ?: 15
+                val localDate = LocalDate.of(detectedYear, month, rawD)
+                return "$m/$rawD" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            }
+
+            val hyphenMatch = hyphenDateRegex.find(text)
+            if (hyphenMatch != null) {
+                val m = hyphenMatch.groupValues[1].toIntOrNull()?.coerceIn(1, 12) ?: 10
+                val month = Month.of(m)
+                val maxDay = month.length(false)
+                val rawD = hyphenMatch.groupValues[2].toIntOrNull()?.coerceIn(1, maxDay) ?: 15
+                val localDate = LocalDate.of(detectedYear, month, rawD)
+                return "$m/$rawD" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            }
+
+            return null
+        }
+
+        val boilerplateKeywords =
+            listOf(
+                "email",
+                "http://",
+                "https://",
+                "office hours",
+                "zoom",
+                "phone",
+                "607-",
+                "teaching team",
+                "please refer to",
+                "academic integrity",
+                "accommodations",
+                "cheating",
+                "plagiarism",
+                "disability",
+                "counseling",
+                "prerequisite",
+                "credit hours",
+                "grade grubbing",
+                "undue personal",
+                "campus help",
+                "walk-in",
+                "tutoring",
+                "advising",
+                "dean of students",
+                "textbook requirement",
+                "access code",
+                "student services",
+                "description & course objectives",
+                "care team",
+                "12.5 hours",
+                "grading scale",
+                "have questions",
+                "subject line",
+                "within 48 hours",
+                "time & location",
+                "lecture hall",
+                "prerequisites",
+                "by the end of this course",
+                "spss",
+                "apa format",
+                "course policies",
+                "makeup exams",
+                "grade negotiation",
+                "its helpdesk",
+                "eli tutoring",
+                "the speaking center",
+                "libraries",
+                "seek (support",
+                "care team:",
+                "page break",
+                "date topic readings",
+                "reading requirement",
+                "points each",
+            )
+
+        val policyPhrases =
+            listOf(
+                "students may choose",
+                "if you miss",
+                "replace the missing",
+                "lowest exam grade",
+                "alternative exam date",
+                "otherwise, you will need",
+                "grade grubbing",
+                "can schedule",
+                "grading scale",
+                "total exams",
+                "points each",
+                "there will be",
+                "lecture exams",
+            )
+
+        val noClassKeywords =
+            listOf(
+                "no classes",
+                "labor day",
+                "fall break",
+                "thanksgiving break",
+                "yom kippur",
+                "spring break",
+                "winter break",
+                "holiday",
+            )
+
+        // 2a. Extract Grading Category Weights
+        val gradingWeights = mutableMapOf<String, Int>()
+        val gradingWeightRegex =
+            Regex(
+                """(?i)\b(Paper\s*\d+|Exam\s*\d+|Final\s*Exam|Midterm|Quiz\s*\d+|Project\s*\d+|Homework\s*\d+|Assignment\s*\d+|Engagement|CITI)\b[^\d\n]*?(\d{1,3})\s*(?:points|%|pts)""",
+            )
+        for (line in lines) {
+            for (m in gradingWeightRegex.findAll(line)) {
+                val cat =
+                    m.groupValues[1]
+                        .lowercase(Locale.ROOT)
+                        .replace(Regex("""\s+"""), " ")
+                        .trim()
+                val w = m.groupValues[2].toIntOrNull() ?: 0
+                if (w in 1..100) {
+                    gradingWeights[cat] = w
+                }
+            }
+        }
+
+        // 2b-0. Explicit Assignment Schedule Table Parsing (e.g., Table 4: Schedule of Assignments)
+        // Syllabi frequently contain a dedicated table with columns like [Due Date | Assignment/Exam | Percentage]
+        val assignTableIdx =
+            lines.indexOfFirst { line ->
+                val l = line.lowercase(Locale.ROOT)
+                (
+                    l.contains("schedule of assignments") ||
+                        l.contains("course exams and assignments") ||
+                        l.contains("schedule of exams and assignments") ||
+                        l.contains("assignment schedule") ||
+                        l.contains("assignments and grading")
+                ) ||
+                    (
+                        l.contains("|") &&
+                            (l.contains("due date") || l.contains("deadline")) &&
+                            (l.contains("assignment") || l.contains("exam")) &&
+                            (l.contains("percentage") || l.contains("weight") || l.contains("grade"))
+                    )
+            }
+
+        if (assignTableIdx >= 0) {
+            val tableLines = lines.drop(assignTableIdx + 1)
+            for (line in tableLines) {
+                val l = line.lowercase(Locale.ROOT)
+                if (line.isBlank() ||
+                    (!line.contains("|") && !dateMonthRegex.containsMatchIn(line) && !slashDateRegex.containsMatchIn(line)) ||
+                    l.startsWith("table ") ||
+                    l.startsWith("grading scale") ||
+                    l.startsWith("course policies")
+                ) {
+                    if (items.isNotEmpty()) break
+                }
+                if (!line.contains("|")) continue
+
+                val cells = line.split("|").map { it.trim() }.filter { it.isNotBlank() }
+                if (cells.size < 2) continue
+
+                // Skip header rows
+                if (cells.any { c ->
+                        c.equals("Due date", ignoreCase = true) ||
+                            c.equals("Assignment/Exam", ignoreCase = true) ||
+                            c.contains("Percentage of grade", ignoreCase = true)
+                    }
+                ) {
+                    continue
+                }
+
+                // Find date cell
+                val dateCell = cells.firstOrNull { parseDateFromText(it) != null } ?: continue
+                val parsedDate = parseDateFromText(dateCell) ?: continue
+                val (dText, dMillis) = parsedDate
+
+                // Find weight cell (e.g. "1.5%", "4%", "15%")
+                val weightFloat =
+                    cells
+                        .mapNotNull { cell ->
+                            val m = Regex("""(?i)^\s*\(?\s*(\d+(?:\.\d+)?)\s*(?:%|points|pts)\s*\)?\s*$""").find(cell)
+                            m?.groupValues?.get(1)?.toFloatOrNull()
+                        }.firstOrNull() ?: 0f
+                val weight = Math.round(weightFloat)
+
+                // Title cell: the cell that is not the date cell and does not only have percentage
+                val titleCandidate =
+                    cells.firstOrNull { it != dateCell && !it.matches(Regex("""(?i)^\s*\(?\s*\d+(?:\.\d+)?\s*(?:%|points|pts)\s*\)?\s*$""")) } ?: continue
+                val clean = cleanDeliverableTitle(titleCandidate)
+                if (clean.length < 3) continue
+
+                val type = determineItemType(clean)
+                val finalWeight = if (weight > 0) weight else determineWeight(clean, type, gradingWeights)
+
+                items.add(
+                    ParsedDeliverable(
+                        title = clean,
+                        type = type,
+                        dueDateText = dText,
+                        dueDateMillis = dMillis,
+                        weightPercent = finalWeight,
+                        prepSteps = generateBackwardChainedPrepSteps(type, clean),
+                    ),
+                )
+            }
+        }
+
+        // 2b. Multi-Column Schedule Table Parsing
+        if (items.isEmpty()) {
+            val scheduleHeaderRegex =
+                Regex("""(?i)^\s*(?:Table\s*\d+:?\s*)?(?:(?:COURSE|CLASS|TENTATIVE|LAB|LECTURE|WEEKLY)\s+)*(?:SCHEDULE|CALENDAR|TIMELINE)(?:\s*[-–—].*)?\s*$""")
+            val scheduleIdx = lines.indexOfLast { scheduleHeaderRegex.matches(it.trim()) }
+            val scheduleEndRegex =
+                Regex("""(?i)^\s*(?:Important\s+Notes|Course\s+Policies|Campus\s+Help|Grade\s+Negotiation)""")
+
+            if (scheduleIdx >= 0) {
+                val scheduleLines = lines.drop(scheduleIdx + 1)
+                val blocks = mutableListOf<Triple<String, Long, MutableList<String>>>()
+
+                for (line in scheduleLines) {
+                    if (scheduleEndRegex.containsMatchIn(line.trim())) break
+                    val parsedDate = parseDateFromText(line)
+                    if (parsedDate != null) {
+                        blocks.add(Triple(parsedDate.first, parsedDate.second, mutableListOf(line)))
+                    } else if (blocks.isNotEmpty()) {
+                        blocks.last().third.add(line)
+                    }
+                }
+
+                val deadlineRegex =
+                    Regex(
+                        """(?i)(?:Hard\s+Deadlines?|Suggested\s+Deadline|Deadline):\s*([^\n\r]+?)(?=(?:Hard\s+Deadlines?|Suggested\s+Deadline|Deadline|\bCh\.|\bIn-Class|\z))""",
+                    )
+
+                for ((dateText, dateMillis, blockLines) in blocks) {
+                    val blockText = blockLines.joinToString(" ")
+                    val lower = blockText.lowercase(Locale.ROOT)
+                    if (noClassKeywords.any { lower.contains(it) } &&
+                        !lower.contains("deadline") &&
+                        !lower.contains("exam") &&
+                        !lower.contains("submit")
+                    ) {
+                        continue
+                    }
+
+                    val dlMatches =
+                        deadlineRegex
+                            .findAll(blockText)
+                            .map { it.groupValues[1].trim() }
+                            .filter { it.length > 5 }
+                            .toList()
+                    if (dlMatches.isNotEmpty()) {
+                        for (rawDl in dlMatches) {
+                            val clean = cleanDeliverableTitle(rawDl)
+                            if (clean.length < 3) continue
+                            val type = determineItemType(clean)
+                            val weight = determineWeight(clean, type, gradingWeights)
+                            items.add(
+                                ParsedDeliverable(
+                                    title = clean,
+                                    type = type,
+                                    dueDateText = dateText,
+                                    dueDateMillis = dateMillis,
+                                    weightPercent = weight,
+                                    prepSteps = generateBackwardChainedPrepSteps(type, clean),
+                                ),
+                            )
+                        }
+                    } else if (lower.contains("exam") ||
+                        lower.contains("review") ||
+                        lower.contains("activity:") ||
+                        lower.contains("evaluation") ||
+                        lower.contains("revision")
+                    ) {
+                        val clean = cleanDeliverableTitle(blockText)
+                        if (clean.length >= 3) {
+                            val type = determineItemType(clean)
+                            val weight = determineWeight(clean, type, gradingWeights)
+                            items.add(
+                                ParsedDeliverable(
+                                    title = clean,
+                                    type = type,
+                                    dueDateText = dateText,
+                                    dueDateMillis = dateMillis,
+                                    weightPercent = weight,
+                                    prepSteps = generateBackwardChainedPrepSteps(type, clean),
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2c. Fallback Line-by-Line Parsing (for simple syllabi without schedule headers)
+        if (items.isEmpty()) {
+            for (line in lines) {
+                val lower = line.lowercase(Locale.ROOT)
+
+                if (boilerplateKeywords.any { lower.contains(it) }) continue
+                if (noClassKeywords.any { lower.contains(it) }) continue
+
+                val parsedDate = parseDateFromText(line)
+                val weekMatch = Regex("""\bWeek\s*(\d{1,2})\b""", RegexOption.IGNORE_CASE).find(line)
+                val hasDate = parsedDate != null || weekMatch != null || lower.contains("tba") || lower.contains("tbd")
+                val hasWeight = weightRegex.find(line) != null
+
+                // Skip policy narrative sentences that don't have explicit due dates
+                if (!hasDate && (policyPhrases.any { lower.contains(it) } || line.length > 100)) continue
+
+                val isBulletOrNumbered = Regex("""^\s*(?:[-*•]|\d+\.)\s+""").containsMatchIn(line)
+                val hasActionableKeyword =
+                    lower.contains("exam") ||
+                        lower.contains("midterm") ||
+                        lower.contains("final") ||
+                        lower.contains("quiz") ||
+                        lower.contains("test") ||
+                        lower.contains("paper") ||
+                        lower.contains("project") ||
+                        lower.contains("essay") ||
+                        lower.contains("presentation") ||
+                        lower.contains("assignment") ||
+                        lower.contains("homework") ||
+                        lower.contains("problem set") ||
+                        lower.contains("ps ") ||
+                        lower.contains("lab") ||
+                        lower.contains("data collection") ||
+                        lower.contains("review") ||
+                        lower.contains("analysis") ||
+                        lower.contains("case study") ||
+                        lower.contains("reflection") ||
+                        lower.contains("response") ||
+                        lower.contains("exercise") ||
+                        lower.contains("critique") ||
+                        lower.contains("journal") ||
+                        lower.contains("submission") ||
+                        lower.contains("field trip") ||
+                        (isBulletOrNumbered && (hasDate || hasWeight))
+
+                val isExplicitMajorItem =
+                    Regex(
+                        """(?i)\b(exam\s*\d+|final\s*exam|midterm|quiz\s*\d+|paper\s*\d+|project\s*\d+|hw\s*\d+|assignment\s*\d+)\b""",
+                    ).containsMatchIn(line)
+                if (!isExplicitMajorItem && !(hasActionableKeyword && (hasDate || hasWeight))) {
+                    continue
+                }
+
+                // Determine Type
+                val type = determineItemType(line)
+
+                // Extract Date
+                var dueDateText = "TBD"
+                var dueDateMillis = 0L
+
+                if (parsedDate != null) {
+                    dueDateText = parsedDate.first
+                    dueDateMillis = parsedDate.second
+                } else if (weekMatch != null) {
+                    dueDateText = "Week ${weekMatch.groupValues[1]}"
+                } else if (lower.contains("tba") || lower.contains("tbd")) {
+                    dueDateText = "TBA"
+                }
+
+                var weight =
+                    weightRegex
+                        .find(line)
+                        ?.groupValues
+                        ?.get(1)
+                        ?.toIntOrNull() ?: 0
+
+                if (weight == 0) {
+                    weight = determineWeight(line, type, gradingWeights)
+                }
+
+                var cleanTitle = cleanDeliverableTitle(line)
+                if (cleanTitle.isBlank() || cleanTitle.length < 3) {
+                    cleanTitle =
+                        when (type) {
+                            SyllabusItemType.EXAM -> "Course Exam"
+                            SyllabusItemType.PROJECT -> "Term Project"
+                            SyllabusItemType.HOMEWORK -> "Homework Assignment"
+                            SyllabusItemType.READING -> "Weekly Reading"
+                        }
+                }
+
+                val prepSteps = generateBackwardChainedPrepSteps(type, cleanTitle)
+
+                items.add(
+                    ParsedDeliverable(
+                        title = cleanTitle,
+                        type = type,
+                        dueDateText = dueDateText,
+                        dueDateMillis = dueDateMillis,
+                        weightPercent = weight,
+                        prepSteps = prepSteps,
+                    ),
+                )
+            }
+        }
+
+        // Deduplicate deliverables by title
+        val distinctItems = items.distinctBy { it.title.lowercase(Locale.ROOT) }
+
+        return ParsedSyllabus(
+            courseCode = detectedCode,
+            courseName = detectedName,
+            deliverables =
+                distinctItems.ifEmpty {
+                    // If text didn't match specific line patterns, provide sensible generic extractions
+                    listOf(
+                        ParsedDeliverable(
+                            title = "Course Midterm Exam",
+                            type = SyllabusItemType.EXAM,
+                            dueDateText = "Mid-Semester",
+                            dueDateMillis = System.currentTimeMillis() + 14L * 86400000L,
+                            weightPercent = 25,
+                            prepSteps = generateBackwardChainedPrepSteps(SyllabusItemType.EXAM, "Course Midterm Exam"),
+                        ),
+                        ParsedDeliverable(
+                            title = "Final Deliverable / Term Project",
+                            type = SyllabusItemType.PROJECT,
+                            dueDateText = "End of Term",
+                            dueDateMillis = System.currentTimeMillis() + 35L * 86400000L,
+                            weightPercent = 30,
+                            prepSteps = generateBackwardChainedPrepSteps(SyllabusItemType.PROJECT, "Final Deliverable"),
+                        ),
+                    )
+                },
+        )
+    }
+
+    /**
+     * Backward-chaining generator for ADHD users:
+     * Breaks down high-anxiety deadlines into pre-emptive momentum steps.
+     */
+    fun generateBackwardChainedPrepSteps(
+        type: SyllabusItemType,
+        title: String,
+    ): List<String> =
+        when (type) {
+            SyllabusItemType.EXAM ->
+                listOf(
+                    "Gather lecture slides & review guide (15m starter)",
+                    "Active recall: solve 5 high-yield practice problems (25m focus)",
+                    "Review formulas & weak conceptual areas (25m focus)",
+                    "Quick calm warm-up review (15m prior to exam)",
+                )
+            SyllabusItemType.PROJECT ->
+                listOf(
+                    "Topic selection & write 3 core research questions (15m starter)",
+                    "Draft outline & bullet-point thesis arguments (25m focus)",
+                    "Write rough draft section 1 & 2 (25m focus)",
+                    "Write remaining sections & conclusions (25m focus)",
+                    "Proofread, check formatting & citations (15m wrap-up)",
+                )
+            SyllabusItemType.HOMEWORK ->
+                listOf(
+                    "Read assignment instructions & setup workspace (10m starter)",
+                    "Work on first half of questions (25m focus)",
+                    "Complete remaining questions & review submission (20m wrap-up)",
+                )
+            SyllabusItemType.READING ->
+                listOf(
+                    "Skim chapter summary, headings & bold vocabulary (10m starter)",
+                    "Read primary sections & highlight 3 key takeaways (20m focus)",
+                )
+        }
+
+    fun parseMonth(monthStr: String): Month =
+        when (monthStr.lowercase(Locale.ROOT).take(3)) {
+            "jan" -> Month.JANUARY
+            "feb" -> Month.FEBRUARY
+            "mar" -> Month.MARCH
+            "apr" -> Month.APRIL
+            "may" -> Month.MAY
+            "jun" -> Month.JUNE
+            "jul" -> Month.JULY
+            "aug" -> Month.AUGUST
+            "sep" -> Month.SEPTEMBER
+            "oct" -> Month.OCTOBER
+            "nov" -> Month.NOVEMBER
+            "dec" -> Month.DECEMBER
+            else -> Month.OCTOBER
+        }
+
+    fun cleanDeliverableTitle(raw: String): String {
+        val stripBoilerplate =
+            Regex(
+                """(?i)\b(?:using Google Docs|\(?\d+,\s*\d+\)?|How to Write.*|Research Methods.*|---\s*PAGE BREAK\s*---|before class on.*|\?)\b""",
+            )
+        val stripDates =
+            Regex(
+                """(?i)\b(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?|\d{4}-\d{1,2}-\d{1,2}|\b\d{1,2}-\d{1,2}\b)\b""",
+            )
+        val stripWeights = Regex("""(?i)\(\s*\d{1,2}%\s*\)|\b\d{1,2}%\b""")
+        var clean =
+            raw
+                .replace(Regex("""(?i)\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\.?,?\s*"""), "")
+                .replace(stripBoilerplate, "")
+                .replace(stripWeights, "")
+                .replace(stripDates, "")
+                .replace(Regex("""(?i)\b\d{1,2}/\d{1,2}\b"""), "")
+                .replace(Regex("""(?i)\bCh\.?\s*\d+(?:-\d+)?\s*\([A-Za-z\s]+\)"""), "")
+                .replace(Regex("""(?i)\bTBA\b|\bTBD\b"""), "")
+                .replace(Regex("""^[0-9\-\*\•\.\)]+\s*"""), "")
+                .replace(Regex("""\s+"""), " ")
+                .trim(':', '-', ' ', '|', ',', ';', '*', '?')
+
+        if (clean.length > 55) {
+            clean = clean.take(52) + "..."
+        }
+        val lowerClean = clean.lowercase(Locale.ROOT)
+        if (lowerClean.endsWith(" of") ||
+            lowerClean.endsWith(" the") ||
+            lowerClean.endsWith(" to") ||
+            lowerClean.endsWith(" on") ||
+            lowerClean.endsWith(" for")
+        ) {
+            return ""
+        }
+        return clean.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+    }
+
+    fun determineItemType(title: String): SyllabusItemType {
+        val lower = title.lowercase(Locale.ROOT)
+        return when {
+            lower.contains("paper") ||
+                lower.contains("project") ||
+                lower.contains("essay") ||
+                lower.contains("presentation") ||
+                lower.contains("thesis") ||
+                lower.contains("data collection") ||
+                lower.contains("analysis") ||
+                lower.contains("case study") ||
+                lower.contains("critique") ||
+                lower.contains("portfolio") ||
+                lower.contains("draft") -> SyllabusItemType.PROJECT
+            lower.contains("exam") ||
+                lower.contains("midterm") ||
+                lower.contains("quiz") ||
+                lower.contains("test") ||
+                lower.contains("final exam") ||
+                (
+                    lower.contains(
+                        "final",
+                    ) &&
+                        !lower.contains(
+                            "paper",
+                        ) &&
+                        !lower.contains("project") &&
+                        !lower.contains("draft") &&
+                        !lower.contains("submission")
+                ) -> SyllabusItemType.EXAM
+            lower.contains("reading") || lower.contains("chapter") || lower.contains("discussion") -> SyllabusItemType.READING
+            else -> SyllabusItemType.HOMEWORK
+        }
+    }
+
+    fun determineWeight(
+        title: String,
+        type: SyllabusItemType,
+        gradingWeights: Map<String, Int>,
+    ): Int {
+        val lower = title.lowercase(Locale.ROOT)
+        if (lower.contains("draft") && !lower.contains("final")) {
+            return 0
+        }
+        for ((cat, w) in gradingWeights) {
+            if (lower.contains(cat) && (lower.contains("final") || !lower.contains("draft"))) {
+                return w
+            }
+        }
+        if (lower.contains("paper 1") && (lower.contains("final") || lower.contains("graded"))) {
+            return gradingWeights["paper 1"] ?: 20
+        }
+        if (lower.contains("paper 2") && (lower.contains("final") || lower.contains("graded"))) {
+            return gradingWeights["paper 2"] ?: 30
+        }
+        if (lower.contains("citi")) return gradingWeights["citi"] ?: 3
+        if (lower.contains("group evaluation") || lower.contains("wrap-up")) return gradingWeights["engagement"] ?: 5
+        if (type == SyllabusItemType.EXAM && (lower.contains("exam ") || lower.contains("midterm") || lower.contains("final"))) {
+            return 15
+        }
+        return 0
+    }
+}

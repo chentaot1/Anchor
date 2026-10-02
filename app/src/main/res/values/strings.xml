@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Anchor</string>
+    <string name="shortcut_focus">Start focus</string>
+    <string name="shortcut_focus_long">Start 20-minute focus</string>
+    <string name="shortcut_grove">Open grove</string>
+    <string name="shortcut_morning">Morning ritual</string>
+    <string name="shortcut_morning_long">Open morning check-in</string>
+    <string name="shortcut_checkin">Check in</string>
+    <string name="shortcut_shutdown">Shutdown</string>
+    <string name="accessibility_service_description">Blocks distracting apps during focus sessions.</string>
+</resources>

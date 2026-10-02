@@ -1,8 +1,8 @@
 # Anchor
 
-**A local AI planner that connects schoolwork, a manageable next action, and a protected focus session.**
+**An Android and Windows planner with local AI, syllabus records, focus timers, and app blocking.**
 
-Anchor is an Android and Windows application built around a familiar student problem: knowing what needs to get done, but struggling to start or return after a distraction. It combines task planning, calendar-aware scheduling, syllabus extraction, an offline AI runtime, native distraction protection, and persistent progress tracking in one workflow.
+Anchor combines task planning, calendar-aware scheduling, syllabus extraction, an offline AI runtime, platform-specific app blocking, and persistent progress tracking. It is intended to support starting work and returning to it after an interruption.
 
 **Android + Windows · Kotlin + Compose · Local GGUF inference · Room + SQLite**
 
@@ -15,13 +15,13 @@ Anchor is an Android and Windows application built around a familiar student pro
 3. **Protect the session.** Start a focus timer and apply the configured app or website restrictions.
 4. **Return to the plan.** Replan unfinished work, review focus history, and build progress in the garden and harbor screens.
 
-For example, a task such as “complete CHIN 103 written assignments” should retain its course and assignment details throughout routing and planning. On desktop, relevant pending syllabus records can supply saved deadlines and preparation steps to the AI.
+Desktop task breakdown passes the full task text to the model prompt. Relevant pending syllabus records can supply saved deadlines and preparation steps to the AI.
 
 ## What the project includes
 
 ### An AI workspace for planning
 
-Five core workflows are implemented: **Break Down**, **Brain Dump**, **Triage**, **Replan**, and **Ask Anchor**. Natural commands such as a timer request can route directly to an action without an extra model-classification request.
+Five planning workflows are implemented: **Break Down**, **Brain Dump**, **Triage**, **Replan**, and **Ask Anchor**. Supported commands such as a timer request can route directly to an action without an extra model-classification request.
 
 The AI runs locally through **llama.cpp**. Windows manages a background `llama-server` process over localhost; Android runs inference through a native **C++/JNI** library. Structured workflows use **GBNF grammars** to constrain the shape of the response. Desktop task breakdown also validates the result and falls back to a task-specific draft when the model is unavailable or returns invalid steps.
 
@@ -35,7 +35,7 @@ The workspace includes course filters, completion tracking, an upcoming major-de
 
 The AI context selects relevant incomplete items from those saved records by course and date. Supported deadline questions use deterministic answers from the saved dates. Imported text is treated as data, and missing assignment requirements still need the user's input.
 
-### Native distraction protection
+### App and window blocking
 
 **Windows:** foreground process and window monitoring, separate executable and browser-title rules, study schedules, usage allowances, rescue windows, earned leisure, and experimental focus-scope classification. Website rules apply to recognized browsers, so a desktop application and a browser tab with the same name keep separate identities. Scope checks run during active focus sessions.
 
@@ -54,17 +54,17 @@ Tasks, assignments, routines, milestones, inbox/someday work, focus timers, and 
 - **Habit and reflection tools:** scheduled habits, weekly targets, grace allowances, a 12-week heatmap, energy/tag check-ins, weekly summaries, and planned-versus-actual focus-time statistics.
 - **Capture and integrations:** a home-screen widget, share-to-inbox capture, device-calendar occupancy, optional read-only Google Calendar import, and JSON export of tasks, assignments, and calendar records.
 
-The garden, companion, and harbor screens give progress a visual form, with saved focus rewards and shared Compose drawing/animation components. An Android Filament/SceneView plant renderer is also present as unwired infrastructure; the current shell uses Compose visuals.
+The garden, companion, and harbor screens display progress and saved focus rewards using shared Compose drawing/animation components. An Android Filament/SceneView plant renderer is also present as unwired infrastructure; the current shell uses Compose visuals.
 
 ## Engineering decisions
 
-- **Fast actions before model inference.** Deterministic routing handles supported commands, and desktop breakdown has a usable draft when inference cannot complete.
+- **Deterministic command routing.** Supported commands run without model classification, and desktop breakdown returns a task-specific template when inference cannot complete.
 - **Validation beyond output formatting.** The desktop parser checks step counts, empty or duplicate steps, preservation of the first action, and consistency of optional action/time fields. A grammatical response can still be irrelevant, so plans remain reviewable.
 - **Context tied to saved records.** Syllabus context is bounded and selected from the same records shown in the desktop workspace, rather than relying on the model to remember course deadlines.
 - **Platform-specific enforcement.** Windows uses Win32 APIs through JNA; Android uses Accessibility events and overlays. Shared Kotlin code supplies common domain logic, design components, and progress visuals.
 - **A native inference lifecycle.** Android serializes generation, reuses an already loaded model, streams tokens through JNI, supports cancellation, and unloads the warm model after an AI surface has been closed for two minutes. The native layer clears each request's KV cache, rejects invalid grammars instead of silently generating unconstrained JSON, and buffers incomplete UTF-8 token fragments before sending text to Kotlin.
-- **Bounded desktop inference.** The client manages server startup, health checks, model changes, and shutdown. Its default CPU profile uses a 2,048-token context, one server slot, quantized KV caches, and disabled reasoning. These settings bound resource use; they are not a universal latency guarantee.
-- **Verified offline model installation.** Android packages a pinned GGUF asset and verifies its size and SHA-256 before activating the extracted model. The native llama.cpp source archive is pinned and hash-checked too.
+- **Desktop inference configuration.** The client manages server startup, health checks, model changes, and shutdown. Its default CPU profile uses a 2,048-token context, one server slot, quantized KV caches, and disabled reasoning. Memory use and response time depend on the model and hardware.
+- **Model asset verification.** Android packages a pinned GGUF asset and verifies its size and SHA-256 before activating the extracted model. The native llama.cpp source archive is pinned and hash-checked too.
 
 A concrete debugging example: an assignment breakdown once copied unrelated prompt examples about dishes and a coding test. That led to changes in task routing, prompts, validation, and regression coverage. The [case study](docs/project-case-study.md) explains the failure, the response, and the remaining limits of semantic validation.
 
@@ -119,7 +119,7 @@ The desktop suite passed **92 tests with zero failures, errors, or skips on Octo
 
 [Android CI](.github/workflows/android-build.yml) runs Android unit tests. APK publication is an opt-in tagged-release workflow. The desktop result above was verified locally; desktop tests are not currently part of that CI workflow.
 
-Anchor is a working personal project under active development. Current desktop fixes require rebuilding an older installation. Generated plans and extracted syllabus dates need review, and native blocking still needs testing on the target devices. Scope classification is experimental and may produce false positives. There are no established learning-outcome or clinical efficacy claims.
+Anchor is a personal project under development. Current desktop fixes require rebuilding an older installation. Generated plans and extracted syllabus dates need review, and native blocking still needs testing on the target devices. Scope classification is experimental and may produce false positives. There are no established learning-outcome or clinical efficacy claims.
 
 ## Further reading
 

@@ -98,8 +98,8 @@ Useful entry points:
 Use **JDK 17** and an Android SDK configured in your ignored `local.properties`; the repository includes Android modules even when running desktop tasks. Detailed prerequisites and Android build steps are in the [development guide](docs/development.md).
 
 ```powershell
-git clone https://github.com/chentaot1/anchor-adhd.git
-cd anchor-adhd
+git clone https://github.com/chentaot1/Anchor.git
+cd Anchor
 .\gradlew.bat :desktopApp:test
 .\gradlew.bat :desktopApp:run
 ```

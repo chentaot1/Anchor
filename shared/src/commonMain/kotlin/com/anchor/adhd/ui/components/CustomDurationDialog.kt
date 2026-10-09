@@ -32,7 +32,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,8 +61,9 @@ fun CustomDurationDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var minutes by remember(initialMinutes) { mutableIntStateOf(initialMinutes.coerceIn(1, 180)) }
-    var textValue by remember(initialMinutes) { mutableStateOf(initialMinutes.toString()) }
+    val clampedInitial = initialMinutes.coerceIn(1, 180)
+    var minutes by remember(initialMinutes) { mutableIntStateOf(clampedInitial) }
+    var textValue by remember(initialMinutes) { mutableStateOf(clampedInitial.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -107,14 +117,34 @@ fun CustomDurationDialog(
                     OutlinedTextField(
                         value = textValue,
                         onValueChange = { input ->
-                            val filtered = input.filter { it.isDigit() }
-                            textValue = filtered
+                            val filtered = input.filter { it.isDigit() }.take(3)
                             val parsed = filtered.toIntOrNull()
                             if (parsed != null) {
                                 minutes = parsed.coerceIn(1, 180)
+                                textValue = minutes.toString()
+                            } else {
+                                textValue = ""
                             }
                         },
-                        modifier = Modifier.size(width = 110.dp, height = 64.dp),
+                        modifier = Modifier
+                            .size(width = 110.dp, height = 64.dp)
+                            .onPreviewKeyEvent { event ->
+                                if (event.type == KeyEventType.KeyDown &&
+                                    (event.key == Key.Enter || event.key == Key.NumPadEnter)
+                                ) {
+                                    onConfirm(minutes.coerceIn(1, 180))
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { onConfirm(minutes.coerceIn(1, 180)) }
+                        ),
                         textStyle = MaterialTheme.typography.headlineMedium.copy(
                             textAlign = TextAlign.Center,
                             color = AnchorColors.HarborPrimary,

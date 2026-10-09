@@ -24,13 +24,15 @@ param (
 )
 
 try {
+    ${'$'}ErrorActionPreference = 'Stop'
     Add-Type -AssemblyName 'System.Runtime.WindowsRuntime'
-    [Windows.Media.Ocr.OcrEngine, Windows.Foundation.UniversalApiContract, ContentType = WindowsRuntime] | Out-Null
-    [Windows.Graphics.Imaging.BitmapDecoder, Windows.Foundation.UniversalApiContract, ContentType = WindowsRuntime] | Out-Null
-    [Windows.Storage.StorageFile, Windows.Foundation.UniversalApiContract, ContentType = WindowsRuntime] | Out-Null
+    [Windows.Media.Ocr.OcrEngine, Windows.Media.Ocr, ContentType = WindowsRuntime] | Out-Null
+    [Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType = WindowsRuntime] | Out-Null
+    [Windows.Storage.StorageFile, Windows.Storage, ContentType = WindowsRuntime] | Out-Null
+    [Windows.Storage.Streams.IRandomAccessStream, Windows.Storage.Streams, ContentType = WindowsRuntime] | Out-Null
 
     ${'$'}asTaskGeneric = [System.WindowsRuntimeSystemExtensions].GetMethods() | 
-        Where-Object { ${'$'}_.Name -eq 'AsTask' -and ${'$'}_.GetParameters().Count -eq 1 -and ${'$'}_.IsGenericMethod } | 
+        Where-Object { ${'$'}_.Name -eq 'AsTask' -and ${'$'}_.GetParameters().Count -eq 1 -and ${'$'}_.IsGenericMethod -and ${'$'}_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' } |
         Select-Object -First 1
 
     function Await(${'$'}asyncOp, ${'$'}resultType) {
@@ -50,12 +52,12 @@ try {
         exit 1
     }
 
-    ${'$'}imagePaths = Get-Content -Path ${'$'}ManifestPath
+    ${'$'}imagePaths = Get-Content -LiteralPath ${'$'}ManifestPath
     ${'$'}allPagesText = @()
 
     foreach (${'$'}imgPath in ${'$'}imagePaths) {
         ${'$'}trimmedPath = ${'$'}imgPath.Trim()
-        if ([string]::IsNullOrWhiteSpace(${'$'}trimmedPath) -or -not (Test-Path ${'$'}trimmedPath)) { continue }
+        if ([string]::IsNullOrWhiteSpace(${'$'}trimmedPath) -or -not (Test-Path -LiteralPath ${'$'}trimmedPath)) { continue }
 
         ${'$'}file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync(${'$'}trimmedPath)) ([Windows.Storage.StorageFile])
         ${'$'}stream = Await (${'$'}file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
@@ -104,6 +106,35 @@ try {
     exit 2
 }
 """
+
+    private fun runPowerShellBounded(cmd: List<String>, timeoutSeconds: Long = 45): String {
+        val proc =
+            ProcessBuilder(cmd)
+                .redirectErrorStream(true)
+                .start()
+        val outputRef = java.util.concurrent.atomic.AtomicReference("")
+        val readerThread =
+            Thread {
+                try {
+                    outputRef.set(proc.inputStream.bufferedReader().use { it.readText() })
+                } catch (_: Exception) {
+                }
+            }.apply {
+                isDaemon = true
+                start()
+            }
+
+        val finished = proc.waitFor(timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS)
+        if (!finished) {
+            proc.destroyForcibly()
+        }
+        readerThread.join(2000)
+        if (!finished || proc.exitValue() != 0) {
+            System.err.println("DesktopWindowsOcrHelper: OCR process failed: ${outputRef.get()}")
+            return ""
+        }
+        return outputRef.get()
+    }
 
     /**
      * Extracts text from a PDF file. If the PDF lacks digital selectable text (scanned / image PDF),
@@ -177,14 +208,7 @@ try {
                     manifestFile.absolutePath,
                 )
 
-            val proc =
-                ProcessBuilder(cmd)
-                    .redirectErrorStream(true)
-                    .start()
-
-            val ocrOutput = proc.inputStream.bufferedReader().readText()
-            proc.waitFor()
-            return ocrOutput
+            return runPowerShellBounded(cmd, timeoutSeconds = 45)
         } catch (e: Exception) {
             System.err.println("DesktopWindowsOcrHelper: Native OCR execution failed: ${e.message}")
             return ""
@@ -220,14 +244,7 @@ try {
                     manifestFile.absolutePath,
                 )
 
-            val proc =
-                ProcessBuilder(cmd)
-                    .redirectErrorStream(true)
-                    .start()
-
-            val ocrOutput = proc.inputStream.bufferedReader().readText()
-            proc.waitFor()
-            return ocrOutput
+            return runPowerShellBounded(cmd, timeoutSeconds = 45)
         } catch (e: Exception) {
             System.err.println("DesktopWindowsOcrHelper: Image OCR failed: ${e.message}")
             return ""

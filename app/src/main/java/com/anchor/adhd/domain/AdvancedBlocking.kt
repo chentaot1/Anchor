@@ -2,7 +2,6 @@ package com.anchor.adhd.domain
 
 import kotlinx.serialization.Serializable
 import java.time.Instant
-import java.time.LocalTime
 import java.time.ZoneId
 
 @Serializable
@@ -66,6 +65,26 @@ object AdvancedBlocking {
 
     fun groupKey(group: String) = "group:${group.trim().lowercase(java.util.Locale.ROOT)}"
 
+    fun effectiveDailyMinutes(state: BlockingState, app: AppProtection): Int =
+        if (app.quotaGroup.isBlank()) app.dailyMinutes.coerceIn(0, 1440) else
+            state.apps.filter { it.quotaGroup.isNotBlank() && groupKey(it.quotaGroup) == groupKey(app.quotaGroup) }
+                .minOfOrNull { it.dailyMinutes.coerceIn(0, 1440) } ?: app.dailyMinutes.coerceIn(0, 1440)
+
+    fun leisureSpendMinutes(state: BlockingState, minutes: Int, now: Long): Int {
+        val remaining = (nextReset(now) - maxOf(now, state.leisureUntilMillis)).coerceAtLeast(0L)
+        return minOf(minutes.coerceAtLeast(0), ((remaining + 59_999L) / 60_000L).toInt())
+    }
+
+    fun spendLeisure(state: BlockingState, minutes: Int, now: Long, focus: Boolean = false): BlockingState {
+        val charged = leisureSpendMinutes(state, minutes, now)
+        if (minutes !in listOf(15, 30) || charged == 0 || state.bankedMinutes < charged ||
+            leisureRestriction(state, focus, now) != null) return state
+        return state.copy(
+            bankedMinutes = state.bankedMinutes - charged,
+            leisureUntilMillis = minOf(maxOf(now, state.leisureUntilMillis) + minutes * 60_000L, nextReset(now))
+        )
+    }
+
     fun recordUsage(state: BlockingState, pkg: String, seconds: Long): BlockingState {
         val app = state.apps.find { it.packageName == pkg } ?: return state
         val elapsed = seconds.coerceIn(0, 5)
@@ -83,8 +102,8 @@ object AdvancedBlocking {
         if (app.mode == ProtectionMode.TRACK_ONLY) return null
         leisureRestriction(state, focus, now)?.let { return ProtectionDecision(it) }
         return when {
-            app.mode == ProtectionMode.QUOTA && usage(state, app) >= app.dailyMinutes * 60L ->
-                ProtectionDecision("Daily allowance reached (${app.dailyMinutes} minutes)")
+            app.mode == ProtectionMode.QUOTA && usage(state, app) >= effectiveDailyMinutes(state, app) * 60L ->
+                ProtectionDecision("Daily allowance reached (${effectiveDailyMinutes(state, app)} minutes)")
             state.leisureUntilMillis > now -> null
             state.standingShield -> ProtectionDecision("Standing shield", leisureAllowed = true)
             app.mode == ProtectionMode.ALWAYS -> ProtectionDecision("Always protected", leisureAllowed = true)
@@ -135,5 +154,45 @@ object AdvancedBlocking {
         var tier = 0
         while (remaining >= tierMinutes(tier)) { remaining -= tierMinutes(tier); tier++ }
         return tierMinutes(tier) - remaining
+    }
+
+    fun syncQuotaGroupAllowances(
+        apps: Map<String, AppProtection>,
+        updated: AppProtection
+    ): Map<String, AppProtection> {
+        val normalizedMinutes = updated.dailyMinutes.coerceIn(0, 1440)
+        val normalizedGroup = updated.quotaGroup.trim()
+        val normalizedUpdated = updated.copy(dailyMinutes = normalizedMinutes, quotaGroup = normalizedGroup)
+        val withUpdated = apps + (normalizedUpdated.packageName to normalizedUpdated)
+        if (normalizedGroup.isBlank()) return withUpdated
+        val targetKey = groupKey(normalizedGroup)
+        return withUpdated.mapValues { (_, app) ->
+            if (app.quotaGroup.isNotBlank() && groupKey(app.quotaGroup) == targetKey) {
+                app.copy(dailyMinutes = normalizedMinutes)
+            } else {
+                app
+            }
+        }
+    }
+
+    fun syncQuotaGroupAllowances(
+        apps: List<AppProtection>,
+        updated: AppProtection
+    ): List<AppProtection> =
+        syncQuotaGroupAllowances(apps.associateBy { it.packageName }, updated).values.toList()
+
+    fun formatLockRemaining(lockedUntilMillis: Long, nowMillis: Long): String {
+        val remainingMs = (lockedUntilMillis - nowMillis).coerceAtLeast(0L)
+        if (remainingMs == 0L) return "0m left"
+        val totalMinutes = ((remainingMs + 59_999L) / 60_000L).coerceAtLeast(1L)
+        val hours = totalMinutes / 60L
+        val minutes = totalMinutes % 60L
+        val days = hours / 24L
+        if (days > 0L) return if (hours % 24L > 0L) "${days}d ${hours % 24L}h left" else "${days}d left"
+        return when {
+            hours > 0L && minutes > 0L -> "${hours}h ${minutes}m left"
+            hours > 0L -> "${hours}h left"
+            else -> "${minutes}m left"
+        }
     }
 }

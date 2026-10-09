@@ -93,4 +93,4 @@ Preserve needed data before uninstalling, which clears app data. The current Set
 
 ## Local files
 
-Keep `local.properties`, credentials, signing keys, runtime executables, weights, databases, and generated build outputs out of commits. The repository's `.gitignore` excludes these categories. Personal app data belongs to each platform's local installation; Android and desktop currently have separate data and settings with no cross-device sync.
+Keep `local.properties`, credentials, signing keys, runtime executables, weights, databases, generated build outputs, and temporary test files out of commits. The repository's `.gitignore` excludes these categories. Personal app data belongs to each platform's local installation. JSON backup import transfers supported records between Android and desktop; there is no live cross-device synchronization, and platform-specific protection settings remain separate.

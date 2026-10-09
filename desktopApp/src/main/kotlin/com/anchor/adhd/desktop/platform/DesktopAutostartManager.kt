@@ -85,6 +85,42 @@ object DesktopAutostartManager {
         }
     }
 
+    fun isAutostartEnabled(): Boolean = isAutostartRegistered()
+
+    /**
+     * Returns the exact command string currently registered under the Windows Startup Run key, or null if not registered.
+     */
+    fun getRegisteredCommand(): String? {
+        if (!isSupported()) return null
+        return try {
+            val process = ProcessBuilder("reg.exe", "query", REG_KEY, "/v", APP_NAME)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            val exitCode = process.waitFor()
+            if (exitCode != 0) return null
+            val line = output.lines().firstOrNull { it.contains("REG_SZ", ignoreCase = true) } ?: return null
+            val idx = line.indexOf("REG_SZ", ignoreCase = true)
+            if (idx < 0) return null
+            line.substring(idx + "REG_SZ".length).trim().takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Restores a specific raw command string to the Windows Startup Run key.
+     */
+    fun setRegisteredCommand(commandValue: String): Boolean {
+        if (!isSupported()) return false
+        return runCatching {
+            val process = ProcessBuilder(
+                "reg.exe", "add", REG_KEY, "/v", APP_NAME, "/t", "REG_SZ", "/d", commandValue, "/f",
+            ).redirectErrorStream(true).start()
+            process.waitFor() == 0
+        }.getOrDefault(false)
+    }
+
     /**
      * Registers or unregisters Anchor from Windows Startup.
      *
@@ -98,14 +134,7 @@ object DesktopAutostartManager {
             val commandValue = if (startMinimized) "\"$exePath\" --minimized" else "\"$exePath\""
 
             // Attempt 1: reg.exe
-            val regSuccess = runCatching {
-                val process = ProcessBuilder(
-                    "reg.exe", "add", REG_KEY, "/v", APP_NAME, "/t", "REG_SZ", "/d", commandValue, "/f"
-                ).redirectErrorStream(true).start()
-                process.waitFor() == 0
-            }.getOrDefault(false)
-
-            if (regSuccess) return true
+            if (setRegisteredCommand(commandValue)) return true
 
             // Attempt 2: PowerShell Set-ItemProperty
             runCatching {

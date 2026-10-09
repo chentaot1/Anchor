@@ -38,6 +38,7 @@ fun AppBlockerScreen(container: AnchorContainer, onBack: () -> Unit) {
     var picker by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<AppProtection?>(null) }
     var confirmLockdown by remember { mutableStateOf(false) }
+    var appFilter by remember { mutableStateOf("") }
     val focusActive = timer.phase == FocusTimerState.Phase.WORK
     val lockdown = (state?.lockdownUntilMillis ?: 0) > now
     val locked = lockdown || focusActive
@@ -47,6 +48,14 @@ fun AppBlockerScreen(container: AnchorContainer, onBack: () -> Unit) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
         })
         if (state == null) { LinearProgressIndicator(Modifier.fillMaxWidth()); return@Column }
+        val visibleApps = remember(state.apps, appFilter) {
+            if (appFilter.isBlank()) state.apps
+            else state.apps.filter {
+                it.label.contains(appFilter, ignoreCase = true) ||
+                    it.packageName.contains(appFilter, ignoreCase = true) ||
+                    it.quotaGroup.contains(appFilter, ignoreCase = true)
+            }
+        }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 24.dp)) {
             item {
@@ -61,18 +70,32 @@ fun AppBlockerScreen(container: AnchorContainer, onBack: () -> Unit) {
                 Text("Selected apps", style = MaterialTheme.typography.titleLarge)
                 Button(onClick = { picker = true }, enabled = !locked) { Text("Add app") }
                 if (state.apps.isEmpty()) Text("Choose the apps you want to protect or track.")
+                if (state.apps.isNotEmpty()) {
+                    OutlinedTextField(
+                        value = appFilter,
+                        onValueChange = { appFilter = it },
+                        label = { Text("Filter selected apps") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    )
+                }
             }
-            items(state.apps, key = { it.packageName }) { app ->
+            items(visibleApps, key = { it.packageName }) { app ->
                 ElevatedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(app.label, style = MaterialTheme.typography.titleMedium)
                         Text(modeLabel(app.mode))
                         Text("Used ${AdvancedBlocking.usage(state, app) / 60}m" +
-                            if (app.mode == ProtectionMode.QUOTA) " / ${app.dailyMinutes}m" else "")
+                            if (app.mode == ProtectionMode.QUOTA) " / ${AdvancedBlocking.effectiveDailyMinutes(state, app)}m" else "")
                         if (app.quotaGroup.isNotBlank()) Text("Shared group: ${app.quotaGroup}", style = MaterialTheme.typography.bodySmall)
                         AdvancedBlocking.decide(state, app.packageName, focusActive, now)?.let { Text(it.reason) }
-                        val appLocked = locked || app.lockedUntilMillis > now
-                        if (appLocked) Text("Rule changes locked")
+                        val frozen = app.lockedUntilMillis > now
+                        val appLocked = locked || frozen
+                        if (frozen) {
+                            Text("Rule frozen (${AdvancedBlocking.formatLockRemaining(app.lockedUntilMillis, now)})")
+                        } else if (locked) {
+                            Text("Rule changes locked")
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { editing = app }, enabled = !appLocked) { Text("Edit") }
                             TextButton(onClick = { scope.launch { repository.removeApp(app.packageName) } }, enabled = !appLocked) { Text("Remove") }
@@ -111,9 +134,10 @@ fun AppBlockerScreen(container: AnchorContainer, onBack: () -> Unit) {
                 if (restriction != null) Text("Leisure unavailable: $restriction", style = MaterialTheme.typography.bodySmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(15, 30).forEach { minutes ->
+                        val chargedMinutes = AdvancedBlocking.leisureSpendMinutes(state, minutes, now)
                         OutlinedButton(onClick = { scope.launch { repository.spendLeisure(minutes, focusActive) } },
-                            enabled = restriction == null && state.leisureUntilMillis <= now && state.bankedMinutes >= minutes) {
-                            Text("Use $minutes min")
+                            enabled = restriction == null && chargedMinutes > 0 && state.bankedMinutes >= chargedMinutes) {
+                            Text("${if (state.leisureUntilMillis > now) "Add" else "Use"} $chargedMinutes min")
                         }
                     }
                 }
@@ -172,10 +196,10 @@ private fun TimeWindowEditor(startMinute: Int, endMinute: Int, enabled: Boolean,
 
 @Composable
 private fun AppProtectionEditor(app: AppProtection, onDismiss: () -> Unit, onSave: (AppProtection, Boolean) -> Unit) {
-    var mode by remember(app) { mutableStateOf(app.mode) }
-    var minutes by remember(app) { mutableStateOf(app.dailyMinutes.toString()) }
-    var group by remember(app) { mutableStateOf(app.quotaGroup) }
-    var freeze by remember { mutableStateOf(false) }
+    var mode by remember(app.packageName) { mutableStateOf(app.mode) }
+    var minutes by remember(app.packageName) { mutableStateOf(app.dailyMinutes.toString()) }
+    var group by remember(app.packageName) { mutableStateOf(app.quotaGroup) }
+    var freeze by remember(app.packageName) { mutableStateOf(false) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(app.label) }, text = {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ProtectionMode.entries.forEach { candidate ->
@@ -184,7 +208,7 @@ private fun AppProtectionEditor(app: AppProtection, onDismiss: () -> Unit, onSav
             if (mode == ProtectionMode.QUOTA) {
                 OutlinedTextField(minutes, { minutes = it.filter(Char::isDigit).take(4) }, label = { Text("Daily minutes (0–1440)") }, singleLine = true)
                 OutlinedTextField(group, { group = it.take(40) }, label = { Text("Shared group (optional)") }, singleLine = true)
-                Text("Apps in the same group share usage. Set matching allowances for those apps.", style = MaterialTheme.typography.bodySmall)
+                Text("Apps in the same group share usage and sync their daily allowance automatically.", style = MaterialTheme.typography.bodySmall)
             }
             ProtectionSwitch("Freeze rule for 24 hours", "Prevents editing or removing this rule", freeze, true) { freeze = it }
         }

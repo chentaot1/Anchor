@@ -18,8 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
@@ -49,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -126,7 +131,9 @@ fun DesktopRescueOverlay(
                         1.dp,
                         AnchorColors.HarborMist,
                         RoundedCornerShape(AnchorSpacing.radiusScene),
-                    ).padding(28.dp),
+                    )
+                    .verticalScroll(rememberScrollState())
+                    .padding(28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Calm Shield Icon
@@ -470,6 +477,13 @@ fun DesktopRescueOverlay(
                 }
             }
 
+            val submitThought = {
+                if (thoughtText.isNotBlank()) {
+                    onQuickThoughtScribe(thoughtText)
+                    thoughtText = ""
+                }
+            }
+
             // Quick Thought Scribe (Dopamine dump: record thought to inbox without opening distraction)
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -505,15 +519,12 @@ fun DesktopRescueOverlay(
                                     unfocusedTextColor = Color.White,
                                 ),
                             singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { submitThought() }),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
-                            onClick = {
-                                if (thoughtText.isNotBlank()) {
-                                    onQuickThoughtScribe(thoughtText)
-                                    thoughtText = ""
-                                }
-                            },
+                            onClick = submitThought,
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                             colors =
                                 ButtonDefaults.buttonColors(
@@ -589,6 +600,16 @@ fun DesktopRescueOverlay(
                                             unfocusedTextColor = Color.White,
                                         ),
                                     singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions =
+                                        KeyboardActions(
+                                            onDone = {
+                                                if (isPhraseMatching) {
+                                                    onQuickPass(detection.appOrSiteName)
+                                                    quickDropPhrase = ""
+                                                }
+                                            },
+                                        ),
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Button(
@@ -624,70 +645,72 @@ fun DesktopRescueOverlay(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 7-Second Emergency Pass to disarm impulsivity
+            // 7-Second Emergency Pass to disarm impulsivity (disabled during strict Lecture Shield)
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = if (isLecture) "Lecture Shield is strictly active during class." else "Need urgent access? Hold for 7 seconds:",
+                    text = if (isLecture) "Lecture Shield is strictly active during class (emergency passes disabled)." else "Need urgent access? Hold for 7 seconds:",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (!isLecture) {
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(42.dp)
-                            .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                            .background(if (isHolding) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f))
-                            .border(
-                                1.dp,
-                                if (isHolding) AnchorColors.HarborAction else Color.White.copy(alpha = 0.15f),
-                                RoundedCornerShape(AnchorSpacing.radiusPill),
-                            ).pointerInput(detection.appOrSiteName) {
-                                awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false)
-                                    isHolding = true
-                                    try {
-                                        waitForUpOrCancellation()
-                                    } finally {
-                                        isHolding = false
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
+                                .background(if (isHolding) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f))
+                                .border(
+                                    1.dp,
+                                    if (isHolding) AnchorColors.HarborAction else Color.White.copy(alpha = 0.15f),
+                                    RoundedCornerShape(AnchorSpacing.radiusPill),
+                                ).pointerInput(detection.appOrSiteName) {
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false)
+                                        isHolding = true
+                                        try {
+                                            waitForUpOrCancellation()
+                                        } finally {
+                                            isHolding = false
+                                        }
                                     }
-                                }
-                            },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (holdProgress > 0f) {
-                        LinearProgressIndicator(
-                            progress = { holdProgress },
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(AnchorSpacing.radiusPill)),
-                            color = AnchorColors.HarborAction.copy(alpha = 0.6f),
-                            trackColor = Color.Transparent,
-                        )
-                    }
+                                },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (holdProgress > 0f) {
+                            LinearProgressIndicator(
+                                progress = { holdProgress },
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(AnchorSpacing.radiusPill)),
+                                color = AnchorColors.HarborAction.copy(alpha = 0.6f),
+                                trackColor = Color.Transparent,
+                            )
+                        }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = if (isHolding) AnchorColors.HarborAction else Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (holdProgress > 0f) "Hold to unlock: ${(holdProgress * 100).toInt()}%" else "Hold for Emergency Pass",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontWeight = FontWeight.Medium,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = if (isHolding) AnchorColors.HarborAction else Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (holdProgress > 0f) "Hold to unlock: ${(holdProgress * 100).toInt()}%" else "Hold for Emergency Pass",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
             }

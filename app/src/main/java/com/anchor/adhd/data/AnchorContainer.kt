@@ -23,6 +23,7 @@ class AnchorContainer(context: Context) {
 
     val database = AnchorDatabase.getInstance(appContext)
     val preferences = UserPreferences(appContext)
+    val userPreferences: UserPreferences get() = preferences
     val advancedBlocker = com.anchor.adhd.data.repository.AdvancedBlockerRepository(appContext)
 
     val planRepository = PlanRepository(

@@ -35,6 +35,7 @@ object ReminderScheduler {
     }
 
     private suspend fun rescheduleAllLocked(context: Context) {
+        com.anchor.adhd.widget.WidgetUpdater.updateAll(context)
         val prefs = UserPreferences(context)
         val settings = prefs.getReminderSettings()
         val planning = prefs.getPlanningSettings()
@@ -205,7 +206,7 @@ object ReminderScheduler {
             cancelPending(context, am, code, ReminderReceiver.ACTION_BLOCK)
             cancelPending(context, am, code, ReminderReceiver.ACTION_TRANSITION)
         }
-        (REQ_ASSIGN_BASE until REQ_ASSIGN_BASE + REQ_ASSIGN_SLOTS).forEach { code ->
+        (REQ_ASSIGN_BASE until REQ_ASSIGN_BASE + REQ_ASSIGN_SLOTS * 3).forEach { code ->
             cancelPending(context, am, code, ReminderReceiver.ACTION_ASSIGNMENT)
         }
         (REQ_DUE_BASE until REQ_DUE_BASE + REQ_DUE_SLOTS).forEach { code ->

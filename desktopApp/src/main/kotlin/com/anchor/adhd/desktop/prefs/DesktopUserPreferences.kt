@@ -77,23 +77,21 @@ class DesktopUserPreferences {
     }
 
     fun getDefaultModelPath(): String {
-        val appData = System.getenv("APPDATA") ?: (System.getProperty("user.home") + "/AppData/Roaming")
+        val userHome = System.getProperty("user.home")
+        val downloadsDir = File(userHome, "Downloads")
+        val appData = System.getenv("APPDATA") ?: "$userHome/AppData/Roaming"
         val candidates =
             listOf(
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Q5_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Q5_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Q5_K_M.gguf"),
                 File(appData, "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
                 File(appData, "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/Ling-3.0-tiny-Q5_K_M.gguf"),
+                File(downloadsDir, "Ling-3.0-tiny-Q5_K_M.gguf"),
             )
         return candidates.firstOrNull { it.exists() && it.isFile }?.absolutePath
-            ?: "C:\\Users\\johnb\\Downloads\\MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"
+            ?: File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf").absolutePath
     }
 
     val focusWorkMinutes: Flow<Int> = dataStore.data.map { it[FOCUS_WORK_MINUTES] ?: 25 }

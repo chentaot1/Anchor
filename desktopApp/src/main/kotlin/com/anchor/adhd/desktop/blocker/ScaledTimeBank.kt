@@ -31,11 +31,12 @@ object ScaledTimeBank {
     const val MAX_BANKED_CAPACITY_MINUTES = 60 // Max 2 blocks (60m) banked at any one time
 
     fun getTierRequiredMinutes(tierIndex: Int, baseMinutes: Int = 60): Int {
+        val safeBase = baseMinutes.coerceAtLeast(1)
         return when (tierIndex) {
-            0 -> baseMinutes                     // Tier 1: e.g. 60m
-            1 -> (baseMinutes * 1.25).toInt()   // Tier 2: e.g. 75m
-            2 -> (baseMinutes * 1.5).toInt()    // Tier 3: e.g. 90m
-            else -> baseMinutes * 2             // Tier 4+: e.g. 120m
+            0 -> safeBase                                       // Tier 1: e.g. 60m
+            1 -> (safeBase * 1.25).toInt().coerceAtLeast(1)     // Tier 2: e.g. 75m
+            2 -> (safeBase * 1.5).toInt().coerceAtLeast(1)      // Tier 3: e.g. 90m
+            else -> (safeBase * 2).coerceAtLeast(1)             // Tier 4+: e.g. 120m
         }
     }
 
@@ -44,12 +45,13 @@ object ScaledTimeBank {
         spentMinutesToday: Int,
         baseMinutes: Int = 60,
     ): TimeBankStatus {
+        val safeBase = baseMinutes.coerceAtLeast(1)
         var remainingFocus = focusMinutesToday.coerceAtLeast(0)
         var totalEarned = 0
         var tier = 0
 
         while (true) {
-            val req = getTierRequiredMinutes(tier, baseMinutes)
+            val req = getTierRequiredMinutes(tier, safeBase)
             if (remainingFocus >= req) {
                 remainingFocus -= req
                 totalEarned += 30
@@ -59,7 +61,7 @@ object ScaledTimeBank {
             }
         }
 
-        val nextReq = getTierRequiredMinutes(tier, baseMinutes)
+        val nextReq = getTierRequiredMinutes(tier, safeBase)
         val rawAvailable = (totalEarned - spentMinutesToday).coerceAtLeast(0)
         val available = rawAvailable.coerceAtMost(MAX_BANKED_CAPACITY_MINUTES)
         val progress = if (nextReq > 0) (remainingFocus.toFloat() / nextReq).coerceIn(0f, 1f) else 0f

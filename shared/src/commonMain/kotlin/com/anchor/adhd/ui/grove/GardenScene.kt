@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +38,7 @@ import com.anchor.adhd.domain.PlantSpecies
 import com.anchor.adhd.ui.theme.AnchorDesignPrinciples
 import java.time.LocalTime
 import java.util.Random
+import kotlinx.coroutines.delay
 
 data class HarborSkyPalette(
     val skyTop: Color,
@@ -115,7 +117,12 @@ fun GardenScene(
     basePainter: Painter? = null,
     boatPainter: Painter? = null
 ) {
-    val now = remember { LocalTime.now() }
+    val now by produceState(initialValue = LocalTime.now()) {
+        while (true) {
+            delay(60_000L)
+            value = LocalTime.now()
+        }
+    }
     val minuteOfDay = now.hour * 60 + now.minute
     val palette = remember(minuteOfDay) { calculateHarborPalette(minuteOfDay) }
     val isNightTime = minuteOfDay >= 1260 || minuteOfDay <= 360 // 9pm - 6am

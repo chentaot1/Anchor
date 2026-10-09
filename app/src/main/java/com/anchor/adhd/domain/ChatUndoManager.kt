@@ -157,7 +157,7 @@ object ChatUndoApplier {
         }
         is ChatUndoOp.CompletionChanged -> {
             if (op.wasCompleted) {
-                repository.completeTaskCascade(op.taskIds.first())
+                op.taskIds.forEach { repository.completeTaskCascade(it) }
             } else {
                 op.taskIds.forEach { repository.unCompleteTaskCascade(it) }
             }

@@ -38,9 +38,11 @@ object DesktopScopeSentinel {
 
     // 1. In-scope allowed disciplines (Psychology, Neurology, Biology, core academic tools)
     val IN_SCOPE_KEYWORDS = listOf(
-        "psychology", "psychiatry", "psych", "neurology", "neuroscience", "cortex", "hippocampus",
-        "dopamine", "serotonin", "synapse", "neuro", "biology", "cellular", "molecular", "genetics",
-        "evolution", "dna", "rna", "organism", "physiology", "anatomy", "immunology", "endocrinology",
+        "psychology", "psychiatry", "psych", "neurology", "neurological", "neuroscience", "neurobiology",
+        "neurotransmitter", "neuroplasticity", "cortex", "hippocampus",
+        "dopamine", "serotonin", "synapse", "neuro", "biology", "biological", "cellular", "molecular", "genetics",
+        "evolution", "dna", "rna", "organism", "physiology", "physiological", "anatomy", "anatomical",
+        "immunology", "endocrinology",
         "neuroanatomy", "cognitive science", "cognition", "behavioral science", "clinical psychology",
         "abnormal psychology", "developmental psychology", "social psychology", "psychopathology",
         "canvas", "blackboard", "moodle", "instructure", "jstor", "pubmed", "ncbi", "google docs",
@@ -124,9 +126,32 @@ object DesktopScopeSentinel {
 
     // Thread-safe in-memory cache to guarantee 0ms overhead on repeat tabs
     private val classificationCache = ConcurrentHashMap<String, ScopeEvaluationResult>()
+    private val keywordRegexCache = ConcurrentHashMap<String, Regex>()
 
     fun clearCache() {
         classificationCache.clear()
+    }
+
+    private fun putCacheBounded(key: String, value: ScopeEvaluationResult) {
+        if (classificationCache.size > 500) {
+            classificationCache.clear()
+        }
+        classificationCache[key] = value
+    }
+
+    /**
+     * Matches [keyword] against [text] using word boundaries on alphanumeric edges
+     * so short tokens like "hume", "lora", "locke", "llm", or "rna" do not false-positive
+     * on words like "humeral", "flora", "locked", "enrollment", or "journal".
+     */
+    private fun matchesKeyword(text: String, keyword: String): Boolean {
+        if (keyword.isBlank() || !text.contains(keyword)) return false
+        val regex = keywordRegexCache.getOrPut(keyword) {
+            val prefix = if (keyword.first().isLetterOrDigit()) "\\b" else ""
+            val suffix = if (keyword.last().isLetterOrDigit()) "\\b" else ""
+            Regex("$prefix${Regex.escape(keyword)}$suffix", RegexOption.IGNORE_CASE)
+        }
+        return regex.containsMatchIn(text)
     }
 
     /**
@@ -138,12 +163,17 @@ object DesktopScopeSentinel {
             return ScopeEvaluationResult(ScopeVerdict.IN_SCOPE, "Workspace", "Blank window title", "HEURISTIC")
         }
 
-        // Check cache first
-        val cached = classificationCache[titleLower]
-        if (cached != null) return cached
+        val taskKey = activeTaskTitle.trim().lowercase()
+        val scopedCacheKey = "$titleLower||$taskKey"
+
+        // Check static/manual cache first, then task-scoped cache
+        classificationCache[titleLower]?.let { return it }
+        if (taskKey.isNotEmpty()) {
+            classificationCache[scopedCacheKey]?.let { return it }
+        }
 
         // 1. Check if window title contains Philosophy triggers (explicitly out-of-scope)
-        val philMatch = PHILOSOPHY_KEYWORDS.firstOrNull { kw -> titleLower.contains(kw) }
+        val philMatch = PHILOSOPHY_KEYWORDS.firstOrNull { kw -> matchesKeyword(titleLower, kw) }
         if (philMatch != null) {
             val res = ScopeEvaluationResult(
                 verdict = ScopeVerdict.OUT_OF_SCOPE,
@@ -151,15 +181,15 @@ object DesktopScopeSentinel {
                 reason = "Out-of-Scope Topic (Philosophy: '$philMatch')",
                 source = "HEURISTIC",
             )
-            classificationCache[titleLower] = res
+            putCacheBounded(titleLower, res)
             return res
         }
 
         // 2. Check if window title explicitly contains Computer Science / AI triggers
-        val csMatch = CS_AND_AI_KEYWORDS.firstOrNull { kw -> titleLower.contains(kw) }
+        val csMatch = CS_AND_AI_KEYWORDS.firstOrNull { kw -> matchesKeyword(titleLower, kw) }
         if (csMatch != null) {
             // Check if it's bioinformatics or neurobiology overlap
-            val isBioOverlap = IN_SCOPE_KEYWORDS.any { bio -> titleLower.contains(bio) }
+            val isBioOverlap = IN_SCOPE_KEYWORDS.any { bio -> matchesKeyword(titleLower, bio) }
             if (!isBioOverlap) {
                 val res = ScopeEvaluationResult(
                     verdict = ScopeVerdict.OUT_OF_SCOPE,
@@ -167,13 +197,13 @@ object DesktopScopeSentinel {
                     reason = "Computer Science / AI / Tech: '$csMatch'",
                     source = "HEURISTIC",
                 )
-                classificationCache[titleLower] = res
+                putCacheBounded(titleLower, res)
                 return res
             }
         }
 
         // 3. Check if window title contains Hard Sciences beyond psychology/bio
-        val hardSciMatch = HARD_SCIENCES_KEYWORDS.firstOrNull { kw -> titleLower.contains(kw) }
+        val hardSciMatch = HARD_SCIENCES_KEYWORDS.firstOrNull { kw -> matchesKeyword(titleLower, kw) }
         if (hardSciMatch != null) {
             val res = ScopeEvaluationResult(
                 verdict = ScopeVerdict.OUT_OF_SCOPE,
@@ -181,12 +211,12 @@ object DesktopScopeSentinel {
                 reason = "Hard Science beyond Psych/Bio: '$hardSciMatch'",
                 source = "HEURISTIC",
             )
-            classificationCache[titleLower] = res
+            putCacheBounded(titleLower, res)
             return res
         }
 
         // 4. Check general distractions (Gaming, Streams, Shopping, etc.)
-        val distMatch = GENERAL_DISTRACTION_KEYWORDS.firstOrNull { kw -> titleLower.contains(kw) }
+        val distMatch = GENERAL_DISTRACTION_KEYWORDS.firstOrNull { kw -> matchesKeyword(titleLower, kw) }
         if (distMatch != null) {
             val res = ScopeEvaluationResult(
                 verdict = ScopeVerdict.OUT_OF_SCOPE,
@@ -194,12 +224,12 @@ object DesktopScopeSentinel {
                 reason = "Entertainment / Shopping: '$distMatch'",
                 source = "HEURISTIC",
             )
-            classificationCache[titleLower] = res
+            putCacheBounded(titleLower, res)
             return res
         }
 
         // 5. Check if title matches psychology, neurology, biology, or academic tools
-        val psychMatch = IN_SCOPE_KEYWORDS.firstOrNull { kw -> titleLower.contains(kw) }
+        val psychMatch = IN_SCOPE_KEYWORDS.firstOrNull { kw -> matchesKeyword(titleLower, kw) }
         if (psychMatch != null) {
             val res = ScopeEvaluationResult(
                 verdict = ScopeVerdict.IN_SCOPE,
@@ -207,21 +237,24 @@ object DesktopScopeSentinel {
                 reason = "Matches core subject: '$psychMatch'",
                 source = "HEURISTIC",
             )
-            classificationCache[titleLower] = res
+            putCacheBounded(titleLower, res)
             return res
         }
 
-        // 5. Check if title matches words from current task title
-        if (activeTaskTitle.isNotBlank()) {
-            val taskTokens = activeTaskTitle.lowercase().split("\\s+".toRegex()).filter { it.length > 3 }
-            if (taskTokens.any { token -> titleLower.contains(token) }) {
+        // 6. Check if title matches words from current task title (cached per task title)
+        if (taskKey.isNotBlank()) {
+            val taskTokens =
+                taskKey
+                    .split(Regex("[^a-z0-9]+"))
+                    .filter { it.length > 3 }
+            if (taskTokens.any { token -> matchesKeyword(titleLower, token) }) {
                 val res = ScopeEvaluationResult(
                     verdict = ScopeVerdict.IN_SCOPE,
                     category = "Current Task",
                     reason = "Matches current task title",
                     source = "HEURISTIC",
                 )
-                classificationCache[titleLower] = res
+                putCacheBounded(scopedCacheKey, res)
                 return res
             }
         }
@@ -235,11 +268,14 @@ object DesktopScopeSentinel {
     }
 
     fun recordManualClassification(windowTitle: String, verdict: ScopeVerdict, reason: String = "User marked") {
-        classificationCache[windowTitle.lowercase().trim()] = ScopeEvaluationResult(
-            verdict = verdict,
-            category = if (verdict == ScopeVerdict.IN_SCOPE) "User Allowed" else "User Blocked",
-            reason = reason,
-            source = "USER",
+        putCacheBounded(
+            windowTitle.lowercase().trim(),
+            ScopeEvaluationResult(
+                verdict = verdict,
+                category = if (verdict == ScopeVerdict.IN_SCOPE) "User Allowed" else "User Blocked",
+                reason = reason,
+                source = "USER",
+            ),
         )
     }
 

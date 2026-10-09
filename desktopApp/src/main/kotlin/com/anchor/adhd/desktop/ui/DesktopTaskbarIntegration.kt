@@ -13,17 +13,21 @@ object DesktopTaskbarIntegration {
         isFocusActive: Boolean,
         remainingSeconds: Int,
         totalSeconds: Int,
+        isPaused: Boolean = !isFocusActive && remainingSeconds in 1 until totalSeconds,
     ) {
         if (!Taskbar.isTaskbarSupported() || window == null) return
         val taskbar = Taskbar.getTaskbar()
         try {
-            if (isFocusActive && totalSeconds > 0) {
+            if ((isFocusActive || isPaused) && totalSeconds > 0) {
                 val percent = (((totalSeconds - remainingSeconds).toDouble() / totalSeconds) * 100).toInt().coerceIn(0, 100)
                 if (taskbar.isSupported(Taskbar.Feature.PROGRESS_VALUE_WINDOW)) {
                     taskbar.setWindowProgressValue(window, percent)
                 }
                 if (taskbar.isSupported(Taskbar.Feature.PROGRESS_STATE_WINDOW)) {
-                    taskbar.setWindowProgressState(window, Taskbar.State.NORMAL)
+                    taskbar.setWindowProgressState(
+                        window,
+                        if (isPaused) Taskbar.State.PAUSED else Taskbar.State.NORMAL,
+                    )
                 }
             } else {
                 if (taskbar.isSupported(Taskbar.Feature.PROGRESS_STATE_WINDOW)) {

@@ -27,8 +27,20 @@ class DesktopAutostartManagerTest {
     @Test
     fun autostartRegistration_setsAndVerifiesWindowsRunKey() {
         if (!Platform.isWindows()) return
-        val registered = DesktopAutostartManager.setAutostart(enabled = true, startMinimized = true)
-        assertTrue("Setting autostart should succeed", registered)
-        assertTrue("Anchor must be reported as registered in Windows Startup", DesktopAutostartManager.isAutostartRegistered())
+        val initialEnabled = DesktopAutostartManager.isAutostartEnabled()
+        val initialCommand = DesktopAutostartManager.getRegisteredCommand()
+        try {
+            val registered = DesktopAutostartManager.setAutostart(enabled = true, startMinimized = true)
+            assertTrue("Setting autostart should succeed", registered)
+            assertTrue("Anchor must be reported as registered in Windows Startup", DesktopAutostartManager.isAutostartRegistered())
+            assertTrue("isAutostartEnabled must return true", DesktopAutostartManager.isAutostartEnabled())
+            assertNotNull("Registered command must be non-null", DesktopAutostartManager.getRegisteredCommand())
+        } finally {
+            if (initialEnabled && !initialCommand.isNullOrBlank()) {
+                DesktopAutostartManager.setRegisteredCommand(initialCommand)
+            } else {
+                DesktopAutostartManager.setAutostart(enabled = false)
+            }
+        }
     }
 }

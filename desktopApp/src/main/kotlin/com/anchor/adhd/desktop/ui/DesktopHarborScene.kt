@@ -2,13 +2,17 @@ package com.anchor.adhd.desktop.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.desktop.db.DesktopHarborState
 import com.anchor.adhd.ui.grove.GardenScene
+import kotlinx.coroutines.delay
 import java.io.InputStream
+import java.time.LocalTime
 
 /**
  * Desktop Living Harbor Scene.
@@ -21,6 +25,16 @@ fun DesktopHarborScene(
     harborState: DesktopHarborState,
     modifier: Modifier = Modifier,
 ) {
+    val currentTime by produceState(initialValue = LocalTime.now()) {
+        while (true) {
+            delay(60_000L)
+            value = LocalTime.now()
+        }
+    }
+    // Keep currentTime read in composition scope so time-of-day sky transitions stay reactive on long sessions
+    @Suppress("UNUSED_EXPRESSION")
+    currentTime.hour
+
     val basePainter = remember { loadResourcePainter("grove_harbor_base.webp") }
     val boatPainter = remember { loadResourcePainter("grove_harbor_boat.webp") }
 
@@ -55,7 +69,7 @@ fun DesktopHarborScene(
     GardenScene(
         treeCount = treeCount,
         modifier = modifier.fillMaxWidth(),
-        sceneHeight = 220.dp,
+        sceneHeight = 180.dp,
         vitalityStage = vitalityStage,
         basePainter = basePainter,
         boatPainter = boatPainter,

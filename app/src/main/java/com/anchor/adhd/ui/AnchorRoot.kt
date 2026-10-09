@@ -328,7 +328,7 @@ fun AnchorRoot(
             onBreakDown = { vm.breakdownTask(task.title) },
             onApplyBreakdown = { vm.applyAiPreview() },
             onStartFocus = { vm.startDefaultFocus(task.id); vm.dismissTaskDetail() },
-            onCompleteChild = { vm.completeTask(it.id) }
+            onCompleteChild = { child -> if (child.isCompleted) vm.unCompleteTask(child.id) else vm.completeTask(child.id) }
         )
     }
 

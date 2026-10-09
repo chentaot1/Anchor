@@ -118,7 +118,7 @@ fun DesktopSettingsScreen(
 
     val modelFile = remember(aiModelPath) { File(aiModelPath) }
     val modelExists = remember(modelFile) { modelFile.exists() && modelFile.isFile }
-    val discoveredModels = remember { prefs.getDiscoveredModels() }
+    val discoveredModels = remember(aiModelPath) { prefs.getDiscoveredModels() }
 
     Column(
         modifier =
@@ -306,30 +306,79 @@ fun DesktopSettingsScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // File path display
+                // File path display + Browse GGUF button
                 Surface(
                     shape = RoundedCornerShape(AnchorSpacing.radiusCard),
                     color = AnchorColors.HarborBackground.copy(alpha = 0.6f),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "MODEL PATH",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            letterSpacing = 1.sp,
-                            color = Color.White.copy(alpha = 0.4f),
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = aiModelPath,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 11.sp,
-                        )
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "MODEL PATH",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
+                                letterSpacing = 1.sp,
+                                color = Color.White.copy(alpha = 0.4f),
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = aiModelPath,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 11.sp,
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        OutlinedButton(
+                            onClick = {
+                                val dialog =
+                                    java.awt.FileDialog(
+                                        null as java.awt.Frame?,
+                                        "Select On-Device GGUF Model",
+                                        java.awt.FileDialog.LOAD,
+                                    )
+                                dialog.file = "*.gguf"
+                                dialog.isVisible = true
+                                val dir = dialog.directory
+                                val file = dialog.file
+                                if (dir != null && file != null) {
+                                    val selectedFile = File(dir, file)
+                                    if (selectedFile.exists() && selectedFile.isFile) {
+                                        scope.launch {
+                                            prefs.setAiModelPath(selectedFile.absolutePath)
+                                            DesktopAiEngine.initialize(
+                                                scope = scope,
+                                                modelPath = selectedFile.absolutePath,
+                                                binaryPath = aiBinaryPath,
+                                                enabled = true,
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                            border = BorderStroke(1.dp, AnchorColors.HarborAi.copy(alpha = 0.5f)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = AnchorColors.HarborAi,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Browse GGUF...", color = AnchorColors.HarborAi, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
 
@@ -804,6 +853,9 @@ fun DesktopSettingsScreen(
         }
 
         // Windows 11 SQLite Database Storage Card
+        var backupStatusMessage by remember { mutableStateOf<String?>(null) }
+        var backupStatusIsError by remember { mutableStateOf(false) }
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
@@ -834,19 +886,136 @@ fun DesktopSettingsScreen(
                         }
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            runCatching {
-                                if (Desktop.isDesktopSupported()) {
-                                    Desktop.getDesktop().open(appDataDir)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                val dialog =
+                                    java.awt.FileDialog(
+                                        null as java.awt.Frame?,
+                                        "Export Anchor Backup (.json)",
+                                        java.awt.FileDialog.SAVE,
+                                    )
+                                dialog.file = "anchor_backup_${java.time.LocalDate.now()}.json"
+                                dialog.isVisible = true
+                                val dir = dialog.directory
+                                val fileName = dialog.file
+                                if (dir != null && fileName != null) {
+                                    val targetFile =
+                                        File(
+                                            dir,
+                                            if (fileName.endsWith(".json", ignoreCase = true)) fileName else "$fileName.json",
+                                        )
+                                    scope.launch {
+                                        runCatching {
+                                            db.exportDataToFile(targetFile)
+                                            backupStatusIsError = false
+                                            backupStatusMessage = "Exported backup to ${targetFile.name}"
+                                        }.onFailure { err ->
+                                            backupStatusIsError = true
+                                            backupStatusMessage = "Export failed: ${err.message ?: "Unknown error"}"
+                                        }
+                                    }
                                 }
-                            }
-                        },
-                        border = BorderStroke(1.dp, AnchorColors.HarborPrimary),
+                            },
+                            border = BorderStroke(1.dp, AnchorColors.HarborAction),
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp), tint = AnchorColors.HarborAction)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export Backup (.json)", color = AnchorColors.HarborAction)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val dialog =
+                                    java.awt.FileDialog(
+                                        null as java.awt.Frame?,
+                                        "Restore Anchor Backup (.json)",
+                                        java.awt.FileDialog.LOAD,
+                                    )
+                                dialog.file = "*.json"
+                                dialog.isVisible = true
+                                val dir = dialog.directory
+                                val fileName = dialog.file
+                                if (dir != null && fileName != null) {
+                                    val sourceFile = File(dir, fileName)
+                                    scope.launch {
+                                        runCatching {
+                                            val jsonContent = sourceFile.readText(Charsets.UTF_8)
+                                            val count = db.importDataJson(jsonContent, replaceExisting = true)
+                                            backupStatusIsError = false
+                                            backupStatusMessage = "Restored $count records from ${sourceFile.name}"
+                                        }.onFailure { err ->
+                                            backupStatusIsError = true
+                                            backupStatusMessage = "Restore failed: ${err.message ?: "Invalid backup JSON"}"
+                                        }
+                                    }
+                                }
+                            },
+                            border = BorderStroke(1.dp, AnchorColors.HarborPrimary),
+                        ) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = AnchorColors.HarborPrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Restore Backup (.json)", color = AnchorColors.HarborPrimary)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                runCatching {
+                                    if (Desktop.isDesktopSupported()) {
+                                        Desktop.getDesktop().open(appDataDir)
+                                    }
+                                }
+                            },
+                            border = BorderStroke(1.dp, AnchorColors.HarborPrimary),
+                        ) {
+                            Icon(imageVector = Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open Folder", color = AnchorColors.HarborPrimary)
+                        }
+                    }
+                }
+
+                backupStatusMessage?.let { msg ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    val bannerColor = if (backupStatusIsError) Color(0xFFE57373) else Color(0xFF81C784)
+                    Surface(
+                        shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                        color = bannerColor.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, bannerColor.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(imageVector = Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Open Folder", color = AnchorColors.HarborPrimary)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (backupStatusIsError) Icons.Default.Warning else Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = bannerColor,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = msg,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = bannerColor,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                            IconButton(
+                                onClick = { backupStatusMessage = null },
+                                modifier = Modifier.size(20.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = Color.White.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
+                        }
                     }
                 }
 

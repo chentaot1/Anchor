@@ -133,7 +133,22 @@ fun HabitEditorSheet(
                 HabitAutoSource.entries.forEach { source ->
                     FilterChip(
                         selected = autoSource == source,
-                        onClick = { autoSource = source },
+                        onClick = {
+                            autoSource = source
+                            when (source) {
+                                HabitAutoSource.STEPS -> {
+                                    if (autoThreshold !in listOf(3000, 5000, 7500, 10000)) {
+                                        autoThreshold = 5000
+                                    }
+                                }
+                                HabitAutoSource.EXERCISE -> {
+                                    if (autoThreshold !in listOf(15, 30, 45, 60)) {
+                                        autoThreshold = 30
+                                    }
+                                }
+                                HabitAutoSource.NONE -> Unit
+                            }
+                        },
                         label = {
                             Text(
                                 when (source) {
@@ -168,7 +183,7 @@ fun HabitEditorSheet(
                     val days = selectedDays.sorted().joinToString(",")
                     onSave(name, scheduleType, days, targetPerWeek, gracePerWeek, autoSource, autoThreshold)
                 },
-                enabled = name.isNotBlank(),
+                enabled = name.isNotBlank() && (scheduleType != HabitScheduleType.SPECIFIC_DAYS || selectedDays.isNotEmpty()),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save")

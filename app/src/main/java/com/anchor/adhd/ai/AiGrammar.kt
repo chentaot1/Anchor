@@ -1,6 +1,7 @@
 package com.anchor.adhd.ai
 
 import com.anchor.adhd.data.model.AiJobType
+import com.anchor.adhd.data.model.BreakdownGranularity
 
 /**
  * GBNF grammars for constrained JSON output (llama.cpp grammar sampler).
@@ -46,6 +47,24 @@ replan-tail ::= "," ws "\"message\"" ws ":" ws string ws "}" | ws "}"
 rec-array ::= "[" ws string ("," ws string)* ws "]"
 def-array ::= "[" ws (string ("," ws string)*)? ws "]"
 """.trimIndent()
+
+    fun breakdownGrammarFor(granularity: BreakdownGranularity): String {
+        val range = when (granularity) {
+            BreakdownGranularity.MILD -> 2..3
+            BreakdownGranularity.NORMAL -> 3..5
+            BreakdownGranularity.SPICY -> 5..7
+        }
+        fun arrayRule(name: String, item: String): String {
+            val required = List(range.first) { item }.joinToString(" \",\" ws ")
+            val optional = List(range.last - range.first) { "(\",\" ws $item)?" }.joinToString(" ")
+            val tail = if (optional.isBlank()) "" else " $optional"
+            return "$name ::= \"[\" ws $required$tail ws \"]\""
+        }
+        val root = BREAKDOWN_ROOT
+            .replace(Regex("(?m)^steps-array ::=.*$"), arrayRule("steps-array", "string"))
+            .replace(Regex("(?m)^mins-array ::=.*$"), arrayRule("mins-array", "number"))
+        return "$root\n$JSON_VALUE"
+    }
 
     fun forJob(type: AiJobType): String = when (type) {
         AiJobType.BREAKDOWN, AiJobType.WEEKLY, AiJobType.IF_THEN ->

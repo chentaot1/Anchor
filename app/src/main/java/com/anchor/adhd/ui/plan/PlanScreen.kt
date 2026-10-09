@@ -274,20 +274,25 @@ private fun TimelineTab(vm: AnchorViewModel, modifier: Modifier) {
                 Text("Schedule: ${task.title}", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        hour, { hour = it },
-                        label = { Text("Hour") },
+                        hour, { hour = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Hour (0–23)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
-                        minute, { minute = it },
-                        label = { Text("Min") },
+                        minute, { minute = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Min (0–59)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                 }
                 Button(onClick = {
-                    vm.scheduleTask(task.id, hour.toIntOrNull() ?: 9, minute.toIntOrNull() ?: 0, task.durationMinutes)
+                    vm.scheduleTask(
+                        task.id,
+                        (hour.toIntOrNull() ?: 9).coerceIn(0, 23),
+                        (minute.toIntOrNull() ?: 0).coerceIn(0, 59),
+                        task.durationMinutes
+                    )
                     scheduleTask = null
                 }, modifier = Modifier.fillMaxWidth()) {
                     Text("Set time")
@@ -352,15 +357,15 @@ private fun InboxTab(vm: AnchorViewModel, modifier: Modifier) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = captureHour,
-                        onValueChange = { captureHour = it },
-                        label = { Text("Hour") },
+                        onValueChange = { captureHour = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Hour (0–23)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = captureMinute,
-                        onValueChange = { captureMinute = it },
-                        label = { Text("Min") },
+                        onValueChange = { captureMinute = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Min (0–59)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -371,8 +376,8 @@ private fun InboxTab(vm: AnchorViewModel, modifier: Modifier) {
             onClick = {
                 if (newTask.isNotBlank()) {
                     val startMillis = if (filter == InboxState.TODAY && scheduleMode == "pick_time") {
-                        val h = captureHour.toIntOrNull() ?: 9
-                        val m = captureMinute.toIntOrNull() ?: 0
+                        val h = (captureHour.toIntOrNull() ?: 9).coerceIn(0, 23)
+                        val m = (captureMinute.toIntOrNull() ?: 0).coerceIn(0, 59)
                         val zone = java.time.ZoneId.systemDefault()
                         LocalDate.now().atTime(h, m).atZone(zone).toInstant().toEpochMilli()
                     } else {
@@ -487,6 +492,8 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
     var assignTitle by remember { mutableStateOf("") }
     var course by remember { mutableStateOf("") }
     var dueDays by remember { mutableStateOf("7") }
+    var showSyllabusDialog by remember { mutableStateOf(false) }
+    var syllabusText by remember { mutableStateOf("") }
     var runningRoutine by remember { mutableStateOf<com.anchor.adhd.data.model.RoutineEntity?>(null) }
     var showRoutineForm by remember { mutableStateOf(false) }
     var routineName by remember { mutableStateOf("") }
@@ -507,25 +514,36 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        Button(
-            onClick = {
-                if (assignTitle.isNotBlank()) {
-                    val days = dueDays.toIntOrNull()?.coerceAtLeast(0) ?: 7
-                    val due = System.currentTimeMillis() + days * 86_400_000L
-                    vm.addAssignment(assignTitle, course, due)
-                    assignTitle = ""
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = assignTitle.isNotBlank()
-        ) {
-            Text("Add assignment")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = {
+                    if (assignTitle.isNotBlank()) {
+                        val days = dueDays.toIntOrNull()?.coerceAtLeast(0) ?: 7
+                        val due = System.currentTimeMillis() + days * 86_400_000L
+                        vm.addAssignment(assignTitle, course, due)
+                        assignTitle = ""
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                enabled = assignTitle.isNotBlank()
+            ) {
+                Text("Add assignment")
+            }
+            FilledTonalButton(
+                onClick = { showSyllabusDialog = true },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Paste syllabus")
+            }
         }
         assignments.forEach { a ->
             AnchorCard {
                 Text(a.title, style = MaterialTheme.typography.titleSmall)
                 Text(a.course, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { vm.completeAssignment(a.id) }) { Text("Complete") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { vm.completeAssignment(a.id) }) { Text("Complete") }
+                    TextButton(onClick = { vm.deleteAssignment(a.id) }) { Text("Delete") }
+                }
             }
         }
 
@@ -579,9 +597,46 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
             AnchorCard {
                 Text(r.name, style = MaterialTheme.typography.titleSmall)
                 Text(r.ifThen ?: r.cue, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { runningRoutine = r }) { Text("Run routine") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { runningRoutine = r }) { Text("Run routine") }
+                    TextButton(onClick = { vm.deleteRoutine(r.id) }) { Text("Delete") }
+                }
             }
         }
+    }
+
+    if (showSyllabusDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showSyllabusDialog = false },
+            title = { Text("Paste syllabus") },
+            text = {
+                OutlinedTextField(
+                    value = syllabusText,
+                    onValueChange = { syllabusText = it },
+                    label = { Text("Syllabus text or schedule table") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 5,
+                    maxLines = 12
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.importSyllabusText(syllabusText)
+                        syllabusText = ""
+                        showSyllabusDialog = false
+                    },
+                    enabled = syllabusText.isNotBlank()
+                ) {
+                    Text("Import")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSyllabusDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     runningRoutine?.let { routine ->

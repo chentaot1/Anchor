@@ -223,7 +223,7 @@ fun DesktopNowCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isFocusActive) "Focus Active (Distraction Shield On)" else "Anchor Now (${durationMinutes}m)",
+                    text = if (isFocusActive) "Focus Active — Open Timer" else "Anchor Now (${durationMinutes}m)",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                 )

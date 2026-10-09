@@ -244,6 +244,7 @@ class DesktopProcessMonitorTest {
     @Test
     fun dailyAllowance_exhaustionTriggersBlock() {
         monitor.isFocusActive = false
+        val daytime = LocalDateTime.of(2026, 9, 28, 14, 0)
         val rule =
             DesktopBlockRule(
                 id = 1,
@@ -256,18 +257,37 @@ class DesktopProcessMonitorTest {
 
         // Usage at 30 minutes (1800s): under quota, should not be blocked
         monitor.setUsageMap(mapOf("cursor.exe" to 1800))
-        monitor.updateRules(listOf(rule))
+        monitor.updateRules(listOf(rule), daytime)
         assertFalse(monitor.activeBlockedExecutables.contains("cursor.exe"))
 
         // Usage at 75 minutes (4500s): quota exhausted, should be blocked
         monitor.setUsageMap(mapOf("cursor.exe" to 4500))
-        monitor.updateRules(listOf(rule))
+        monitor.updateRules(listOf(rule), daytime)
         assertTrue(monitor.activeBlockedExecutables.contains("cursor.exe"))
 
         // Usage at 80 minutes (4800s): still blocked
         monitor.setUsageMap(mapOf("cursor.exe" to 4800))
-        monitor.updateRules(listOf(rule))
+        monitor.updateRules(listOf(rule), daytime)
         assertTrue(monitor.activeBlockedExecutables.contains("cursor.exe"))
+    }
+
+    @Test
+    fun evaluateWindow_refreshesAppProtectionAcrossCurfewBoundaries() {
+        monitor.isScopeSentinelEnabled = false
+        val rule = DesktopBlockRule(
+            id = 1, target = "cursor.exe", ruleType = "APP", enabled = true,
+            scheduleMode = "LEISURE_QUOTA", dailyAllowanceMinutes = 75,
+        )
+        val beforeCurfew = LocalDateTime.of(2026, 9, 28, 0, 59)
+        monitor.updateRules(listOf(rule), beforeCurfew)
+        val window = com.anchor.adhd.desktop.blocker.ActiveWindowInfo(
+            "C:/Apps/cursor.exe", "cursor.exe", "Project - Cursor", 1234,
+        )
+        assertNull(monitor.evaluateWindow(window, beforeCurfew))
+        val blocked = monitor.evaluateWindow(window, beforeCurfew.withHour(1).withMinute(0))
+        assertNotNull(blocked)
+        assertEquals("Night Curfew Active (1:00 AM - 7:00 AM)", blocked!!.reason)
+        assertNull(monitor.evaluateWindow(window, beforeCurfew.withHour(7).withMinute(0)))
     }
 
     @Test
@@ -327,6 +347,7 @@ class DesktopProcessMonitorTest {
 
     @Test
     fun sharedAiBrowserPool_tracksAndCapsCombinedUsage() {
+        val daytime = LocalDateTime.of(2026, 9, 28, 14, 0)
         val geminiRule = DesktopBlockRule(
             id = 10,
             target = "gemini",
@@ -369,6 +390,7 @@ class DesktopProcessMonitorTest {
         )
         monitor.updateRules(rules)
 
+        monitor.updateRules(rules, daytime)
         // Allowed for homework during study session
         assertFalse(monitor.activeBlockedTitleKeywords.contains("gemini"))
         assertFalse(monitor.activeBlockedTitleKeywords.contains("claude"))
@@ -384,6 +406,7 @@ class DesktopProcessMonitorTest {
         )
         monitor.updateRules(rules)
 
+        monitor.updateRules(rules, daytime)
         // ALL 3 tools in the shared pool are now locked!
         assertTrue(monitor.activeBlockedTitleKeywords.contains("gemini"))
         assertTrue(monitor.activeBlockedTitleKeywords.contains("claude"))
@@ -457,7 +480,9 @@ class DesktopProcessMonitorTest {
         assertEquals(5, monitor.remainingQuickPasses)
         assertTrue(monitor.dailyUsageMap.isEmpty())
 
-        // Rule should now be unblocked because daily usage was cleared
+        // The quota clears at 4 AM, but night curfew still protects until 7 AM.
+        assertTrue(monitor.activeBlockedExecutables.contains("cursor.exe"))
+        monitor.updateRules(listOf(rule), LocalDateTime.of(2026, 9, 29, 7, 0))
         assertFalse(monitor.activeBlockedExecutables.contains("cursor.exe"))
     }
 
@@ -959,5 +984,63 @@ class DesktopProcessMonitorTest {
         val ollama = DesktopScopeSentinel.evaluateHeuristics("Ollama: Get up and running with large language models")
         assertEquals(ScopeVerdict.OUT_OF_SCOPE, ollama.verdict)
         assertEquals("Computer Science / AI", ollama.category)
+    }
+
+    @Test
+    fun scopeSentinel_evaluateWindowWaitsFor60SecondsBeforeHardBlock() {
+        DesktopScopeSentinel.clearCache()
+        monitor.isFocusActive = true
+        monitor.isScopeSentinelEnabled = true
+        monitor.currentTaskTitle = "Psychology 344 Research Essay"
+
+        val outOfScopeWindow =
+            com.anchor.adhd.desktop.blocker.ActiveWindowInfo(
+                executablePath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+                executableName = "chrome.exe",
+                windowTitle = "PyTorch Deep Learning Tutorial - Hugging Face - Google Chrome",
+                pid = 4321,
+            )
+
+        val daytime = LocalDateTime.of(2026, 9, 28, 14, 0)
+
+        // At 15s and 45s (< 60s): should NOT trigger hard BlockerDetection yet (allows 30s warning and 60s tax first)
+        monitor.consecutiveOutOfScopeSeconds = 15
+        assertNull(monitor.evaluateWindow(outOfScopeWindow, now = daytime))
+
+        monitor.consecutiveOutOfScopeSeconds = 45
+        assertNull(monitor.evaluateWindow(outOfScopeWindow, now = daytime))
+
+        // At 60s: hard BlockerDetection fires
+        monitor.consecutiveOutOfScopeSeconds = 60
+        val detection = monitor.evaluateWindow(outOfScopeWindow, now = daytime)
+        assertNotNull("Should trigger hard block at >= 60s out-of-scope", detection)
+        assertTrue(detection!!.isBlocked)
+        assertTrue(detection.reason.contains("Out-of-Scope in Focus Mode"))
+    }
+
+    @Test
+    fun nightCurfew_reasonStringMatches1AmTo7Am() {
+        val discordRule =
+            DesktopBlockRule(
+                id = 1,
+                target = "discord.exe",
+                ruleType = "APP",
+                enabled = true,
+                scheduleMode = "ALWAYS_24_7",
+            )
+        monitor.updateRules(listOf(discordRule))
+
+        val discordWindow =
+            com.anchor.adhd.desktop.blocker.ActiveWindowInfo(
+                executablePath = "C:\\Users\\user\\AppData\\Local\\Discord\\Discord.exe",
+                executableName = "discord.exe",
+                windowTitle = "Discord",
+                pid = 9999,
+            )
+
+        val curfewTime = LocalDateTime.of(2026, 9, 28, 2, 15)
+        val detection = monitor.evaluateWindow(discordWindow, now = curfewTime)
+        assertNotNull(detection)
+        assertEquals("Night Curfew Active (1:00 AM - 7:00 AM)", detection!!.reason)
     }
 }

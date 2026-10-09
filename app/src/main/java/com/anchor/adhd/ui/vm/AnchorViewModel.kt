@@ -41,9 +41,12 @@ import com.anchor.adhd.data.model.PostFocusSummary
 import com.anchor.adhd.data.model.WeeklySummary
 import com.anchor.adhd.data.model.FunLinkEntity
 import com.anchor.adhd.data.model.DefaultFunLinks
+import com.anchor.adhd.data.model.BreakdownGranularity
 import com.anchor.adhd.data.repository.HabitLimitException
+import com.anchor.adhd.domain.AcademicContext
 import com.anchor.adhd.domain.CheckInCodec
 import com.anchor.adhd.domain.BreakdownClamp
+import com.anchor.adhd.domain.SyllabusParser
 import com.anchor.adhd.domain.ChatFollowUp
 import com.anchor.adhd.domain.ChatUndoApplier
 import com.anchor.adhd.domain.ChatUndoCodec
@@ -97,6 +100,7 @@ data class AirlockState(
     val primaryTaskTitle: String = "",
     val secondaryTaskTitles: List<String> = emptyList(),
     val primaryTaskId: Long? = null,
+    val createdTaskIds: List<Long> = emptyList(),
     val somaticStarter: String = "",
     val isRefiningWithAi: Boolean = false,
     val isReadyForFocus: Boolean = false,
@@ -273,6 +277,15 @@ class AnchorViewModel(
 
     val aiGpuSettings = container.preferences.aiGpuSettings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AiGpuSettings())
+
+    val breakdownGranularity: StateFlow<BreakdownGranularity> = container.preferences.breakdownGranularityFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BreakdownGranularity.NORMAL)
+
+    fun setBreakdownGranularity(g: BreakdownGranularity) {
+        viewModelScope.launch {
+            container.preferences.setBreakdownGranularity(g)
+        }
+    }
 
     private val _activeModelEntryId = MutableStateFlow("q8")
     val activeModelEntryId = _activeModelEntryId.asStateFlow()
@@ -567,10 +580,17 @@ class AnchorViewModel(
         ReminderScheduler.rescheduleAll(appContext)
     }
 
+    fun unCompleteTask(id: Long) {
+        viewModelScope.launch {
+            container.planRepository.unCompleteTaskCascade(id)
+            ReminderScheduler.rescheduleAll(appContext)
+        }
+    }
+
     fun scheduleTask(taskId: Long, hour: Int, minute: Int, durationMinutes: Int) {
         viewModelScope.launch {
             val zone = java.time.ZoneId.systemDefault()
-            val start = LocalDate.now().atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
+            val start = LocalDate.now().atTime(hour.coerceIn(0, 23), minute.coerceIn(0, 59)).atZone(zone).toInstant().toEpochMilli()
             container.planRepository.scheduleTask(taskId, start, durationMinutes)
             ReminderScheduler.rescheduleAll(appContext)
         }
@@ -587,6 +607,35 @@ class AnchorViewModel(
         viewModelScope.launch {
             container.planRepository.completeAssignment(id)
             ReminderScheduler.rescheduleAll(appContext)
+        }
+    }
+
+    fun deleteAssignment(id: Long) {
+        viewModelScope.launch {
+            container.planRepository.deleteAssignment(id)
+            ReminderScheduler.rescheduleAll(appContext)
+        }
+    }
+
+    fun deleteRoutine(id: Long) {
+        viewModelScope.launch {
+            container.planRepository.deleteRoutine(id)
+            ReminderScheduler.rescheduleAll(appContext)
+        }
+    }
+
+    fun importSyllabusText(rawText: String) {
+        val trimmed = rawText.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            val parsed = SyllabusParser.parseSyllabus(trimmed, fallbackWhenEmpty = false)
+            if (parsed.deliverables.isEmpty()) {
+                _message.value = "No dated assignments found in pasted syllabus"
+            } else {
+                val count = container.planRepository.importParsedSyllabus(parsed)
+                ReminderScheduler.rescheduleAll(appContext)
+                _message.value = "Imported $count assignment${if (count == 1) "" else "s"} for ${parsed.courseName}"
+            }
         }
     }
 
@@ -611,7 +660,13 @@ class AnchorViewModel(
 
     fun addScheduledShield(packageName: String, startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
         viewModelScope.launch {
-            container.focusRepository.addScheduledShield(packageName, startHour, startMinute, endHour, endMinute)
+            container.focusRepository.addScheduledShield(
+                packageName,
+                startHour.coerceIn(0, 23),
+                startMinute.coerceIn(0, 59),
+                endHour.coerceIn(0, 23),
+                endMinute.coerceIn(0, 59)
+            )
             scheduledShieldActive.value = FocusBlockService.scheduledShieldActive
         }
     }
@@ -728,8 +783,11 @@ class AnchorViewModel(
         val session = container.database.focusSessionDao().getById(pending.sessionId)
         if (session?.endedAtMillis == null) {
             container.focusRepository.finishSession(pending.sessionId, pending.completed, pending.actualMinutes)
-            if (pending.completed) container.growRepository.rewardFocusComplete()
-            else container.growRepository.rewardPartialDay()
+            if (pending.completed) {
+                container.growRepository.rewardFocusComplete()
+            } else {
+                container.growRepository.rewardPartialDay()
+            }
         }
         container.focusRepository.wrapUpSession(pending.sessionId, null, pending.actualMinutes)
         clearPendingPostFocus()
@@ -760,9 +818,34 @@ class AnchorViewModel(
         job.invokeOnCompletion { activeAiJobs.remove(job) }
     }
 
+    private fun academicContextFor(query: String): String {
+        val selected = AcademicContext.selectAssignments(assignments.value, query)
+        return AcademicContext.describe(selected)
+    }
+
+    private suspend fun currentBlockedPackages(): List<String> =
+        container.database.blockRuleDao().observeEnabled().first().map { it.packageName }
+
+    private suspend fun importSyllabusAndReply(parsed: com.anchor.adhd.domain.ParsedSyllabus) {
+        val count = container.planRepository.importParsedSyllabus(parsed)
+        ReminderScheduler.rescheduleAll(appContext)
+        val preview = parsed.deliverables.take(5).joinToString("\n") { d ->
+            val weight = d.weightPercent?.let { " ($it%)" }.orEmpty()
+            "• ${d.title} — due ${d.dueDate}$weight"
+        }
+        reply("Imported $count assignment${if (count == 1) "" else "s"} for ${parsed.courseName} (${parsed.semester}) with backward-chained prep steps:\n$preview")
+    }
+
     fun breakdownTask(title: String) {
         launchAi(
-            block = { container.aiRepository.breakdownTask(title) },
+            block = {
+                container.aiRepository.breakdownTask(
+                    title = title,
+                    granularity = breakdownGranularity.value,
+                    academicContext = academicContextFor(title),
+                    blockedPackages = currentBlockedPackages()
+                )
+            },
             onSuccess = {
                 _aiPreview.value = it.result
                 _aiPreviewParentTitle.value = title
@@ -781,7 +864,10 @@ class AnchorViewModel(
         val titles = inboxToday.value.map { it.title }
         if (titles.isEmpty()) return
         launchAi(
-            block = { container.aiRepository.triage(titles) },
+            block = {
+                val query = titles.joinToString(" ")
+                container.aiRepository.triage(titles, academicContext = academicContextFor(query))
+            },
             onSuccess = { _triagePreview.value = it }
         )
     }
@@ -790,7 +876,10 @@ class AnchorViewModel(
         val titles = replanWithTasks.value.mapNotNull { it.second?.title }
         if (titles.isEmpty()) return
         launchAi(
-            block = { container.aiRepository.replanAssistant(titles) },
+            block = {
+                val query = titles.joinToString(" ")
+                container.aiRepository.replanAssistant(titles, academicContext = academicContextFor(query))
+            },
             onSuccess = { _replanAiPreview.value = it }
         )
     }
@@ -834,7 +923,8 @@ class AnchorViewModel(
     fun applyBrainDump() {
         val preview = _brainDumpPreview.value ?: return
         viewModelScope.launch {
-            container.planRepository.captureToInbox(preview.tasks, aiGenerated = true)
+            val ids = container.planRepository.captureToInbox(preview.tasks, aiGenerated = true)
+            persistUndo(ChatUndoOp.CreatedTasks(ids), ChatUndoSource.APPLY)
             _brainDumpPreview.value = null
             _message.value = "Brain dump parsed"
         }
@@ -881,6 +971,17 @@ class AnchorViewModel(
                 if (ChatFollowUp.isNegative(trimmed)) pendingClarifyTitle = null
 
                 val resolved = ChatFollowUp.resolve(trimmed, _lastChatTaskTitle.value)
+                if (AcademicContext.isDeadlineQuestion(resolved)) {
+                    reply(AcademicContext.deadlineAnswer(assignments.value, resolved))
+                    return@launch
+                }
+                if (resolved.lines().count { it.isNotBlank() } >= 2) {
+                    val parsedSyllabus = SyllabusParser.parseSyllabus(resolved, fallbackWhenEmpty = false)
+                    if (parsedSyllabus.deliverables.isNotEmpty()) {
+                        importSyllabusAndReply(parsedSyllabus)
+                        return@launch
+                    }
+                }
                 val desktopRoute = com.anchor.adhd.domain.DesktopCompatibleRouter.routeQuick(resolved)
                 if (handleDesktopCommand(desktopRoute)) return@launch
                 var intent = if (trimmed.equals("Think about this", ignoreCase = true)) {
@@ -895,6 +996,7 @@ class AnchorViewModel(
                     intent = com.anchor.adhd.domain.ChatIntent.BrainDump(resolved)
                 } else if (intent is com.anchor.adhd.domain.ChatIntent.CaptureTasks &&
                     desktopRoute is com.anchor.adhd.domain.SmartRouteResult.TaskBreakdown &&
+                    com.anchor.adhd.domain.DesktopCompatibleRouter.hasExplicitBreakdownCue(resolved) &&
                     !resolved.startsWith("add ", ignoreCase = true) && !resolved.startsWith("remember ", ignoreCase = true)) {
                     intent = com.anchor.adhd.domain.ChatIntent.Breakdown(desktopRoute.taskTitle)
                 }
@@ -943,7 +1045,11 @@ class AnchorViewModel(
                 }
             }
             is com.anchor.adhd.domain.SmartRouteResult.GroundingReset -> {
-                val answer = container.aiRepository.answerChat("I'm overwhelmed. ${route.recommendedTask}", currentDaySnapshot().compactPrompt()).getOrNull()
+                val answer = container.aiRepository.answerChat(
+                    "I'm overwhelmed. ${route.recommendedTask}",
+                    currentDaySnapshot().compactPrompt(),
+                    academicContext = academicContextFor(route.recommendedTask)
+                ).getOrNull()
                 replyWithAction(answer ?: "Take a breath. Try one tiny step: ${route.recommendedTask}.") { id ->
                     com.anchor.adhd.ui.chat.ChatAction.StartFocus(id, null, route.suggestedMinutes)
                 }
@@ -952,7 +1058,14 @@ class AnchorViewModel(
                 reply("Open Settings → Data to review and confirm a reset. Your data hasn't changed.")
                 _pendingNav.value = NavTarget(MainActivity.TAB_MORE, moreRoute = com.anchor.adhd.ui.MoreRoute.Settings)
             }
-            is com.anchor.adhd.domain.SmartRouteResult.SyllabusAction -> reply("Add course deadlines in Plan → Assignments. Syllabus PDF import is currently available on desktop.")
+            is com.anchor.adhd.domain.SmartRouteResult.SyllabusAction -> {
+                val parsed = SyllabusParser.parseSyllabus(route.initialQuery, fallbackWhenEmpty = false)
+                if (parsed.deliverables.isNotEmpty()) {
+                    importSyllabusAndReply(parsed)
+                } else {
+                    reply("Paste syllabus lines or a schedule table right here in chat (e.g., \"CS 101\\nMidterm Exam - Oct 15\") and I'll import the assignments and prep milestones.")
+                }
+            }
             else -> return false
         }
         return true
@@ -1070,6 +1183,7 @@ class AnchorViewModel(
         val parseResult = AirlockHeuristic.parse(trimmed)
         if (parseResult.primaryTask.isBlank()) return
 
+        val previousIds = _airlockState.value.createdTaskIds
         _airlockState.value = _airlockState.value.copy(
             isSequencing = true,
             primaryTaskTitle = parseResult.primaryTask,
@@ -1080,12 +1194,19 @@ class AnchorViewModel(
 
         viewModelScope.launch {
             try {
+                // Remove any tasks created by an earlier Airlock pass in the same session before re-sequencing
+                previousIds.forEach { id ->
+                    container.planRepository.deleteTask(id)
+                }
+
                 // Save secondary tasks safely to inbox (relieving mental pressure)
-                if (parseResult.secondaryTasks.isNotEmpty()) {
+                val secondaryIds = if (parseResult.secondaryTasks.isNotEmpty()) {
                     container.planRepository.captureToInbox(
                         parseResult.secondaryTasks,
                         state = InboxState.TODAY
                     )
+                } else {
+                    emptyList()
                 }
 
                 // Save primary task to inbox and retain ID
@@ -1094,11 +1215,16 @@ class AnchorViewModel(
                     state = InboxState.TODAY
                 )
                 val primaryId = primaryIds.firstOrNull()
+                val allIds = secondaryIds + primaryIds
 
                 _airlockState.value = _airlockState.value.copy(
                     isSequencing = false,
-                    primaryTaskId = primaryId
+                    primaryTaskId = primaryId,
+                    createdTaskIds = allIds
                 )
+                if (allIds.isNotEmpty()) {
+                    persistUndo(ChatUndoOp.CreatedTasks(allIds), ChatUndoSource.PANIC)
+                }
 
                 // Tier 2: Asynchronous on-device LLM refinement (if model ready)
                 if (container.aiEngine.isModelReady) {
@@ -1152,10 +1278,16 @@ class AnchorViewModel(
         _airlockState.value = AirlockState()
     }
 
+    private fun syncUndoState() {
+        _undoCount.value = chatUndoManager.snapshot().size
+    }
+
     fun clearChat() {
         _chatMessages.value = emptyList()
         _lastChatTaskTitle.value = null
         pendingClarifyTitle = null
+        chatUndoManager.clear()
+        syncUndoState()
         viewModelScope.launch {
             container.chatTurnDao.clear()
             container.chatUndoDao.clear()
@@ -1341,11 +1473,14 @@ class AnchorViewModel(
                 val query = intent.query.ifBlank { _lastChatTaskTitle.value }.orEmpty()
                 if (query.isBlank()) {
                     reply("Name a task to break down, or capture one first.")
-                } else if (!modelDownloaded.value) {
-                    reply("I can break that down, but I need the on-device AI model first. Download it in More → Settings, then try again.")
                 } else {
                     rememberChatTask(query)
-                    val result = container.aiRepository.breakdownTask(query).getOrNull()
+                    val result = container.aiRepository.breakdownTask(
+                        title = query,
+                        granularity = breakdownGranularity.value,
+                        academicContext = academicContextFor(query),
+                        blockedPackages = currentBlockedPackages()
+                    ).getOrNull()
                     if (result == null) {
                         reply("I couldn't break that down right now. Is the AI model ready?")
                     } else {
@@ -1381,7 +1516,8 @@ class AnchorViewModel(
                 } else if (!modelDownloaded.value) {
                     reply("Triage needs the on-device AI model. Check installation in Settings → AI.")
                 } else {
-                    val result = container.aiRepository.triage(titles).getOrNull()
+                    val query = titles.joinToString(" ")
+                    val result = container.aiRepository.triage(titles, academicContext = academicContextFor(query)).getOrNull()
                     if (result == null) reply("I couldn't triage right now.")
                     else {
                         val list = result.ordered_task_titles.mapIndexed { i, t -> "${i + 1}. $t" }.joinToString("\n")
@@ -1397,7 +1533,8 @@ class AnchorViewModel(
                 } else if (!modelDownloaded.value) {
                     reply("Replan needs the on-device AI model. Check installation in Settings → AI.")
                 } else {
-                    val result = container.aiRepository.replanAssistant(titles).getOrNull()
+                    val query = titles.joinToString(" ")
+                    val result = container.aiRepository.replanAssistant(titles, academicContext = academicContextFor(query)).getOrNull()
                     if (result == null) reply("I couldn't build a replan right now.")
                     else replyWithAction("Here's a suggestion:") { id -> com.anchor.adhd.ui.chat.ChatAction.ApplyReplan(id, result) }
                 }
@@ -1417,7 +1554,8 @@ class AnchorViewModel(
                     container.aiRepository.answerChat(
                         intent.text,
                         inboxTodaySorted.value.filter { !it.isCompleted }.take(12).joinToString("\n") { "- ${it.title}" },
-                        conversationHistory()
+                        conversationHistory(),
+                        academicContext = academicContextFor(intent.text)
                     ).getOrNull()
                 } else {
                     null
@@ -1447,7 +1585,9 @@ class AnchorViewModel(
     private fun findTaskCandidates(query: String): List<com.anchor.adhd.data.model.TaskEntity> {
         val q = query.lowercase().trim()
         if (q.isEmpty()) return emptyList()
-        return inboxTodaySorted.value
+        val allTasks = (inboxTodaySorted.value + scheduled.value + inboxWaiting.value + inboxSomeday.value)
+            .distinctBy { it.id }
+        return allTasks
             .filter { task -> task.title.lowercase().contains(q) || q.contains(task.title.lowercase()) }
     }
 
@@ -1648,8 +1788,11 @@ class AnchorViewModel(
             val session = container.database.focusSessionDao().getById(summary.sessionId)
             if (session?.endedAtMillis == null) {
                 container.focusRepository.finishSession(summary.sessionId, summary.completed, summary.actualMinutes)
-                if (summary.completed) container.growRepository.rewardFocusComplete()
-                else container.growRepository.rewardPartialDay()
+                if (summary.completed) {
+                    container.growRepository.rewardFocusComplete()
+                } else {
+                    container.growRepository.rewardPartialDay()
+                }
             }
         }
         clearPendingPostFocus()
@@ -1754,8 +1897,8 @@ class AnchorViewModel(
     }
 
     private suspend fun applyBreakdownFromResult(parentTitle: String, result: AiBreakdownResult): Long {
-        val blocked = container.database.blockRuleDao().observeEnabled().first().map { it.packageName }
-        val clamped = BreakdownClamp.clampResult(result, blocked)
+        val blocked = currentBlockedPackages()
+        val clamped = BreakdownClamp.clampResult(result, blocked, breakdownGranularity.value, parentTitle)
         val (parent, children) = container.aiRepository.breakdownParentAndChildren(parentTitle, clamped)
         val window = holeWindow()
         val parentId = container.planRepository.insertParentWithChildren(
@@ -2041,6 +2184,27 @@ class AnchorViewModel(
         viewModelScope.launch {
             val file = container.backupManager.exportToCache()
             _message.value = "Backup saved: ${file.name}"
+        }
+    }
+
+    fun importBackup(uri: android.net.Uri, replaceExisting: Boolean = false) {
+        viewModelScope.launch {
+            try {
+                val json = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                }
+                if (json.isNullOrBlank()) {
+                    _message.value = "Backup file is empty"
+                    return@launch
+                }
+                val summary = container.backupManager.importFromJson(json, replaceExisting)
+                container.focusRepository.refreshBlockedPackages()
+                scheduledShieldActive.value = FocusBlockService.scheduledShieldActive
+                ReminderScheduler.rescheduleAll(appContext)
+                _message.value = summary.formatMessage()
+            } catch (e: Exception) {
+                _message.value = "Backup restore failed: ${e.message ?: "invalid JSON"}"
+            }
         }
     }
 

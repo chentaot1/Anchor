@@ -35,7 +35,7 @@ class AnchorWidget : GlanceAppWidget() {
         val start = today.atStartOfDay(zone).toInstant().toEpochMilli()
         val end = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val scheduled = db.taskDao().observeScheduledForDay(start, end).first()
-        val weekStart = today.minusDays(7).atStartOfDay(zone).toInstant().toEpochMilli()
+        val weekStart = today.minusDays(6).atStartOfDay(zone).toInstant().toEpochMilli()
         val weeklyFocus = db.focusSessionDao().observeCompletedCountBetween(weekStart, end).first()
         val vitality = GroveLevel.vitalityLabel(GroveLevel.vitalityStageForWeeklySessions(weeklyFocus))
         val next = scheduled.firstOrNull()

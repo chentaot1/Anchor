@@ -107,4 +107,32 @@ class BlockRuleEvaluatorTest {
             )
         )
     }
+
+    @Test
+    fun scheduledRule_clampsOutOfRangeHoursAndMinutesAndTreatsEqualEndpointsAsAllDay() {
+        val outOfRangeRule = BlockRuleEntity(
+            packageName = "com.example.app",
+            ruleType = BlockRuleType.SCHEDULED,
+            startHour = -3,
+            startMinute = -10,
+            endHour = 29,
+            endMinute = 99,
+            enabled = true
+        )
+        assertTrue(BlockRuleEvaluator.isInWindow(LocalTime.of(0, 0), outOfRangeRule))
+        assertTrue(BlockRuleEvaluator.isInWindow(LocalTime.of(23, 58), outOfRangeRule))
+        assertFalse(BlockRuleEvaluator.isInWindow(LocalTime.of(23, 59), outOfRangeRule))
+
+        val equalBoundaryRule = BlockRuleEntity(
+            packageName = "com.example.app",
+            ruleType = BlockRuleType.SCHEDULED,
+            startHour = 9,
+            startMinute = 0,
+            endHour = 9,
+            endMinute = 0,
+            enabled = true
+        )
+        assertTrue(BlockRuleEvaluator.isInWindow(LocalTime.of(9, 0), equalBoundaryRule))
+        assertTrue(BlockRuleEvaluator.isInWindow(LocalTime.of(21, 30), equalBoundaryRule))
+    }
 }

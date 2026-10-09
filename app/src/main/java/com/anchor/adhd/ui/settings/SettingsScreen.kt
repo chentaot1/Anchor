@@ -56,6 +56,7 @@ import androidx.core.content.ContextCompat
 import com.anchor.adhd.data.AnchorContainer
 import com.anchor.adhd.data.model.BlockListMode
 import com.anchor.adhd.data.model.BlockRuleType
+import com.anchor.adhd.data.model.BreakdownGranularity
 import com.anchor.adhd.service.FocusBlockService
 import com.anchor.adhd.domain.InstalledApp
 import com.anchor.adhd.domain.InstalledApps
@@ -65,6 +66,12 @@ import com.anchor.adhd.ai.ModelCatalogEntry
 import com.anchor.adhd.calendar.GoogleSignInBridge
 import com.anchor.adhd.ui.copy.AppCopy
 import com.anchor.adhd.ui.vm.AnchorViewModel
+
+private fun BreakdownGranularity.settingsLabel(): String = when (this) {
+    BreakdownGranularity.MILD -> "Mild (2–3)"
+    BreakdownGranularity.NORMAL -> "Normal (3–5)"
+    BreakdownGranularity.SPICY -> "Spicy (5–7)"
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -84,6 +91,7 @@ fun SettingsScreen(
     val benchmark by vm.benchmarkResult.collectAsState()
     val benchmarkRunning by vm.benchmarkRunning.collectAsState()
     val modelReady by vm.modelDownloaded.collectAsState()
+    val breakdownGranularity by vm.breakdownGranularity.collectAsState()
     val aiJobs by vm.aiJobs.collectAsState()
     var newPackage by remember { mutableStateOf("") }
     var bundleName by remember { mutableStateOf("") }
@@ -136,6 +144,14 @@ fun SettingsScreen(
     ) { granted ->
         calendarGranted = granted
         vm.syncDeviceCalendar()
+    }
+
+    val backupImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            vm.importBackup(uri)
+        }
     }
 
     BackHandler(enabled = showResetDialog) { showResetDialog = false }
@@ -503,14 +519,14 @@ fun SettingsScreen(
                 )
                 androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        shieldStart, { shieldStart = it },
-                        label = { Text("Start hour") },
+                        shieldStart, { shieldStart = it.filter(Char::isDigit).take(2) },
+                        label = { Text("Start hour (0–23)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
-                        shieldEnd, { shieldEnd = it },
-                        label = { Text("End hour") },
+                        shieldEnd, { shieldEnd = it.filter(Char::isDigit).take(2) },
+                        label = { Text("End hour (0–23)") },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
@@ -520,8 +536,8 @@ fun SettingsScreen(
                         if (shieldPackage.isNotBlank()) {
                             vm.addScheduledShield(
                                 shieldPackage,
-                                shieldStart.toIntOrNull() ?: 9, 0,
-                                shieldEnd.toIntOrNull() ?: 17, 0
+                                (shieldStart.toIntOrNull() ?: 9).coerceIn(0, 23), 0,
+                                (shieldEnd.toIntOrNull() ?: 17).coerceIn(0, 23), 0
                             )
                             shieldPackage = ""
                         }
@@ -665,6 +681,28 @@ fun SettingsScreen(
                 }
             }
 
+            if (section == "AI") item(key = "settings-breakdown-granularity") {
+                OutlinedCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Breakdown granularity", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Controls how many grounded micro-steps AI task breakdowns generate.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BreakdownGranularity.entries.forEach { option ->
+                                FilterChip(
+                                    selected = breakdownGranularity == option,
+                                    onClick = { vm.setBreakdownGranularity(option) },
+                                    label = { Text(option.settingsLabel()) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             if (section == "AI") items(vm.modelCatalogEntries(), key = { it.id }) { entry ->
                 ModelCatalogCard(
                     entry = entry,
@@ -718,10 +756,16 @@ fun SettingsScreen(
             if (section == "Data") item(key = "settings-18") {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Backup", style = MaterialTheme.typography.titleMedium)
-                Button(onClick = { vm.exportBackup() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Export backup JSON")
-                }
+                        Text("Backup", style = MaterialTheme.typography.titleMedium)
+                        Button(onClick = { vm.exportBackup() }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Export backup JSON")
+                        }
+                        OutlinedButton(
+                            onClick = { backupImportLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Restore backup (JSON)")
+                        }
                     }
                 }
             }
@@ -856,8 +900,6 @@ fun SettingsScreen(
             }
         )
     }
-
-
 }
 
 @Composable

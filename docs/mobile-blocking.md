@@ -8,9 +8,9 @@ Select apps independently of the older focus rules in Settings. Existing focus, 
 
 - **During focus:** blocks the selected app during a locked focus session.
 - **Always protected:** blocks outside focus too; earned leisure or the held emergency pass can temporarily open it.
-- **Daily allowance:** tracks foreground time and blocks once the allowance is exhausted. A zero-minute allowance blocks immediately. Apps with the same group name share a usage ledger; use the same allowance for each group member.
+- **Daily allowance:** tracks foreground time and blocks once the allowance is exhausted. A zero-minute allowance blocks immediately. Apps with the same group name share usage and synchronize their allowance when a member is edited. Group names ignore case and surrounding spaces. An allowance change cannot alter a frozen member; inconsistent older groups use their lowest allowance until corrected.
 - **Track only:** records foreground time without adding a blocking rule.
-- **Freeze rule for 24 hours:** prevents changing or removing that rule inside the new blocker screen until its lock expires.
+- **Freeze rule for 24 hours:** prevents changing or removing that rule inside the new blocker screen until its lock expires. The screen shows the remaining freeze time.
 
 Foreground usage is sampled every second while the display is on and unlocked. Time spent behind the rescue overlay is not counted. Totals persist across service/app restarts. Android settings, launchers and dialers in the essential-package list remain available.
 
@@ -27,12 +27,12 @@ Track-only rules are excluded from these global shields. Equal start/end times m
 
 Completed focus sessions earn rewards using actual minutes capped at the planned work duration. The first reward requires 60 minutes; the next rewards require 75, 90 and then 120 additional minutes each. Each reward earns 30 leisure minutes. The reservoir caps at 60 minutes and discards excess rewards rather than restoring them after spending.
 
-Spend 15 or 30 minutes from the blocker screen, or 15 minutes from an eligible rescue overlay. One leisure window can run at a time. Leisure temporarily opens standing/always protection. It cannot bypass focus, curfew, study windows, lockdown or exhausted daily allowances. Those protections also disable emergency passes.
+Spend 15 or 30 minutes from the blocker screen, or 15 minutes from an eligible rescue overlay. Additional purchases extend the active leisure window. Near 4 AM, the window stops at the reset and only the remaining time is charged, rounded up to a whole minute. Leisure temporarily opens standing/always protection. It cannot bypass focus, curfew, study windows, lockdown or exhausted daily allowances. Those protections also disable emergency passes.
 
 Usage totals, focus progress and the bank reset at **4 AM in the phone's timezone**, including daylight-saving changes. Leisure expires no later than that reset. Settings and 24-hour rule locks survive the daily reset. An explicit factory reset clears this protection state along with other app data.
 
 ## Desktop features still separate
 
-This implementation protects Android **apps**. Desktop website/title matching, AI-assisted Scope Sentinel classification, distraction taxes and per-class schedule management are not ported. Blocking a browser here protects the entire browser. Desktop and Android balances/settings are separate; there is no cross-device sync.
+This implementation protects Android **apps**. Desktop website/title matching, AI-assisted Scope Sentinel classification, distraction taxes and per-class schedule management are not ported. Blocking a browser here protects the entire browser. Desktop and Android balances/settings are separate. JSON backups can transfer supported planning records between platforms; they do not provide live synchronization or transfer platform-specific protection settings.
 
 Validation uses the Android unit suite and debug APK build. Service regression coverage checks advanced/legacy rules, essential apps and cancellation of stale app-switch checks when returning to Anchor. Accessibility overlay behavior still needs verification on an S24 Ultra; a compiled APK alone does not verify device enforcement or Samsung background-service behavior.

@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,11 +21,16 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
@@ -149,6 +155,7 @@ fun main(args: Array<String> = emptyArray()) {
                 height = 860.dp,
             )
         var isFullscreen by remember { mutableStateOf(false) }
+        var appKeyHandler by remember { mutableStateOf<((KeyEvent) -> Boolean)?>(null) }
         var appWindow by remember { mutableStateOf<java.awt.Window?>(null) }
 
         val toggleFullscreen: () -> Unit = {
@@ -185,7 +192,8 @@ fun main(args: Array<String> = emptyArray()) {
             state = mainWindowState,
             title = "Anchor ADHD — Living Maritime Focus",
             onPreviewKeyEvent = { event ->
-                if (event.type == KeyEventType.KeyDown) {
+                if (appKeyHandler?.invoke(event) == true) true
+                else if (event.type == KeyEventType.KeyDown) {
                     when (event.key) {
                         Key.F11 -> {
                             toggleFullscreen()
@@ -231,6 +239,7 @@ fun main(args: Array<String> = emptyArray()) {
                     window = this.window,
                     isFullscreen = isFullscreen,
                     onToggleFullscreen = toggleFullscreen,
+                    onRegisterKeyHandler = { appKeyHandler = it },
                     onDistractionDetected = { detection, taskTitle, mins ->
                         activeDistraction = detection
                         currentTaskTitle = taskTitle
@@ -344,6 +353,7 @@ fun DesktopAnchorApp(
     window: java.awt.Window? = null,
     isFullscreen: Boolean = false,
     onToggleFullscreen: () -> Unit = {},
+    onRegisterKeyHandler: (((KeyEvent) -> Boolean)?) -> Unit = {},
     onDistractionDetected: (BlockerDetection, String, Int) -> Unit = { _, _, _ -> },
     onDistractionCleared: () -> Unit = {},
     onRegisterRescueActions: (
@@ -377,11 +387,15 @@ fun DesktopAnchorApp(
 
     // Focus & Preferences State
     var durationMinutes by remember { mutableIntStateOf(25) }
+    var savedWorkDurationMinutes by remember { mutableIntStateOf(25) }
     var isFocusActive by remember { mutableStateOf(false) }
+    var isWorkPhase by remember { mutableStateOf(true) }
+    var showSessionCompleteBanner by remember { mutableStateOf(false) }
     var remainingSeconds by remember { mutableIntStateOf(25 * 60) }
     var timerSessionId by remember { mutableIntStateOf(0) }
     var prefilledAiTask by remember { mutableStateOf("") }
     val standingShieldEnabled by prefs.standingShieldEnabled.collectAsState(initial = false)
+    val focusBreakMinutes by prefs.focusBreakMinutes.collectAsState(initial = 5)
 
     var showAirlock by remember { mutableStateOf(false) }
     var showDurationPicker by remember { mutableStateOf(false) }
@@ -393,12 +407,40 @@ fun DesktopAnchorApp(
 
     val currentTask = tasks.firstOrNull { !it.isCompleted }
 
+    fun toggleFocus() {
+        if (!isFocusActive) {
+            showSessionCompleteBanner = false
+            if (remainingSeconds <= 0) remainingSeconds = durationMinutes * 60
+            timerSessionId++
+        }
+        isFocusActive = !isFocusActive
+    }
+
+    fun startTaskFocus(minutes: Int) {
+        val safeMinutes = minutes.coerceIn(1, 240)
+        isWorkPhase = true
+        showSessionCompleteBanner = false
+        durationMinutes = safeMinutes
+        savedWorkDurationMinutes = safeMinutes
+        remainingSeconds = safeMinutes * 60
+        timerSessionId++
+        isFocusActive = true
+        currentScreen = DesktopScreen.FOCUS
+    }
+
+    fun startNamedTaskFocus(title: String, minutes: Int) {
+        scope.launch {
+            val target = db.upsertAndMakeTaskNow(title, minutes) ?: return@launch
+            startTaskFocus(target.durationMinutes)
+        }
+    }
+
     // Windows 11 Native Blocker Monitor
     val processMonitor =
         remember {
             lateinit var monitor: DesktopProcessMonitor
             monitor =
-                DesktopProcessMonitor(scope) { detection ->
+                DesktopProcessMonitor(scope, database = db) { detection ->
                     java.awt.EventQueue.invokeLater {
                         onDistractionDetected(
                             detection,
@@ -453,7 +495,14 @@ fun DesktopAnchorApp(
         taskTitle = currentTask?.title ?: "Deep Work",
         isFocusActive = isFocusActive,
         remainingSeconds = remainingSeconds,
-        onToggleFocus = { isFocusActive = !isFocusActive },
+        onToggleFocus = {
+            if (!isFocusActive) {
+                if (remainingSeconds <= 0) remainingSeconds = durationMinutes * 60
+                showSessionCompleteBanner = false
+                timerSessionId++
+            }
+            isFocusActive = !isFocusActive
+        },
         onExpandMainApp = {
             processMonitor.bringAnchorToFront()
             isFloatingIslandVisible = false
@@ -541,6 +590,7 @@ fun DesktopAnchorApp(
     // Initialize Database, Preferences, AI Engine, and register callbacks
     LaunchedEffect(Unit) {
         db.initialize()
+        processMonitor.syncProtectionStatsFromDatabase()
         DesktopAiEngine.connectSyllabus(db.syllabusItems, db.courses)
         durationMinutes = prefs.getFocusWorkMinutesSnapshot()
         remainingSeconds = durationMinutes * 60
@@ -628,6 +678,23 @@ fun DesktopAnchorApp(
         }
     }
 
+    val creditPartialFocusIfEligible: () -> Unit = {
+        val elapsedSeconds = (durationMinutes * 60 - remainingSeconds).coerceAtLeast(0)
+        if (isWorkPhase && elapsedSeconds >= 5 * 60) {
+            val taskTitleSnapshot = currentTask?.title ?: "Deep Work"
+            val plannedSecondsSnapshot = durationMinutes * 60
+            scope.launch {
+                db.recordFocusSession(
+                    taskTitle = taskTitleSnapshot,
+                    durationSeconds = plannedSecondsSnapshot,
+                    actualSeconds = elapsedSeconds,
+                    completed = false,
+                )
+                todayFocusMinutes = db.getTodayFocusMinutes()
+            }
+        }
+    }
+
     // Focus Timer Loop
     LaunchedEffect(isFocusActive, timerSessionId) {
         if (isFocusActive) {
@@ -637,16 +704,62 @@ fun DesktopAnchorApp(
             }
             if (remainingSeconds <= 0 && isFocusActive) {
                 isFocusActive = false
-                db.recordFocusSession(
-                    taskTitle = currentTask?.title ?: "Deep Work",
-                    durationSeconds = durationMinutes * 60,
-                    actualSeconds = durationMinutes * 60,
-                    completed = true,
-                )
-                todayFocusMinutes = db.getTodayFocusMinutes()
-                remainingSeconds = durationMinutes * 60
+                if (isWorkPhase) {
+                    db.recordFocusSession(
+                        taskTitle = currentTask?.title ?: "Deep Work",
+                        durationSeconds = durationMinutes * 60,
+                        actualSeconds = durationMinutes * 60,
+                        completed = true,
+                    )
+                    todayFocusMinutes = db.getTodayFocusMinutes()
+                    showSessionCompleteBanner = true
+                    remainingSeconds = durationMinutes * 60
+                } else {
+                    isWorkPhase = true
+                    durationMinutes = savedWorkDurationMinutes
+                    remainingSeconds = durationMinutes * 60
+                }
             }
         }
+    }
+
+    val keyHandler by rememberUpdatedState<(KeyEvent) -> Boolean> { event ->
+        if (event.type != KeyEventType.KeyDown) false
+        else if (event.key == Key.Escape) {
+            when {
+                activeRabbitHoleTarget != null -> {
+                    processMonitor.resetContinuousRabbitHoleTimer()
+                    activeRabbitHoleTarget = null
+                    true
+                }
+                showDurationPicker -> { showDurationPicker = false; true }
+                showAirlock -> { showAirlock = false; true }
+                else -> false
+            }
+        } else if (showAirlock || showDurationPicker || activeRabbitHoleTarget != null) false
+        else if (event.key == Key.Spacebar && currentScreen == DesktopScreen.FOCUS &&
+            !event.isCtrlPressed && !event.isAltPressed && !event.isMetaPressed) {
+            toggleFocus()
+            true
+        }
+        else if (event.isCtrlPressed && !event.isAltPressed && !event.isMetaPressed) {
+            when (event.key) {
+                Key.K -> { showAirlock = true; true }
+                Key.I -> { isFloatingIslandVisible = !isFloatingIslandVisible; true }
+                Key.One -> { currentScreen = DesktopScreen.GROVE; true }
+                Key.Two -> { currentScreen = DesktopScreen.FOCUS; true }
+                Key.Three -> { currentScreen = DesktopScreen.BLOCKER; true }
+                Key.Four -> { currentScreen = DesktopScreen.PLAN; true }
+                Key.Five -> { currentScreen = DesktopScreen.SYLLABUS; true }
+                Key.Six -> { currentScreen = DesktopScreen.AI; true }
+                Key.Seven -> { currentScreen = DesktopScreen.SETTINGS; true }
+                else -> false
+            }
+        } else false
+    }
+    DisposableEffect(Unit) {
+        onRegisterKeyHandler { event -> keyHandler(event) }
+        onDispose { onRegisterKeyHandler(null) }
     }
 
     Box(
@@ -693,18 +806,21 @@ fun DesktopAnchorApp(
                             streakDays = harborState.streakDays,
                             onStartFocus = {
                                 if (isFocusActive) {
-                                    isFocusActive = false
-                                    remainingSeconds = durationMinutes * 60
-                                } else {
-                                    timerSessionId++
-                                    remainingSeconds = durationMinutes * 60
-                                    isFocusActive = true
                                     currentScreen = DesktopScreen.FOCUS
+                                } else {
+                                    val selected = currentTask
+                                    scope.launch {
+                                        if (selected != null) db.makeTaskNow(selected.id)
+                                        startTaskFocus(selected?.durationMinutes ?: durationMinutes)
+                                    }
                                 }
                             },
                             onOpenDurationPicker = { showDurationPicker = true },
                             onLaunchMomentumPreset = { minutes ->
+                                isWorkPhase = true
+                                showSessionCompleteBanner = false
                                 durationMinutes = minutes
+                                savedWorkDurationMinutes = minutes
                                 remainingSeconds = minutes * 60
                                 timerSessionId++
                                 isFocusActive = true
@@ -718,6 +834,12 @@ fun DesktopAnchorApp(
                             onMakeTaskNow = { taskId ->
                                 scope.launch {
                                     db.makeTaskNow(taskId)
+                                    val selected = db.tasks.value.firstOrNull { it.id == taskId }
+                                    if (!isFocusActive && selected != null) {
+                                        durationMinutes = selected.durationMinutes.coerceIn(1, 240)
+                                        savedWorkDurationMinutes = durationMinutes
+                                        remainingSeconds = durationMinutes * 60
+                                    }
                                 }
                             },
                             onToggleTaskCompleted = { taskId ->
@@ -727,18 +849,7 @@ fun DesktopAnchorApp(
                             },
                             onNavigateToPlan = { currentScreen = DesktopScreen.PLAN },
                             onStartFocusWithTask = { taskTitle, minutes ->
-                                scope.launch {
-                                    db.insertTask(taskTitle, durationMinutes = minutes)
-                                    val created = db.tasks.value.firstOrNull { it.title.equals(taskTitle, ignoreCase = true) }
-                                    if (created != null) {
-                                        db.makeTaskNow(created.id)
-                                    }
-                                }
-                                durationMinutes = minutes
-                                remainingSeconds = minutes * 60
-                                timerSessionId++
-                                isFocusActive = true
-                                currentScreen = DesktopScreen.FOCUS
+                                startNamedTaskFocus(taskTitle, minutes)
                             },
                             onSaveTasksToInbox = { newTasks ->
                                 scope.launch {
@@ -762,6 +873,7 @@ fun DesktopAnchorApp(
                                 }
                             },
                             onNavigateToSyllabus = { currentScreen = DesktopScreen.SYLLABUS },
+                            harborState = harborState,
                         )
                     }
 
@@ -775,18 +887,46 @@ fun DesktopAnchorApp(
                             isFullscreen = isFullscreen,
                             onToggleFullscreen = onToggleFullscreen,
                             onToggleFocus = {
-                                if (!isFocusActive) timerSessionId++
-                                isFocusActive = !isFocusActive
+                                toggleFocus()
                             },
                             onAdjustSeconds = { delta ->
                                 remainingSeconds = (remainingSeconds + delta).coerceIn(60, 180 * 60)
                             },
                             onResetTimer = {
+                                creditPartialFocusIfEligible()
                                 isFocusActive = false
+                                if (!isWorkPhase) {
+                                    isWorkPhase = true
+                                    durationMinutes = savedWorkDurationMinutes
+                                }
                                 remainingSeconds = durationMinutes * 60
                             },
                             onOpenDurationPicker = { showDurationPicker = true },
                             onOpenAirlock = { showAirlock = true },
+                            isWorkPhase = isWorkPhase,
+                            showSessionCompleteBanner = showSessionCompleteBanner,
+                            breakDurationMinutes = focusBreakMinutes,
+                            onMarkTaskCompleted = {
+                                val taskToComplete = currentTask
+                                if (taskToComplete != null) {
+                                    scope.launch {
+                                        db.toggleTaskCompleted(taskToComplete.id)
+                                    }
+                                }
+                                showSessionCompleteBanner = false
+                            },
+                            onStartRestorativeBreak = {
+                                savedWorkDurationMinutes = durationMinutes
+                                isWorkPhase = false
+                                showSessionCompleteBanner = false
+                                durationMinutes = focusBreakMinutes
+                                remainingSeconds = focusBreakMinutes * 60
+                                timerSessionId++
+                                isFocusActive = true
+                            },
+                            onDismissSessionCompleteBanner = {
+                                showSessionCompleteBanner = false
+                            },
                         )
                     }
 
@@ -818,10 +958,10 @@ fun DesktopAnchorApp(
                             db = db,
                             durationMinutes = durationMinutes,
                             onSelectTaskForFocus = { task ->
-                                timerSessionId++
-                                isFocusActive = true
-                                remainingSeconds = task.durationMinutes * 60
-                                currentScreen = DesktopScreen.FOCUS
+                                scope.launch {
+                                    db.makeTaskNow(task.id)
+                                    startTaskFocus(task.durationMinutes)
+                                }
                             },
                             onBreakdownTask = { taskTitle ->
                                 prefilledAiTask = taskTitle
@@ -839,18 +979,7 @@ fun DesktopAnchorApp(
                                 currentScreen = DesktopScreen.AI
                             },
                             onStartFocusWithTask = { taskTitle, minutes ->
-                                scope.launch {
-                                    db.insertTask(taskTitle, durationMinutes = minutes)
-                                    val created = db.tasks.value.firstOrNull { it.title.equals(taskTitle, ignoreCase = true) }
-                                    if (created != null) {
-                                        db.makeTaskNow(created.id)
-                                    }
-                                }
-                                durationMinutes = minutes
-                                remainingSeconds = minutes * 60
-                                timerSessionId++
-                                isFocusActive = true
-                                currentScreen = DesktopScreen.FOCUS
+                                startNamedTaskFocus(taskTitle, minutes)
                             },
                         )
                     }
@@ -862,16 +991,8 @@ fun DesktopAnchorApp(
                             onOpenSyllabus = { currentScreen = DesktopScreen.SYLLABUS },
                             initialTask = prefilledAiTask,
                             onStartFocus = { taskTitle ->
-                                scope.launch {
-                                    val existing = db.tasks.value.find { it.title == taskTitle }
-                                    if (existing == null) {
-                                        db.insertTask(taskTitle, durationMinutes)
-                                    }
-                                    timerSessionId++
-                                    isFocusActive = true
-                                    remainingSeconds = durationMinutes * 60
-                                    currentScreen = DesktopScreen.FOCUS
-                                }
+                                val selected = tasks.firstOrNull { !it.isCompleted && it.title.equals(taskTitle.trim(), ignoreCase = true) }
+                                startNamedTaskFocus(taskTitle, selected?.durationMinutes ?: durationMinutes)
                             },
                         )
                     }
@@ -913,6 +1034,17 @@ fun DesktopAnchorApp(
                 onAnchorMicroStep = { microStep ->
                     scope.launch {
                         db.insertTask(microStep, durationMinutes)
+                        val created = db.tasks.value.firstOrNull { it.title.equals(microStep, ignoreCase = true) }
+                        if (created != null) {
+                            db.makeTaskNow(created.id)
+                        }
+                    }
+                },
+                onSaveSecondaryTasks = { secondaryList ->
+                    scope.launch {
+                        secondaryList.forEach { t ->
+                            if (t.isNotBlank()) db.insertTask(t.trim(), durationMinutes = 15)
+                        }
                     }
                 },
             )

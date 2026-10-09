@@ -118,4 +118,48 @@ class AdvancedBlockingTest {
         val spent = capped.copy(bankedMinutes = 30)
         assertEquals(30, AdvancedBlocking.credit(spent, 2, 1).bankedMinutes)
     }
+
+    @Test fun syncQuotaGroupAllowancesSynchronizesMatchingGroupCaseInsensitively() {
+        val first = AppProtection("com.instagram", "Instagram", ProtectionMode.QUOTA, dailyMinutes = 30, quotaGroup = "Social")
+        val second = AppProtection("com.tiktok", "TikTok", ProtectionMode.QUOTA, dailyMinutes = 30, quotaGroup = " social ")
+        val other = AppProtection("com.reddit", "Reddit", ProtectionMode.QUOTA, dailyMinutes = 20, quotaGroup = "Forums")
+        val updatedFirst = first.copy(dailyMinutes = 45)
+        val synced = AdvancedBlocking.syncQuotaGroupAllowances(listOf(first, second, other), updatedFirst)
+        assertEquals(45, synced.first { it.packageName == "com.instagram" }.dailyMinutes)
+        assertEquals(45, synced.first { it.packageName == "com.tiktok" }.dailyMinutes)
+        assertEquals(20, synced.first { it.packageName == "com.reddit" }.dailyMinutes)
+    }
+
+    @Test fun formatLockRemainingFormatsDaysHoursAndMinutes() {
+        assertEquals("0m left", AdvancedBlocking.formatLockRemaining(now - 1000L, now))
+        assertEquals("45m left", AdvancedBlocking.formatLockRemaining(now + 45 * 60_000L, now))
+        assertEquals("2h 15m left", AdvancedBlocking.formatLockRemaining(now + (2 * 60 + 15) * 60_000L, now))
+        assertEquals("3d left", AdvancedBlocking.formatLockRemaining(now + 3 * 24 * 60 * 60_000L, now))
+        assertEquals("3d 4h left", AdvancedBlocking.formatLockRemaining(now + (3 * 24 + 4) * 60 * 60_000L, now))
+    }
+
+    @Test fun inconsistentGroupAllowancesUseSameLimitForEveryMember() {
+        val first = app.copy(mode = ProtectionMode.QUOTA, quotaGroup = " Social ", dailyMinutes = 45)
+        val second = first.copy(packageName = "other.app", quotaGroup = "social", dailyMinutes = 20)
+        val state = BlockingState(apps = listOf(first, second), usageSeconds = mapOf("group:social" to 1200L))
+        for (member in state.apps) {
+            assertEquals(20, AdvancedBlocking.effectiveDailyMinutes(state, member))
+            assertNotNull(AdvancedBlocking.decide(state, member.packageName, false, now))
+        }
+    }
+
+    @Test fun leisureExtendsActiveWindowAndChargesOnlyTimeBeforeReset() {
+        val state = BlockingState(bankedMinutes = 60, leisureUntilMillis = now + 15 * 60_000L)
+        val extended = AdvancedBlocking.spendLeisure(state, 30, now)
+        assertEquals(now + 45 * 60_000L, extended.leisureUntilMillis)
+        assertEquals(30, extended.bankedMinutes)
+        val nearReset = AdvancedBlocking.nextReset(now) - 90_000L
+        val capped = AdvancedBlocking.spendLeisure(BlockingState(bankedMinutes = 2), 15, nearReset)
+        assertEquals(AdvancedBlocking.nextReset(nearReset), capped.leisureUntilMillis)
+        assertEquals(0, capped.bankedMinutes)
+        val fullyExtended = capped.copy(bankedMinutes = 30)
+        assertEquals(fullyExtended, AdvancedBlocking.spendLeisure(fullyExtended, 15, nearReset))
+        val lastSecond = AdvancedBlocking.nextReset(now) - 1000L
+        assertEquals(1, AdvancedBlocking.leisureSpendMinutes(BlockingState(), 30, lastSecond))
+    }
 }

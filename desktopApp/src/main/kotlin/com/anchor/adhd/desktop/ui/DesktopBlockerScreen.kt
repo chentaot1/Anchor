@@ -489,6 +489,17 @@ fun DesktopBlockerScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Bottom Sub-bar: Timetable toggle + Foreground inspector
+                var showAddClassScheduleDialog by remember { mutableStateOf(false) }
+                val distinctCourseCodes = remember(classSchedules) { classSchedules.map { it.courseCode }.distinct() }
+                val syncedClassesSummary =
+                    remember(distinctCourseCodes) {
+                        if (distinctCourseCodes.isEmpty()) {
+                            "0 Classes Synced (Click to add class schedule)"
+                        } else {
+                            "${distinctCourseCodes.size} ${if (distinctCourseCodes.size == 1) "Class" else "Classes"} Synced (${distinctCourseCodes.joinToString(", ")})"
+                        }
+                    }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -511,7 +522,7 @@ fun DesktopBlockerScreen(
                             Text("📅", fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (activeClass != null) "In Session: ${activeClass?.courseCode}" else "3 Classes Synced (ENVI 101, CHIN 103, PSYC 344)",
+                                text = if (activeClass != null) "In Session: ${activeClass?.courseCode}" else syncedClassesSummary,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (activeClass != null) AnchorColors.HarborAction else Color.White.copy(alpha = 0.8f),
@@ -548,30 +559,186 @@ fun DesktopBlockerScreen(
                 // Expandable Class Timetable Cards (Only shown when drawer is open)
                 if (showClassScheduleDrawer) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        val scheduleSummary = listOf(
-                            "ENVI 101" to "Mon-Thu 11:00 AM - 12:00 PM",
-                            "CHIN 103" to "Mon-Thu 2:45 PM - 3:45 PM",
-                            "PSYC 344" to "M,W 5:30-6:30 PM | Fri 1:30-2:30 PM",
-                        )
-                        for ((code, time) in scheduleSummary) {
-                            val isThisCourseActive = activeClass?.courseCode?.equals(code, ignoreCase = true) == true
-                            Surface(
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                                color = if (isThisCourseActive) Color(0xFF4C1D1D) else Color.White.copy(alpha = 0.04f),
-                                border = BorderStroke(1.dp, if (isThisCourseActive) AnchorColors.HarborAction else Color.White.copy(alpha = 0.08f)),
+                    val dayNames = mapOf(1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun")
+                    val groupedByCourse = remember(classSchedules) { classSchedules.groupBy { it.courseCode } }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (groupedByCourse.isEmpty()) {
+                            Text(
+                                text = "No class sessions configured yet. Add your weekly lectures to enable automatic Lecture Shield.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.6f),
+                            )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
-                                    Text(code, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White)
-                                    Text(time, style = MaterialTheme.typography.bodySmall, fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f))
+                                for ((code, sessions) in groupedByCourse) {
+                                    val isThisCourseActive = activeClass?.courseCode?.equals(code, ignoreCase = true) == true
+                                    val timeSummary =
+                                        sessions
+                                            .groupBy { it.formatTimeRange() to it.sessionType }
+                                            .entries
+                                            .joinToString(" | ") { (pair, list) ->
+                                                val daysStr = list.mapNotNull { dayNames[it.dayOfWeek] }.joinToString(",")
+                                                "$daysStr ${pair.first}"
+                                            }
+                                    Surface(
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                                        color = if (isThisCourseActive) Color(0xFF4C1D1D) else Color.White.copy(alpha = 0.04f),
+                                        border = BorderStroke(1.dp, if (isThisCourseActive) AnchorColors.HarborAction else Color.White.copy(alpha = 0.08f)),
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(code, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(timeSummary, style = MaterialTheme.typography.bodySmall, fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f))
+                                            }
+                                            if (!isFocusActive && activeClass == null && !isStrictDailyLockdownActive) {
+                                                IconButton(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            sessions.forEach { s -> db.deleteClassSchedule(s.id) }
+                                                        }
+                                                    },
+                                                    modifier = Modifier.size(22.dp),
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Delete,
+                                                        contentDescription = "Remove $code schedule",
+                                                        tint = Color.White.copy(alpha = 0.4f),
+                                                        modifier = Modifier.size(13.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            OutlinedButton(
+                                onClick = { showAddClassScheduleDialog = true },
+                                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.4f)),
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = AnchorColors.HarborPrimary, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text("+ Add Class Schedule", style = MaterialTheme.typography.labelSmall, color = AnchorColors.HarborPrimary)
+                            }
+                        }
                     }
+                }
+
+                if (showAddClassScheduleDialog) {
+                    var courseCodeInput by remember { mutableStateOf("") }
+                    var courseNameInput by remember { mutableStateOf("") }
+                    var dayOfWeekInput by remember { mutableIntStateOf(1) }
+                    var startHourInput by remember { mutableStateOf("11:00") }
+                    var endHourInput by remember { mutableStateOf("12:00") }
+
+                    fun parseTimeMinutes(text: String, fallback: Int): Int {
+                        val parts = text.trim().split(":")
+                        val h = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: return fallback
+                        val m = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
+                        return h * 60 + m
+                    }
+
+                    AlertDialog(
+                        onDismissRequest = { showAddClassScheduleDialog = false },
+                        title = { Text("📅 Add Class Schedule Slot", fontWeight = FontWeight.Bold, color = Color.White) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = courseCodeInput,
+                                    onValueChange = { courseCodeInput = it },
+                                    label = { Text("Course Code (e.g. CS 101)") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                OutlinedTextField(
+                                    value = courseNameInput,
+                                    onValueChange = { courseNameInput = it },
+                                    label = { Text("Course Name") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf(1 to "M", 2 to "Tu", 3 to "W", 4 to "Th", 5 to "F").forEach { (d, label) ->
+                                        Surface(
+                                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                            color = if (dayOfWeekInput == d) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.08f),
+                                            modifier = Modifier.clickable { dayOfWeekInput = d },
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                color = if (dayOfWeekInput == d) Color(0xFF002A4A) else Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = startHourInput,
+                                        onValueChange = { startHourInput = it },
+                                        label = { Text("Start (24h HH:MM)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    OutlinedTextField(
+                                        value = endHourInput,
+                                        onValueChange = { endHourInput = it },
+                                        label = { Text("End (24h HH:MM)") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    val startMin = parseTimeMinutes(startHourInput, 660)
+                                    val endMin = parseTimeMinutes(endHourInput, 720).coerceAtLeast(startMin + 15)
+                                    if (courseCodeInput.isNotBlank()) {
+                                        scope.launch {
+                                            db.insertClassSchedule(
+                                                courseCode = courseCodeInput.trim().uppercase(),
+                                                courseName = courseNameInput.trim().ifBlank { courseCodeInput.trim().uppercase() },
+                                                sessionType = "Lecture",
+                                                dayOfWeek = dayOfWeekInput,
+                                                startMinuteOfDay = startMin,
+                                                endMinuteOfDay = endMin,
+                                            )
+                                            showAddClassScheduleDialog = false
+                                        }
+                                    }
+                                },
+                                enabled = courseCodeInput.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborPrimary, contentColor = Color(0xFF002A4A)),
+                            ) {
+                                Text("Add Class", fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        dismissButton = {
+                            OutlinedButton(onClick = { showAddClassScheduleDialog = false }) {
+                                Text("Cancel", color = Color.White)
+                            }
+                        },
+                        containerColor = AnchorColors.HarborDock,
+                    )
                 }
             }
         }
@@ -1437,12 +1604,11 @@ fun DesktopBlockerScreen(
                 onConfirmTemporary15Min = if (currentCoolingAction is PendingCoolingOffAction.ToggleRuleOff) {
                     {
                         val rule = currentCoolingAction.rule
-                        scope.launch {
+                        processMonitor.grantEmergencyPass(rule.target, 15 * 60_000L)
+                        db.scope.launch {
                             db.toggleBlockRule(rule.id)
-                            launch {
-                                delay(15 * 60_000L) // 15 minutes
-                                db.setBlockRuleEnabled(rule.target, true) // Auto re-enable!
-                            }
+                            delay(15 * 60_000L) // 15 minutes
+                            db.setBlockRuleEnabled(rule.target, true) // Auto re-enable even if user switches tabs!
                         }
                         pendingCoolingOffAction = null
                     }
@@ -1534,7 +1700,7 @@ private fun RuleItemCard(
     onLockFor24Hours: () -> Unit,
     onAttemptDelete: (isLocked: Boolean) -> Unit,
 ) {
-    val now = remember { System.currentTimeMillis() }
+    val now = remember(rule.lockUntilEpoch, rule.enabled) { System.currentTimeMillis() }
     val isLocked = rule.lockUntilEpoch > now
     val is247 = rule.scheduleMode.equals("ALWAYS_24_7", ignoreCase = true) || rule.scheduleMode.equals("ALWAYS", ignoreCase = true)
     val isSharedPool = rule.scheduleMode.equals("SHARED_POOL", ignoreCase = true) || !rule.quotaGroup.isNullOrBlank()

@@ -13,7 +13,7 @@ class DesktopSyllabusParserTest {
             """
             CS 101: Introduction to Computer Science
             Fall 2026 - Prof. Turing
-            
+
             Course Schedule and Grading Policy:
             - Midterm Exam (25%) - Oct 24
             - Term Project Final Submission (30%) - Nov 20
@@ -253,7 +253,7 @@ class DesktopSyllabusParserTest {
             """
             HIST 201: World History
             Spring 2027 - Prof. Davis
-            
+
             Deliverables:
             - Midterm Essay (20%) - 14 Feb
             - Primary Source Analysis (15%) - 2027-03-22
@@ -285,5 +285,152 @@ class DesktopSyllabusParserTest {
         assertNotNull(finalExam)
         assertEquals("5/12", finalExam!!.dueDateText)
         assertEquals(35, finalExam.weightPercent)
+    }
+
+    @Test
+    fun testSemesterYearPrioritizedOverRoomNumber() {
+        val syllabus =
+            """
+            CHEM 102: General Chemistry II
+            Office: Science Building Room 2010
+            Term: Fall 2026
+
+            Deliverables:
+            - Midterm Exam (25%) - Oct 15
+            """.trimIndent()
+
+        val parsed = DesktopSyllabusParser.parseSyllabus(syllabus)
+        assertEquals("CHEM102", parsed.courseCode)
+        val midterm = parsed.deliverables.firstOrNull()
+        assertNotNull(midterm)
+        val parsedYear =
+            java.time.Instant
+                .ofEpochMilli(midterm!!.dueDateMillis)
+                .atZone(java.time.ZoneId.systemDefault())
+                .year
+        assertEquals("Should prioritize Fall 2026 over Room 2010", 2026, parsedYear)
+    }
+
+    @Test
+    fun testSeptAbbreviationPointAndDecimalWeightsAndExplicitYears() {
+        val syllabus =
+            """
+            ENG 210: Modern Literature
+            Fall 2026
+
+            Assignments:
+            - Reading Response 1 (15 pts) - Sept. 14
+            - Short Essay (12.5%) - 28 Sept
+            - Midterm Paper (20 points) - 10/15/2027
+            - Final Presentation (25%) - 12-10-2027
+            """.trimIndent()
+
+        val parsed = DesktopSyllabusParser.parseSyllabus(syllabus)
+        assertEquals("ENG210", parsed.courseCode)
+        assertEquals(4, parsed.deliverables.size)
+
+        val resp1 = parsed.deliverables.find { it.title.contains("Reading Response 1", ignoreCase = true) }
+        assertNotNull(resp1)
+        assertEquals("Sep 14", resp1!!.dueDateText)
+        assertEquals(15, resp1.weightPercent)
+
+        val essay = parsed.deliverables.find { it.title.contains("Short Essay", ignoreCase = true) }
+        assertNotNull(essay)
+        assertEquals("Sep 28", essay!!.dueDateText)
+        assertEquals(13, essay.weightPercent)
+
+        val midterm = parsed.deliverables.find { it.title.contains("Midterm Paper", ignoreCase = true) }
+        assertNotNull(midterm)
+        assertEquals("10/15", midterm!!.dueDateText)
+        assertEquals(20, midterm.weightPercent)
+        val midtermYear =
+            java.time.Instant
+                .ofEpochMilli(midterm.dueDateMillis)
+                .atZone(java.time.ZoneId.systemDefault())
+                .year
+        assertEquals("Should honor explicit year 2027 in 10/15/2027", 2027, midtermYear)
+
+        val finalPres = parsed.deliverables.find { it.title.contains("Final Presentation", ignoreCase = true) }
+        assertNotNull(finalPres)
+        assertEquals("12/10", finalPres!!.dueDateText)
+        val finalYear =
+            java.time.Instant
+                .ofEpochMilli(finalPres.dueDateMillis)
+                .atZone(java.time.ZoneId.systemDefault())
+                .year
+        assertEquals("Should honor explicit year 2027 in 12-10-2027", 2027, finalYear)
+    }
+
+    @Test
+    fun testHyphenatedPageChapterAndMinuteRangesAreNotParsedAsDates() {
+        val syllabus =
+            """
+            SOC 105: Intro to Sociology
+            Fall 2026
+
+            Deliverables:
+            - Write a 5-7 page essay (20%) - Oct 20
+            - Deliver a 10-12 minute presentation (15%) - Nov 12
+            - Read Chapters 3-4 before discussion
+            """.trimIndent()
+
+        val parsed = DesktopSyllabusParser.parseSyllabus(syllabus)
+        assertEquals("SOC105", parsed.courseCode)
+
+        val essay = parsed.deliverables.find { it.title.contains("essay", ignoreCase = true) }
+        assertNotNull(essay)
+        assertEquals("Should parse Oct 20 rather than 5-7", "Oct 20", essay!!.dueDateText)
+        assertTrue("Title should keep 5-7 page range", essay.title.contains("5-7 page", ignoreCase = true))
+
+        val presentation = parsed.deliverables.find { it.title.contains("presentation", ignoreCase = true) }
+        assertNotNull(presentation)
+        assertEquals("Should parse Nov 12 rather than 10-12", "Nov 12", presentation!!.dueDateText)
+        assertTrue("Title should keep 10-12 minute range", presentation.title.contains("10-12 minute", ignoreCase = true))
+
+        val chaptersFalsePositive = parsed.deliverables.find { it.dueDateText == "3/4" }
+        assertEquals("Read Chapters 3-4 without a date/weight should not be parsed as due on 3/4", null, chaptersFalsePositive)
+    }
+
+    @Test
+    fun explicitYearsOverrideSemesterAndDecimalCategoryWeightsAreRounded() {
+        val parsed = DesktopSyllabusParser.parseSyllabus("""
+            ENG 210 Literature
+            Fall 2025
+            Exam 1: 12.5%
+            Assignment schedule
+            Date | Assignment | Weight
+            Sept. 14, 2026 | Quiz 1 | 15 pts
+            Oct 15, 2026 | Essay | 20 points
+            2026-10-20 | Project | 12.5%
+            10-25-2026 | Presentation | 25%
+            11/15/2026 | Final Exam | 30%
+        """.trimIndent())
+        assertEquals(5, parsed.deliverables.size)
+        parsed.deliverables.forEach { item ->
+            assertEquals(2026, java.time.Instant.ofEpochMilli(item.dueDateMillis).atZone(java.time.ZoneId.systemDefault()).year)
+        }
+        assertEquals(13, parsed.deliverables.first { it.title.contains("Project") }.weightPercent)
+        val category = DesktopSyllabusParser.parseSyllabus("""
+            ENG 210 Literature
+            Fall 2026
+            Exam 1: 12.5%
+            Course Schedule
+            Sept 14
+            Exam 1
+        """.trimIndent())
+        assertEquals(13, category.deliverables.first { it.title.contains("Exam 1") }.weightPercent)
+        assertEquals("Essay", DesktopSyllabusParser.cleanDeliverableTitle("Essay 12.5%"))
+        val ranges = DesktopSyllabusParser.parseSyllabus("""
+            ENG 210 Literature
+            Fall 2026
+            Essay 5-7 page essay 20%
+            Presentation 10-12 minute presentation 15%
+            Read Chapters 3-4 10%
+            Quiz 1 due 10-15
+        """.trimIndent())
+        assertEquals("10/15", ranges.deliverables.first { it.title.contains("Quiz 1") }.dueDateText)
+        ranges.deliverables.filter { !it.title.contains("Quiz 1") }.forEach { item ->
+            assertEquals(0L, item.dueDateMillis)
+        }
     }
 }

@@ -48,7 +48,7 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe,
             )
             packageName = "Anchor"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.4"
             windows {
                 menu = true
                 shortcut = true

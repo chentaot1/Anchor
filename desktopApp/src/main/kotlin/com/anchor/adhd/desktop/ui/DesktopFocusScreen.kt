@@ -84,6 +84,12 @@ fun DesktopFocusScreen(
     onResetTimer: () -> Unit,
     onOpenDurationPicker: () -> Unit,
     onOpenAirlock: () -> Unit,
+    isWorkPhase: Boolean = true,
+    showSessionCompleteBanner: Boolean = false,
+    breakDurationMinutes: Int = 5,
+    onMarkTaskCompleted: () -> Unit = {},
+    onStartRestorativeBreak: () -> Unit = {},
+    onDismissSessionCompleteBanner: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val totalSeconds = (durationMinutes * 60).coerceAtLeast(1)
@@ -156,6 +162,76 @@ fun DesktopFocusScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
+                // Session Complete & Restorative Break Celebration Banner
+                if (showSessionCompleteBanner) {
+                    Surface(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                        shape = RoundedCornerShape(AnchorSpacing.radiusCard),
+                        color = AnchorColors.HarborGrowth.copy(alpha = 0.22f),
+                        border = BorderStroke(1.dp, AnchorColors.HarborFoliage.copy(alpha = 0.55f)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "⚓ Anchor Session Complete! Harbor Vitality Earned",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = AnchorColors.HarborFoliage,
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (currentTask != null) {
+                                    Button(
+                                        onClick = onMarkTaskCompleted,
+                                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                        colors =
+                                            ButtonDefaults.buttonColors(
+                                                containerColor = AnchorColors.HarborFoliage,
+                                                contentColor = Color(0xFF062115),
+                                            ),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Mark Task Completed", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                OutlinedButton(
+                                    onClick = onStartRestorativeBreak,
+                                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                    border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.6f)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AnchorColors.HarborPrimary),
+                                ) {
+                                    Text(
+                                        text = "Start ${breakDurationMinutes}m Restorative Break",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = onDismissSessionCompleteBanner,
+                                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White.copy(alpha = 0.75f)),
+                                ) {
+                                    Text("Dismiss", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Shield Status & Fullscreen Immersion Row
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -183,7 +259,14 @@ fun DesktopFocusScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isFocusActive) "Distraction Shield Active" else "Shield on Standby",
+                                text =
+                                    if (!isWorkPhase && isFocusActive) {
+                                        "Restorative Break Active"
+                                    } else if (isFocusActive) {
+                                        "Distraction Shield Active"
+                                    } else {
+                                        "Shield on Standby"
+                                    },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isFocusActive) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.8f),
@@ -233,9 +316,16 @@ fun DesktopFocusScreen(
                     FocusCanvas(
                         progress = progress,
                         species = PlantSpecies.OAK,
-                        isWorkPhase = isFocusActive,
+                        isWorkPhase = isFocusActive && isWorkPhase,
                         remainingSeconds = remainingSeconds.toLong(),
-                        taskTitle = if (isFocusActive) (currentTask?.title ?: "Deep Work") else "Ready to Anchor",
+                        taskTitle =
+                            if (!isWorkPhase && isFocusActive) {
+                                "Restorative Break"
+                            } else if (isFocusActive) {
+                                (currentTask?.title ?: "Deep Work")
+                            } else {
+                                "Ready to Anchor"
+                            },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

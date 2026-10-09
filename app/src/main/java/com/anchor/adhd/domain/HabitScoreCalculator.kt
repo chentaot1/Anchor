@@ -36,7 +36,9 @@ object HabitScoreCalculator {
         today: LocalDate,
         zone: ZoneId = ZoneId.systemDefault()
     ): HabitScoreResult {
-        val windowStart = today.minusDays(SCORE_WINDOW_DAYS.toLong() - 1)
+        val rawStart = today.minusDays(SCORE_WINDOW_DAYS.toLong() - 1)
+        val habitCreatedDate = java.time.Instant.ofEpochMilli(habit.createdAtMillis).atZone(zone).toLocalDate()
+        val windowStart = maxOf(rawStart, habitCreatedDate)
         val expected = expectedSlots(habit, windowStart, today)
         val completed = countCompleted(completions, windowStart, today, zone)
         val missed = (expected - completed).coerceAtLeast(0)
@@ -55,8 +57,9 @@ object HabitScoreCalculator {
         zone: ZoneId = ZoneId.systemDefault()
     ): HabitWeekProgress {
         val weekStart = today.with(java.time.DayOfWeek.MONDAY)
-        val expected = expectedSlots(habit, weekStart, today)
-        val completed = countCompleted(completions, weekStart, today, zone)
+        val weekEnd = weekStart.plusDays(6)
+        val expected = expectedSlots(habit, weekStart, weekEnd)
+        val completed = countCompleted(completions, weekStart, weekEnd, zone)
         return HabitWeekProgress(completed, expected)
     }
 
@@ -67,6 +70,7 @@ object HabitScoreCalculator {
         zone: ZoneId = ZoneId.systemDefault()
     ): List<HabitHeatmapDay> {
         val start = today.minusWeeks(HEATMAP_WEEKS.toLong() - 1).with(java.time.DayOfWeek.MONDAY)
+        val habitCreatedDate = java.time.Instant.ofEpochMilli(habit.createdAtMillis).atZone(zone).toLocalDate()
         val completionMap = completions
             .filter { it.completed }
             .associateBy { it.dayMillis }
@@ -75,7 +79,7 @@ object HabitScoreCalculator {
         val end = today.plusDays(1)
         while (date.isBefore(end)) {
             val dayMillis = date.atStartOfDay(zone).toInstant().toEpochMilli()
-            val scheduled = isScheduledOn(habit, date)
+            val scheduled = !date.isBefore(habitCreatedDate) && isScheduledOn(habit, date)
             val completed = completionMap[dayMillis]?.completed == true
             days += HabitHeatmapDay(dayMillis, scheduled, completed, graceDay = false)
             date = date.plusDays(1)

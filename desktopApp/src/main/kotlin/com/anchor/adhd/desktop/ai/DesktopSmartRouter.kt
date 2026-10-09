@@ -1,6 +1,7 @@
 package com.anchor.adhd.desktop.ai
 
 import com.anchor.adhd.domain.AirlockHeuristic
+import kotlin.math.roundToInt
 
 /**
  * Result of the Universal Smart AI Router.
@@ -105,15 +106,35 @@ object DesktopSmartRouter {
 
     private val BLOCKER_REGEX =
         Regex(
-            """\b(block|unblock|shield|ban|restrict|allow)\s+([a-zA-Z0-9_\-\.]+)\b""",
+            """^\s*(?:please\s+)?(block|unblock|shield|ban|restrict|allow)\s+(?:https?://)?(?:www\.)?([a-zA-Z0-9_\-\.]+)(?:[/\?#]\S*)?\s*$""",
             RegexOption.IGNORE_CASE,
+        )
+
+    private val BLOCKER_STOP_WORDS =
+        setOf(
+            "out",
+            "extra",
+            "time",
+            "for",
+            "the",
+            "all",
+            "in",
+            "on",
+            "to",
+            "my",
+            "a",
+            "an",
+            "some",
+            "more",
+            "up",
+            "off",
         )
 
     /**
      * Robust, flexible timer intent parser covering all common ADHD timer phrasings:
      * - "timer 25", "timer 15m", "25m timer", "25 min timer", "set timer 30m"
      * - "25m", "15m", "50m", "3m", "5m", "10m", "45m", "60m"
-     * - "25 min", "15 minutes", "1 hour", "1 hr", "2 hours"
+     * - "25 min", "15 minutes", "1 hour", "1 hr", "2 hours", "1.5 hours"
      * - "start timer", "timer", "pomodoro", "start a timer", "focus timer"
      * - "spark", "3m spark"
      * - "write essay for 25m", "study 45 mins", "clean room 15m"
@@ -152,17 +173,18 @@ object DesktopSmartRouter {
             )
         }
 
-        // 3. Hour patterns: "1 hour", "1h", "2 hours", "1 hr timer"
-        val hourRegex = Regex("""\b(?:(\d{1,2})\s*(?:h|hr|hrs|hour|hours))\b""", RegexOption.IGNORE_CASE)
+        // 3. Hour patterns: "1 hour", "1h", "2 hours", "1.5 hours", "1 hr timer"
+        val hourRegex = Regex("""\b(\d{1,2}(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)\b""", RegexOption.IGNORE_CASE)
         val hourMatch = hourRegex.find(trimmed)
-        if (hourMatch != null && (lower.contains("timer") || lower.contains("focus") || trimmed.length <= 15)) {
-            val hours = hourMatch.groupValues[1].toIntOrNull() ?: 1
-            val mins = (hours * 60).coerceIn(1, 180)
+        if (hourMatch != null && (lower.contains("timer") || lower.contains("focus") || trimmed.length <= 18)) {
+            val hours = hourMatch.groupValues[1].toDoubleOrNull() ?: 1.0
+            val mins = (hours * 60.0).roundToInt().coerceIn(1, 180)
+            val hourDisplay = hourMatch.groupValues[1]
             return SmartRouteResult.TimerAction(
                 durationMinutes = mins,
                 taskTitle = "Deep Focus",
-                headline = "⏱ Starting $mins-Minute Focus ($hours hr)",
-                detail = "Setting anchor timer to $hours hour${if (hours > 1) "s" else ""}.",
+                headline = "⏱ Starting $mins-Minute Focus ($hourDisplay hr)",
+                detail = "Setting anchor timer to $mins minutes.",
             )
         }
 
@@ -252,10 +274,13 @@ object DesktopSmartRouter {
             val mins = taskTimerMatch.groupValues[2].toIntOrNull()?.coerceIn(1, 180) ?: 25
             val cleanTask =
                 rawTask
-                    .removePrefix("timer")
-                    .removePrefix("focus")
-                    .removePrefix("start")
-                    .trim()
+                    .replace(
+                        Regex(
+                            """^\s*(?:(?:start|set|run|begin)\s+)?(?:(?:a|my)\s+)?(?:(?:focus|study|timer|pomodoro|session)\s+)?(?:(?:for|on|to)\s+)?""",
+                            RegexOption.IGNORE_CASE,
+                        ),
+                        "",
+                    ).trim()
             if (cleanTask.isNotBlank() && cleanTask.length >= 3) {
                 return SmartRouteResult.TimerAction(
                     durationMinutes = mins,
@@ -294,40 +319,49 @@ object DesktopSmartRouter {
         }
 
         // 2. Blocker Commands (e.g. "block discord", "unblock steam", "block youtube")
-        val blockerMatch = BLOCKER_REGEX.find(trimmed)
+        val blockerMatch = BLOCKER_REGEX.matchEntire(trimmed)
         if (blockerMatch != null) {
             val action = blockerMatch.groupValues[1].lowercase()
-            val target = blockerMatch.groupValues[2]
-            val isBlock = action == "block" || action == "shield" || action == "ban" || action == "restrict"
-            return SmartRouteResult.BlockerAction(
-                target = target,
-                enable = isBlock,
-                headline = if (isBlock) "🛡 Distraction Shield Activated" else "🛡 Shield Rule Updated",
-                detail = if (isBlock) "Blocking $target across your session." else "Removed $target from blocklist.",
-            )
+            val target = blockerMatch.groupValues[2].trimEnd('.')
+            if (target.lowercase() !in BLOCKER_STOP_WORDS && target.length >= 2) {
+                val isBlock = action == "block" || action == "shield" || action == "ban" || action == "restrict"
+                return SmartRouteResult.BlockerAction(
+                    target = target,
+                    enable = isBlock,
+                    headline = if (isBlock) "🛡 Distraction Shield Activated" else "🛡 Shield Rule Updated",
+                    detail = if (isBlock) "Blocking $target across your session." else "Removed $target from blocklist.",
+                )
+            }
         }
 
         // 3. Clean Slate & Reset Commands (e.g. "reset data", "clear tasks", "fresh start", "reset streak")
         val isReset =
-            lower.contains("reset data") ||
-                lower == "reset" ||
-                lower.contains("clear task") ||
-                lower.contains("clear backlog") ||
-                lower.contains("clean slate") ||
-                lower.contains("fresh start") ||
-                lower.contains("reset streak") ||
-                lower.contains("factory reset") ||
-                lower.contains("wipe data")
+            lower == "reset" ||
+                lower == "reset data" ||
+                lower == "clear tasks" ||
+                lower == "clear task" ||
+                lower == "clear all tasks" ||
+                lower == "clear backlog" ||
+                lower == "clean slate" ||
+                lower == "fresh start" ||
+                lower == "reset streak" ||
+                lower == "reset history" ||
+                lower == "factory reset" ||
+                lower == "wipe data" ||
+                lower == "wipe everything" ||
+                lower == "reset all data" ||
+                lower == "reset database" ||
+                lower == "reset app"
         if (isReset) {
             val resetType =
                 when {
                     lower.contains("streak") || lower.contains("history") -> ResetType.RESET_STREAK
-                    lower.contains(
-                        "factory",
-                    ) ||
-                        lower.contains("all") ||
-                        lower.contains("wipe") ||
-                        lower.contains("database") -> ResetType.FACTORY_RESET
+                    lower.contains("factory") ||
+                        lower == "wipe data" ||
+                        lower == "wipe everything" ||
+                        lower == "reset all data" ||
+                        lower == "reset database" ||
+                        lower == "reset app" -> ResetType.FACTORY_RESET
                     else -> ResetType.CLEAR_TASKS
                 }
             val (hl, dt) =
@@ -383,7 +417,7 @@ object DesktopSmartRouter {
             )
         }
 
-        // 4. Multi-Task Brain Dump (multiple commas, bullet points, or 'and then')
+        // 6. Multi-Task Brain Dump (multiple commas, bullet points, or 'and then')
         val hasMultipleTasks =
             trimmed.contains("\n") ||
                 trimmed.split(",").size >= 3 ||
@@ -401,7 +435,20 @@ object DesktopSmartRouter {
             )
         }
 
-        // 5. Actionable Task Breakdown (Project or complex task)
+        // 7. Quick Note / Impulse Capture (e.g., "note: buy milk", "idea: ...", "memo: ...", "thought: ...")
+        val quickNoteMatch =
+            Regex("""^(?:note|idea|memo|thought|capture)\s*:\s*(.+)$""", RegexOption.IGNORE_CASE)
+                .matchEntire(trimmed)
+        if (quickNoteMatch != null) {
+            val noteBody = quickNoteMatch.groupValues[1].trim()
+            if (noteBody.isNotBlank()) {
+                return SmartRouteResult.QuickNote(
+                    noteTitle = noteBody.replaceFirstChar { it.uppercase() },
+                )
+            }
+        }
+
+        // 8. Actionable Task Breakdown (Project or complex task)
         // If it starts with action verbs or is a clear task title
         return taskBreakdown(trimmed)
     }

@@ -59,6 +59,7 @@ class DesktopBlockerIdentityTest {
     @Test
     fun scopeDetection_usesExecutableToDistinguishAppsFromWebsites() {
         monitor.isFocusActive = true
+        monitor.consecutiveOutOfScopeSeconds = 60
         val appDetection = monitor.evaluateWindow(window("ChatGPT.exe", "ChatGPT"))
         assertNotNull(appDetection)
         assertFalse(appDetection!!.isWebDistraction)

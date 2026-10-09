@@ -1,14 +1,20 @@
 package com.anchor.adhd.ai
 
 import com.anchor.adhd.data.model.AiJobType
+import com.anchor.adhd.data.model.BreakdownGranularity
+import com.anchor.adhd.domain.BreakdownClamp
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 object StubAiResponses {
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun generate(type: AiJobType, userPrompt: String): String = when (type) {
-        AiJobType.BREAKDOWN -> breakdown(userPrompt)
+    fun generate(
+        type: AiJobType,
+        userPrompt: String,
+        granularity: BreakdownGranularity = BreakdownGranularity.NORMAL
+    ): String = when (type) {
+        AiJobType.BREAKDOWN -> breakdown(userPrompt, granularity)
         AiJobType.BRAINDUMP -> brainDump(userPrompt)
         AiJobType.TRIAGE -> triage(userPrompt)
         AiJobType.REPLAN -> replan(userPrompt)
@@ -16,84 +22,23 @@ object StubAiResponses {
         AiJobType.IF_THEN -> ifThen(userPrompt)
     }
 
-    private fun breakdown(prompt: String): String {
-        val title = prompt.lines().firstOrNull()?.trim()?.take(80) ?: "task"
-        val lower = prompt.lowercase()
+    fun breakdown(
+        prompt: String,
+        granularity: BreakdownGranularity = BreakdownGranularity.NORMAL
+    ): String {
+        val rawFirst = prompt.lines().firstOrNull()?.trim() ?: "task"
+        val title = rawFirst
+            .removePrefix("Task:")
+            .removePrefix("Break down this task:")
+            .substringBefore(". Notes:")
+            .trim()
+            .take(80)
+            .ifBlank { "task" }
 
-        val isWriting = listOf("write", "essay", "report", "draft", "paper", "article", "thesis", "blog", "doc", "paragraph", "script").any { lower.contains(it) }
-        val isCoding = listOf("code", "bug", "debug", "fix", "feature", "test", "compile", "refactor", "api", "git", "deploy", "kotlin", "java", "python", "sql", "android", "app").any { lower.contains(it) }
-        val isChore = listOf("clean", "room", "dishes", "laundry", "trash", "tidy", "organize", "vacuum", "mop", "sweep", "kitchen", "bathroom", "bed").any { lower.contains(it) }
-        val isStudy = listOf("study", "read", "exam", "chapter", "lecture", "homework", "flashcard", "quiz", "math", "revision", "class", "notes").any { lower.contains(it) }
-        val isAdmin = listOf("email", "mail", "bill", "pay", "call", "tax", "form", "invoice", "application", "schedule", "dentist", "doctor", "bank", "paperwork").any { lower.contains(it) }
-
-        val (steps, minutes, nextAction, ifThen) = when {
-            isWriting -> Quadruple(
-                listOf(
-                    "Open blank document & type title with 3 rough bullets",
-                    "Write first 100 messy, unedited words without backspacing",
-                    "Draft main supporting arguments with rough citations",
-                    "Proofread and read aloud for rhythm"
-                ),
-                listOf(3, 10, 20, 10),
-                "Open blank document & type title with 3 rough bullets",
-                "If I open the document, then I type the title and 3 bullets before touching formatting."
-            )
-            isCoding -> Quadruple(
-                listOf(
-                    "Open IDE & write 1 minimal failing test or reproduction log",
-                    "Inspect state at breakpoint or print line of failure",
-                    "Write minimal 10-line fix and verify test passes",
-                    "Run full test suite and clean up debug logs"
-                ),
-                listOf(5, 5, 15, 10),
-                "Open IDE & write 1 minimal failing test or reproduction log",
-                "If I open the IDE, then I write the reproduce command before looking at the codebase."
-            )
-            isChore -> Quadruple(
-                listOf(
-                    "Set a 5-minute timer & bag all loose floor trash",
-                    "Clear all dishes and cups into the sink",
-                    "Wipe down a single flat workspace surface",
-                    "Take trash bag out to bin"
-                ),
-                listOf(5, 5, 10, 5),
-                "Set a 5-minute timer & bag all loose floor trash",
-                "If I stand up, then I immediately pick up one piece of trash."
-            )
-            isStudy -> Quadruple(
-                listOf(
-                    "Open material to chapter heading & skim bold summary terms",
-                    "Read key section and jot 3 core takeaway notes",
-                    "Attempt 2 practice questions without notes",
-                    "Self-check answers and bookmark missed concepts"
-                ),
-                listOf(5, 15, 15, 10),
-                "Open material to chapter heading & skim bold summary terms",
-                "If I sit at my desk, then I open directly to the chapter heading."
-            )
-            isAdmin -> Quadruple(
-                listOf(
-                    "Open browser/client and navigate directly to required form",
-                    "Fill out required personal info and top section",
-                    "Attach necessary documents or draft 2-sentence response",
-                    "Review fields and submit or hit send"
-                ),
-                listOf(3, 10, 10, 5),
-                "Open browser/client and navigate directly to required form",
-                "If I open the browser, then I go straight to the form without opening new tabs."
-            )
-            else -> Quadruple(
-                listOf(
-                    "Set up workspace and complete the 2-minute physical start: $title",
-                    "Work for 10 focused minutes without tab switching",
-                    "Review progress and finish primary chunk",
-                    "Document status and note clear next checkpoint"
-                ),
-                listOf(2, 10, 20, 5),
-                "Set up workspace and complete the 2-minute physical start: $title",
-                "If I feel resistance, then I only commit to the first 2-minute step."
-            )
-        }
+        val steps = BreakdownClamp.generateDraftSteps(title, granularity)
+        val minutes = steps.mapIndexed { idx, _ -> if (idx == 0) 2 else 10 }
+        val nextAction = steps.first()
+        val ifThen = "If I feel resistance, then I only commit to the first 2-minute step: $nextAction."
 
         return json.encodeToString(
             AiBreakdownResult(

@@ -78,16 +78,16 @@ object BlockRuleEvaluator {
     }
 
     fun isInWindow(now: LocalTime, rule: BlockRuleEntity): Boolean {
-        val startH = rule.startHour ?: return false
-        val startM = rule.startMinute ?: 0
-        val endH = rule.endHour ?: return false
-        val endM = rule.endMinute ?: 0
+        val startH = (rule.startHour ?: return false).coerceIn(0, 23)
+        val startM = (rule.startMinute ?: 0).coerceIn(0, 59)
+        val endH = (rule.endHour ?: return false).coerceIn(0, 23)
+        val endM = (rule.endMinute ?: 0).coerceIn(0, 59)
         val start = LocalTime.of(startH, startM)
         val end = LocalTime.of(endH, endM)
-        return if (end.isAfter(start) || end == start) {
-            !now.isBefore(start) && now.isBefore(end)
-        } else {
-            !now.isBefore(start) || now.isBefore(end)
+        return when {
+            start == end -> true
+            end.isAfter(start) -> !now.isBefore(start) && now.isBefore(end)
+            else -> !now.isBefore(start) || now.isBefore(end)
         }
     }
 

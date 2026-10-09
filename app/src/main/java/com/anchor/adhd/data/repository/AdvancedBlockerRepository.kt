@@ -34,10 +34,13 @@ class AdvancedBlockerRepository(context: Context) {
     suspend fun saveApp(app: AppProtection) = update { state, now ->
         val existing = state.apps.find { it.packageName == app.packageName }
         if (focusActive() || state.lockdownUntilMillis > now || (existing?.lockedUntilMillis ?: 0) > now ||
-            app.packageName in WhitelistBasics.essentialPackages) state else state.copy(
-            apps = state.apps.filterNot { it.packageName == app.packageName } +
-                app.copy(dailyMinutes = app.dailyMinutes.coerceIn(0, 1440), quotaGroup = app.quotaGroup.trim())
-        )
+            app.packageName in WhitelistBasics.essentialPackages) state else {
+            val normalized = app.copy(dailyMinutes = app.dailyMinutes.coerceIn(0, 1440), quotaGroup = app.quotaGroup.trim())
+            val synced = AdvancedBlocking.syncQuotaGroupAllowances(state.apps, normalized)
+            if (state.apps.any { member -> member.lockedUntilMillis > now &&
+                    synced.find { it.packageName == member.packageName } != member }) state
+            else state.copy(apps = synced)
+        }
     }
 
     suspend fun removeApp(pkg: String) = update { state, now ->
@@ -74,15 +77,12 @@ class AdvancedBlockerRepository(context: Context) {
         if (AdvancedBlocking.logicalDay(earnedAt) == AdvancedBlocking.logicalDay(now)) AdvancedBlocking.credit(state, id, minutes) else state
     }
 
-    suspend fun spendLeisure(minutes: Int, focus: Boolean): Boolean {
+    suspend fun spendLeisure(minutes: Int, focus: Boolean = false): Boolean {
         var spent = false
         update { state, now ->
-            if (AdvancedBlocking.leisureRestriction(state, focus || focusActive(), now) != null || state.leisureUntilMillis > now ||
-                minutes !in listOf(15, 30) || state.bankedMinutes < minutes) state else {
-                spent = true
-                state.copy(bankedMinutes = state.bankedMinutes - minutes,
-                    leisureUntilMillis = minOf(now + minutes * 60_000L, AdvancedBlocking.nextReset(now)))
-            }
+            val next = AdvancedBlocking.spendLeisure(state, minutes, now, focus || focusActive())
+            spent = next != state
+            next
         }
         return spent
     }

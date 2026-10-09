@@ -50,7 +50,9 @@ data class BlockerDetection(
  */
 class DesktopProcessMonitor(
     private val scope: CoroutineScope,
-    private val onBlockTriggered: (BlockerDetection) -> Unit,
+    private var database: com.anchor.adhd.desktop.db.AnchorDesktopDatabase? = null,
+    initialNow: LocalDateTime = LocalDateTime.now(),
+    private val onBlockTriggered: (BlockerDetection) -> Unit = {},
 ) {
     private var monitorJob: Job? = null
 
@@ -111,6 +113,8 @@ class DesktopProcessMonitor(
     val dailyUsageMap = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     var onUsageRecorded: ((target: String, seconds: Int) -> Unit)? = null
+    var onQuickPassUsed: ((quickPassesUsed: Int) -> Unit)? = null
+    var onDeflectionRecorded: ((deflectedCount: Int) -> Unit)? = null
 
     // Quick utility pass (e.g. 2-minute Discord file drop, max 5/day)
     private var quickPassTarget: String? = null
@@ -124,17 +128,35 @@ class DesktopProcessMonitor(
     }
 
     @Volatile
-    var currentLogicalDate: LocalDate = getLogicalDate()
+    var currentLogicalDate: LocalDate = getLogicalDate(initialNow)
 
     var onDailyRollover: (() -> Unit)? = null
+
+    fun attachDatabase(
+        db: com.anchor.adhd.desktop.db.AnchorDesktopDatabase,
+        now: LocalDateTime = LocalDateTime.now(),
+    ) {
+        database = db
+        syncProtectionStatsFromDatabase(now)
+    }
+
+    fun syncProtectionStatsFromDatabase(now: LocalDateTime = LocalDateTime.now()) {
+        currentLogicalDate = getLogicalDate(now)
+        val stats = database?.getProtectionStatsSync(currentLogicalDate) ?: return
+        quickPassesUsedToday = stats.quickPassesUsed
+        _deflectedCount.value = stats.deflectedCount
+    }
 
     fun checkDailyRollover(now: LocalDateTime = LocalDateTime.now()): Boolean {
         val logicalDate = getLogicalDate(now)
         if (logicalDate != currentLogicalDate) {
             currentLogicalDate = logicalDate
             quickPassesUsedToday = 0
+            _deflectedCount.value = 0
+            database?.persistQuickPassesUsedSync(0, currentLogicalDate)
+            database?.persistDeflectedCountSync(0, currentLogicalDate)
             dailyUsageMap.clear()
-            updateRules(ruleDefinitions)
+            updateRules(ruleDefinitions, now)
             onDailyRollover?.invoke()
             return true
         }
@@ -183,13 +205,22 @@ class DesktopProcessMonitor(
     fun grantQuickPass(
         target: String,
         durationMillis: Long = 120_000L,
+        now: LocalDateTime = LocalDateTime.now(),
     ): Boolean {
+        checkDailyRollover(now)
         if (quickPassesUsedToday >= maxQuickPassesPerDay) return false
         quickPassTarget = target.lowercase().trim()
         quickPassExpiryMillis = System.currentTimeMillis() + durationMillis
         quickPassesUsedToday += 1
+        database?.persistQuickPassesUsedSync(quickPassesUsedToday, currentLogicalDate)
+        onQuickPassUsed?.invoke(quickPassesUsedToday)
         clearDetection()
         return true
+    }
+
+    fun getQuickPassesUsedToday(now: LocalDateTime = LocalDateTime.now()): Int {
+        checkDailyRollover(now)
+        return quickPassesUsedToday
     }
 
     fun isQuickPassActive(target: String): Boolean {
@@ -267,8 +298,18 @@ class DesktopProcessMonitor(
     private val _deflectedCount = MutableStateFlow(0)
     val deflectedCount = _deflectedCount.asStateFlow()
 
-    fun recordDeflection() {
-        _deflectedCount.value += 1
+    init {
+        if (database != null) {
+            syncProtectionStatsFromDatabase(initialNow)
+        }
+    }
+
+    fun recordDeflection(now: LocalDateTime = LocalDateTime.now()) {
+        checkDailyRollover(now)
+        val updated = _deflectedCount.value + 1
+        _deflectedCount.value = updated
+        database?.persistDeflectedCountSync(updated, currentLogicalDate)
+        onDeflectionRecorded?.invoke(updated)
     }
 
     fun start() {
@@ -277,6 +318,9 @@ class DesktopProcessMonitor(
             scope.launch(Dispatchers.IO) {
                 var tick = 0
                 while (isActive) {
+                    if (tick % 4 == 0 && ruleDefinitions.isNotEmpty()) {
+                        updateRules(ruleDefinitions)
+                    }
                     if (isFocusActive || isStandingShieldActive || isScopeSentinelEnabled || blockedExecutables.isNotEmpty() || blockedTitleKeywords.isNotEmpty() || classSchedules.isNotEmpty()) {
                         evaluateForeground()
                     }
@@ -426,11 +470,11 @@ class DesktopProcessMonitor(
     var lastAllowedWorkHwnd: HWND? = null
         private set
 
-    fun updateRules(rules: List<com.anchor.adhd.desktop.db.DesktopBlockRule>) {
+    fun updateRules(rules: List<com.anchor.adhd.desktop.db.DesktopBlockRule>, now: LocalDateTime = LocalDateTime.now()) {
         ruleDefinitions = rules
-        val activeClass = getCurrentlyActiveClass()
+        val activeClass = getCurrentlyActiveClass(now)
         _activeClassSchedule.value = activeClass
-        val isCurfew = isNightCurfewActive()
+        val isCurfew = isNightCurfewActive(now.toLocalTime())
 
         val activeRules =
             rules.filter { rule ->
@@ -564,7 +608,10 @@ class DesktopProcessMonitor(
     }
 
     // Keep rule evaluation independent of native window operations.
-    internal fun evaluateWindow(windowInfo: ActiveWindowInfo): BlockerDetection? {
+    internal fun evaluateWindow(
+        windowInfo: ActiveWindowInfo,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): BlockerDetection? {
 
         // Skip Anchor itself
         val exeLower = windowInfo.executableName.lowercase()
@@ -572,9 +619,12 @@ class DesktopProcessMonitor(
             return null
         }
 
-        val activeClass = getCurrentlyActiveClass()
+        val activeClass = getCurrentlyActiveClass(now)
         _activeClassSchedule.value = activeClass
-        val isCurfew = isNightCurfewActive()
+        val isCurfew = isNightCurfewActive(now.toLocalTime())
+
+        // Recompute app protection at this instant, including curfew/class transitions.
+        if (ruleDefinitions.isNotEmpty()) updateRules(ruleDefinitions, now)
 
         // Check 1: Executable match (e.g. Discord.exe, Steam.exe, Cursor.exe)
         val exeClean = exeLower.removeSuffix(".exe")
@@ -594,8 +644,8 @@ class DesktopProcessMonitor(
 
                 val reasonText = when {
                     activeClass != null -> "Lecture Shield Active (${activeClass.courseCode} — ${activeClass.sessionType})"
-                    isCurfew && (matchedRule?.scheduleMode.equals("LEISURE_QUOTA", ignoreCase = true) || (matchedRule?.dailyAllowanceMinutes ?: -1) >= 0) ->
-                        "Night Curfew Active (10:30 PM - 7:00 AM)"
+                    isCurfew ->
+                        "Night Curfew Active (1:00 AM - 7:00 AM)"
                     isQuotaExhausted ->
                         "Daily Allowance Reached (${matchedRule?.dailyAllowanceMinutes}m Used Today)"
                     isFocusActive ->
@@ -663,8 +713,8 @@ class DesktopProcessMonitor(
                 val reasonText =
                     when {
                         activeClass != null -> "Lecture Shield Active (${activeClass.courseCode} — ${activeClass.sessionType})"
-                        isCurfew && (rule.scheduleMode.equals("LEISURE_QUOTA", ignoreCase = true) || rule.dailyAllowanceMinutes >= 0) ->
-                            "Night Curfew Active (10:30 PM - 7:00 AM)"
+                        isCurfew ->
+                            "Night Curfew Active (1:00 AM - 7:00 AM)"
                         isExhausted ->
                             "Daily Allowance Reached (${rule.dailyAllowanceMinutes}m Used Today)"
                         isFocusActive ->
@@ -712,7 +762,7 @@ class DesktopProcessMonitor(
                 }
             }
 
-            if (scopeResult.verdict == ScopeVerdict.OUT_OF_SCOPE) {
+            if (scopeResult.verdict == ScopeVerdict.OUT_OF_SCOPE && consecutiveOutOfScopeSeconds >= 60) {
                 if (isEmergencyPassActive(scopeResult.category) || isQuickPassActive(scopeResult.category) ||
                     isEmergencyPassActive(windowInfo.windowTitle) || isQuickPassActive(windowInfo.windowTitle)
                 ) {
@@ -781,7 +831,7 @@ class DesktopProcessMonitor(
         }
         lastBlockedHwnd = hwnd
         _currentDetection.value = detection
-        _deflectedCount.value += 1
+        recordDeflection()
 
         bringAnchorToFront()
         onBlockTriggered(detection)

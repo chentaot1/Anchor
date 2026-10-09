@@ -82,8 +82,8 @@ fun FocusCanvas(
 
                     val a1Px = 9.dp.toPx()
                     val a2Px = 6.dp.toPx()
-                    val lambda1 = width * 0.75f
-                    val lambda2 = width * 0.48f
+                    val lambda1 = (width * 0.75f).coerceAtLeast(1f)
+                    val lambda2 = (width * 0.48f).coerceAtLeast(1f)
 
                     // Palettes
                     val primaryAuraColor = if (isWorkPhase) AnchorColors.HarborPrimary else AnchorColors.HarborFoliage
@@ -92,12 +92,13 @@ fun FocusCanvas(
                     val arcEndColor = if (isWorkPhase) Color(0xFFF59E0B) else Color(0xFF10B981)
 
                     onDrawBehind {
+                        if (width <= 1f || height <= 1f) return@onDrawBehind
                         val t = timeState
                         // 0.1 Hz sine modulation for radius dilation and alpha pulsing
                         val breathProgress = ((1f + sin(t - (PI / 2.0).toFloat())) / 2f) // 0f .. 1f
                         val breathAlpha = 0.25f + 0.45f * breathProgress
                         val dynamicRadius = baseRadius * (1.0f + 0.025f * sin(t - (PI / 2.0).toFloat()))
-                        val clampedProgress = progress.coerceIn(0f, 1f)
+                        val clampedProgress = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
 
                         // 1. Outer Breathing Resonance Halos (0.1 Hz)
                         drawCircle(
@@ -249,7 +250,7 @@ fun FocusCanvas(
                             val reservoirHeight = circleBottom - circleTop
                             val waterHeight = reservoirHeight * (0.35f + 0.55f * clampedProgress)
                             val baseLevel = circleBottom - waterHeight
-                            val stepX = 16.dp.toPx()
+                            val stepX = 16.dp.toPx().coerceAtLeast(1f)
 
                             // Wave 1: Deep Current (A1 = 9dp, λ1 = 0.75W, ω1 = 1.25 rad/s)
                             wavePath1.rewind()
@@ -337,8 +338,9 @@ fun FocusCanvas(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            val mins = remainingSeconds / 60
-            val secs = remainingSeconds % 60
+            val safeSeconds = remainingSeconds.coerceAtLeast(0L)
+            val mins = safeSeconds / 60
+            val secs = safeSeconds % 60
             val minsStr = if (mins < 10) "0$mins" else "$mins"
             val secsStr = if (secs < 10) "0$secs" else "$secs"
             val timeText = "$minsStr:$secsStr"

@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 fun DesktopAirlockDialog(
     onDismiss: () -> Unit,
     onAnchorMicroStep: (String) -> Unit,
+    onSaveSecondaryTasks: (List<String>) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     var rawText by remember { mutableStateOf("") }
@@ -201,6 +202,9 @@ fun DesktopAirlockDialog(
                                     com.anchor.adhd.domain.AirlockHeuristic
                                         .parse(trimmed)
                                 val targetTask = parseResult.primaryTask.ifBlank { trimmed }
+                                if (parseResult.secondaryTasks.isNotEmpty()) {
+                                    onSaveSecondaryTasks(parseResult.secondaryTasks)
+                                }
 
                                 // 1. Instant zero-latency heuristic display
                                 val instant = DesktopAiEngine.generateMicroSteps(targetTask)
@@ -325,6 +329,10 @@ fun DesktopAirlockDialog(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                                         .clickable {
+                                            val otherSteps = generatedSteps.filter { it != step }
+                                            if (otherSteps.isNotEmpty()) {
+                                                onSaveSecondaryTasks(otherSteps)
+                                            }
                                             onAnchorMicroStep(step)
                                             onDismiss()
                                         },

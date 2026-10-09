@@ -31,7 +31,12 @@ class AnchorApp : Application() {
             appScope.launch {
                 val session = container.database.focusSessionDao().getById(sessionId) ?: return@launch
                 val endedAt = System.currentTimeMillis()
-                val actual = ((endedAt - session.startedAtMillis) / 60_000L).toInt().coerceAtLeast(1)
+                val planned = session.plannedMinutes.coerceAtLeast(1)
+                val actual = if (completed) {
+                    planned
+                } else {
+                    ((endedAt - session.startedAtMillis) / 60_000L).toInt().coerceIn(1, planned)
+                }
                 if (completed) {
                     val worked = actual.coerceIn(0, session.plannedMinutes.coerceAtLeast(0))
                     container.advancedBlocker.creditSession(sessionId, worked, session.startedAtMillis + worked * 60_000L)
@@ -48,9 +53,6 @@ class AnchorApp : Application() {
                 )
                 container.preferences.savePendingPostFocus(summary)
                 PendingPostFocus.set(summary)
-                if (completed && actual >= 5) {
-                    container.preferences.addFunCredit(1)
-                }
             }
         }
     }

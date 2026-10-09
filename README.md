@@ -8,9 +8,20 @@ Anchor combines task planning, calendar-aware scheduling, syllabus extraction, a
 
 [Project case study](docs/project-case-study.md) · [Development and installation](docs/development.md) · [Android blocking rules](docs/mobile-blocking.md)
 
+## Latest source update
+
+**Android 1.1.0-preview.4 · Windows 1.0.4 · October 9, 2026**
+
+- Transfer supported tasks, assignments, focus history, and fun links between Android and Windows using JSON backups.
+- Paste a syllabus into Android's Plan screen. Both parsers handle September abbreviations, explicit date years, and point/decimal weights without treating page or chapter ranges as dates.
+- Android shared quota groups synchronize their daily allowances, show remaining rule-freeze time, and cap leisure purchases at the 4 AM reset.
+- Desktop focus launches select the correct task and duration. Use Ctrl+K for Airlock, Ctrl+1–7 for navigation, Ctrl+I for Floating Island, and Space to start/pause focus.
+
+These versions identify the current source; updated APK and Windows installer assets have not been published. See the [Android preview notes](docs/releases/android-1.1.0-preview.4.md) and [Windows notes](docs/releases/windows-1.0.4.md) for changes and verification limits.
+
 ## From an assignment to a focus session
 
-1. **Capture the work.** Add a task, collect a brain dump, or import course material into the desktop syllabus workspace.
+1. **Capture the work.** Add a task, collect a brain dump, import course material into the desktop syllabus workspace, or paste a syllabus into Android's Plan screen.
 2. **Choose a starting action.** Break work into smaller steps and organize it into tasks, milestones, or a timeline.
 3. **Protect the session.** Start a focus timer and apply the configured app or website restrictions.
 4. **Return to the plan.** Replan unfinished work, review focus history, and build progress in the garden and harbor screens.
@@ -31,6 +42,8 @@ These workflows connect to the planner: users can turn a brain dump into tasks, 
 
 The desktop client extracts text from **PDF, DOCX, images, and text files**, with a Windows OCR fallback for scanned material. It parses course information and deliverables into records containing dates, item types, weights, and preparation steps.
 
+Android accepts pasted syllabus text or schedule tables in **Plan → Assignments**, imports assignments with preparation notes, and supports deleting individual assignments. Both platforms honor explicit years in dates and accept `Sept`/`Sept.` and point or decimal weights.
+
 The workspace includes course filters, completion tracking, an upcoming major-deliverable card, and direct focus-session starts from preparation steps. Exams, projects, homework, and readings receive different preparation templates. These are planning aids based on the item type; review them against the assignment before starting work. The parser does not automatically schedule them.
 
 The AI context selects relevant incomplete items from those saved records by course and date. Supported deadline questions use deterministic answers from the saved dates. Imported text is treated as data, and missing assignment requirements still need the user's input.
@@ -43,7 +56,7 @@ Scope classification combines cached keyword decisions with a local-model fallba
 
 **Android:** an Accessibility service enforces app rules, focus protection, standing shields, overnight curfews, weekday study windows, individual or grouped daily allowances, rule freezes, and a lock until the next local 4 AM. Foreground usage and earned leisure persist across restarts. [Full Android policy and precedence](docs/mobile-blocking.md).
 
-The two clients use separate local data and settings. Android protection operates on apps; desktop website matching and scope classification are platform-specific.
+The two clients use separate local data and settings. JSON backup import transfers supported records between them, including task, assignment, focus-session and fun-link data. Import converts minutes/seconds and maps companion/harbor progress fields; it is not a lossless transfer of every platform-specific field or setting. Android protection operates on apps; desktop website matching and scope classification are platform-specific.
 
 ### Planning, recovery, and visible progress
 
@@ -52,7 +65,7 @@ Tasks, assignments, routines, milestones, inbox/someday work, focus timers, and 
 - **Calendar-aware scheduling:** find the next gap that fits a task or a sequence of subtasks, accounting for scheduled work and imported events. Work that cannot fit before the configured shutdown stays unscheduled. Workload calculations merge overlapping time intervals to avoid counting the same busy time twice.
 - **A recovery flow:** the Airlock captures a brain dump, parks secondary tasks, selects a primary task and a physical starting action, then starts focus. A deterministic starter is available immediately; local AI can refine it asynchronously, and starting focus cancels that refinement.
 - **Habit and reflection tools:** scheduled habits, weekly targets, grace allowances, a 12-week heatmap, energy/tag check-ins, weekly summaries, and planned-versus-actual focus-time statistics.
-- **Capture and integrations:** a home-screen widget, share-to-inbox capture, device-calendar occupancy, optional read-only Google Calendar import, and JSON export of tasks, assignments, and calendar records.
+- **Capture and integrations:** a home-screen widget, share-to-inbox capture, device-calendar occupancy, optional read-only Google Calendar import, and JSON backup export/import of planning records, routines, habits, focus history, companion progress, and fun links. Supported backup records can also be imported across Android and Windows.
 
 The garden, companion, and harbor screens display progress and saved focus rewards using shared Compose drawing/animation components. An Android Filament/SceneView plant renderer is also present as unwired infrastructure; the current shell uses Compose visuals.
 
@@ -110,11 +123,14 @@ Models, runtime binaries, build outputs, credentials, and personal databases are
 
 ## Validation and current status
 
-The desktop suite passed **92 tests with zero failures, errors, or skips on October 2, 2026**. Coverage includes task routing, breakdown parsing, syllabus relevance and deadlines, app-versus-website identity, blocker policies, persistence, and platform helpers.
+The October 9 source update passed **223 Android, 115 desktop, and 8 shared tests**. Both clients compile. Coverage includes shared quotas, leisure reset boundaries, time-window evaluation, syllabus dates, backup compatibility, desktop task selection, and scanned-PDF OCR on the local Windows system.
+
+Earlier blocker/OCR failures and stale Android test references are corrected in this update. Automated checks do not replace physical-device verification of protection behavior or manual keyboard/UI checks. Local document integration tests depend on files available on the test machine.
 
 ```powershell
 .\gradlew.bat :desktopApp:test
 .\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :shared:desktopTest
 ```
 
 [Android CI](.github/workflows/android-build.yml) runs Android unit tests. APK publication is an opt-in tagged-release workflow. The desktop result above was verified locally; desktop tests are not currently part of that CI workflow.

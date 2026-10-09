@@ -114,6 +114,7 @@ class FocusRepository(
                     FocusGardenEntity(sessionId = sessionId, treeType = species.assetName)
                 )
                 unlockRewardBundles()
+                preferences.addFunCredit(1)
             }
         }
         refreshBlockedPackages()

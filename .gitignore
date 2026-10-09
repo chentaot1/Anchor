@@ -15,6 +15,7 @@ app/build/
 *.aab
 *.hprof
 .kotlin/
+/tmp/
 
 # Model files (too large for git)
 *.gguf

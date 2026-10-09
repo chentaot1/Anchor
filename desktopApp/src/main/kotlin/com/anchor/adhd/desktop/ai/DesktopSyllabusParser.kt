@@ -218,26 +218,84 @@ object DesktopSyllabusParser {
 
         // 2. Extract Deliverables & Deadlines
         val items = mutableListOf<ParsedDeliverable>()
+        val semesterYearRegex = Regex("""(?:Fall|Spring|Summer|Winter)\s+(20\d{2})""", RegexOption.IGNORE_CASE)
         val yearRegex = Regex("""\b(20\d{2})\b""")
+        val headerLines = lines.take(30)
         val detectedYear =
-            lines.take(30).firstNotNullOfOrNull { line ->
-                val ym = yearRegex.find(line)
-                ym?.groupValues?.get(1)?.toIntOrNull()
+            headerLines.firstNotNullOfOrNull { line ->
+                semesterYearRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
+            } ?: headerLines.firstNotNullOfOrNull { line ->
+                yearRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()
             } ?: LocalDate.now().year
 
         val dateMonthRegex =
             Regex(
-                """\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b""",
+                """\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(20\d{2}))?\b""",
                 RegexOption.IGNORE_CASE,
             )
         val dayMonthRegex =
             Regex(
-                """\b(\d{1,2})(?:st|nd|rd|th)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b""",
+                """\b(\d{1,2})(?:st|nd|rd|th)?\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b\.?(?:,?\s+(20\d{2})\b)?""",
                 RegexOption.IGNORE_CASE,
             )
-        val slashDateRegex = Regex("""\b(\d{1,2})/(\d{1,2})(?:/\d{2,4})?\b""")
-        val hyphenDateRegex = Regex("""\b(?:20\d{2}-)?(\d{1,2})-(\d{1,2})\b""")
-        val weightRegex = Regex("""(?:\(\s*)?(\d{1,3})\s*%(?:\s*\))?""")
+        val slashDateRegex = Regex("""\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b""")
+        val isoHyphenDateRegex = Regex("""\b(20\d{2})-(\d{1,2})-(\d{1,2})\b""")
+        val usHyphenYearDateRegex = Regex("""\b(\d{1,2})-(\d{1,2})-(20\d{2}|\d{2})\b""")
+        val shortHyphenDateRegex = Regex("""(?<!\d-)(\b\d{1,2})-(\d{1,2})\b(?!-\d)""")
+        val rangePrefixRegex =
+            Regex(
+                """(?i)\b(?:ch(?:ap(?:ter)?s?)?|pages?|pgs?|pp|p|weeks?|wks?|parts?|sec(?:tion)?s?|problems?|questions?|exercises?|units?|modules?|labs?|slides?|items?|steps?|grades?|levels?)\.?\s*$""",
+            )
+        val rangeSuffixRegex =
+            Regex(
+                """(?i)^\s*(?:pages?|pgs?|pp|mins?|minutes?|hrs?|hours?|secs?|seconds?|words?|slides?|chapters?|problems?|questions?|points?|pts?|days?|weeks?|sources?|citations?|references?|paragraphs?|items?)\b""",
+            )
+        val weightRegex = Regex("""(?i)(?:\(\s*)?(\d{1,3}(?:\.\d+)?)\s*(?:%|pts\.?|points?)(?:\s*\))?""")
+
+        fun resolveYear(rawYearStr: String?): Int {
+            val trimmed = rawYearStr?.trim().orEmpty()
+            return when (trimmed.length) {
+                4 -> trimmed.toIntOrNull() ?: detectedYear
+                2 -> trimmed.toIntOrNull()?.let { 2000 + it } ?: detectedYear
+                else -> detectedYear
+            }
+        }
+
+        fun findValidHyphenDate(text: String): Triple<Int, Int, Int>? {
+            val isoMatch = isoHyphenDateRegex.find(text)
+            if (isoMatch != null) {
+                val y = isoMatch.groupValues[1].toIntOrNull() ?: detectedYear
+                val m = isoMatch.groupValues[2].toIntOrNull()
+                val d = isoMatch.groupValues[3].toIntOrNull()
+                if (m != null && d != null && m in 1..12 && d in 1..31) {
+                    return Triple(y, m, d)
+                }
+            }
+
+            val usYearMatch = usHyphenYearDateRegex.find(text)
+            if (usYearMatch != null) {
+                val m = usYearMatch.groupValues[1].toIntOrNull()
+                val d = usYearMatch.groupValues[2].toIntOrNull()
+                val y = resolveYear(usYearMatch.groupValues[3])
+                if (m != null && d != null && m in 1..12 && d in 1..31) {
+                    return Triple(y, m, d)
+                }
+            }
+
+            for (match in shortHyphenDateRegex.findAll(text)) {
+                val before = text.substring(0, match.range.first)
+                val after = text.substring(match.range.last + 1)
+                if (rangePrefixRegex.containsMatchIn(before) || rangeSuffixRegex.containsMatchIn(after)) {
+                    continue
+                }
+                val m = match.groupValues[1].toIntOrNull() ?: continue
+                val d = match.groupValues[2].toIntOrNull() ?: continue
+                if (m in 1..12 && d in 1..31) {
+                    return Triple(detectedYear, m, d)
+                }
+            }
+            return null
+        }
 
         fun parseDateFromText(text: String): Pair<String, Long>? {
             val dateMonthMatch = dateMonthRegex.find(text)
@@ -245,9 +303,10 @@ object DesktopSyllabusParser {
                 val rawMonth = dateMonthMatch.groupValues[1]
                 val monthStr = rawMonth.take(3).lowercase(Locale.ROOT)
                 val month = parseMonth(monthStr)
-                val maxDay = month.length(false)
+                val year = resolveYear(dateMonthMatch.groupValues.getOrNull(3))
+                val maxDay = month.length(java.time.Year.isLeap(year.toLong()))
                 val day = (dateMonthMatch.groupValues[2].toIntOrNull() ?: 1).coerceIn(1, maxDay)
-                val localDate = LocalDate.of(detectedYear, month, day)
+                val localDate = LocalDate.of(year, month, day)
                 val monthLabel =
                     month.name
                         .take(3)
@@ -261,9 +320,10 @@ object DesktopSyllabusParser {
                 val rawMonth = dayMonthMatch.groupValues[2]
                 val monthStr = rawMonth.take(3).lowercase(Locale.ROOT)
                 val month = parseMonth(monthStr)
-                val maxDay = month.length(false)
+                val year = resolveYear(dayMonthMatch.groupValues.getOrNull(3))
+                val maxDay = month.length(java.time.Year.isLeap(year.toLong()))
                 val day = (dayMonthMatch.groupValues[1].toIntOrNull() ?: 1).coerceIn(1, maxDay)
-                val localDate = LocalDate.of(detectedYear, month, day)
+                val localDate = LocalDate.of(year, month, day)
                 val monthLabel =
                     month.name
                         .take(3)
@@ -274,22 +334,26 @@ object DesktopSyllabusParser {
 
             val slashMatch = slashDateRegex.find(text)
             if (slashMatch != null) {
-                val m = slashMatch.groupValues[1].toIntOrNull()?.coerceIn(1, 12) ?: 10
-                val month = Month.of(m)
-                val maxDay = month.length(false)
-                val rawD = slashMatch.groupValues[2].toIntOrNull()?.coerceIn(1, maxDay) ?: 15
-                val localDate = LocalDate.of(detectedYear, month, rawD)
-                return "$m/$rawD" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val rawM = slashMatch.groupValues[1].toIntOrNull()
+                val rawD = slashMatch.groupValues[2].toIntOrNull()
+                if (rawM != null && rawD != null && rawM in 1..12 && rawD in 1..31) {
+                    val year = resolveYear(slashMatch.groupValues.getOrNull(3))
+                    val month = Month.of(rawM)
+                    val maxDay = month.length(java.time.Year.isLeap(year.toLong()))
+                    val clampedD = rawD.coerceIn(1, maxDay)
+                    val localDate = LocalDate.of(year, month, clampedD)
+                    return "$rawM/$clampedD" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                }
             }
 
-            val hyphenMatch = hyphenDateRegex.find(text)
-            if (hyphenMatch != null) {
-                val m = hyphenMatch.groupValues[1].toIntOrNull()?.coerceIn(1, 12) ?: 10
-                val month = Month.of(m)
-                val maxDay = month.length(false)
-                val rawD = hyphenMatch.groupValues[2].toIntOrNull()?.coerceIn(1, maxDay) ?: 15
-                val localDate = LocalDate.of(detectedYear, month, rawD)
-                return "$m/$rawD" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val hyphenTriple = findValidHyphenDate(text)
+            if (hyphenTriple != null) {
+                val (year, rawM, rawD) = hyphenTriple
+                val month = Month.of(rawM.coerceIn(1, 12))
+                val maxDay = month.length(java.time.Year.isLeap(year.toLong()))
+                val clampedD = rawD.coerceIn(1, maxDay)
+                val localDate = LocalDate.of(year, month, clampedD)
+                return "$rawM/$clampedD" to localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             }
 
             return null
@@ -385,7 +449,7 @@ object DesktopSyllabusParser {
         val gradingWeights = mutableMapOf<String, Int>()
         val gradingWeightRegex =
             Regex(
-                """(?i)\b(Paper\s*\d+|Exam\s*\d+|Final\s*Exam|Midterm|Quiz\s*\d+|Project\s*\d+|Homework\s*\d+|Assignment\s*\d+|Engagement|CITI)\b[^\d\n]*?(\d{1,3})\s*(?:points|%|pts)""",
+                """(?i)\b(Paper\s*\d+|Exam\s*\d+|Final\s*Exam|Midterm|Quiz\s*\d+|Project\s*\d+|Homework\s*\d+|Assignment\s*\d+|Engagement|CITI)\b[^\d\n]*?(\d{1,3}(?:\.\d+)?)\s*(?:points|%|pts)""",
             )
         for (line in lines) {
             for (m in gradingWeightRegex.findAll(line)) {
@@ -394,7 +458,7 @@ object DesktopSyllabusParser {
                         .lowercase(Locale.ROOT)
                         .replace(Regex("""\s+"""), " ")
                         .trim()
-                val w = m.groupValues[2].toIntOrNull() ?: 0
+                val w = m.groupValues[2].toDoubleOrNull()?.let { Math.round(it).toInt() } ?: 0
                 if (w in 1..100) {
                     gradingWeights[cat] = w
                 }
@@ -645,7 +709,9 @@ object DesktopSyllabusParser {
                         .find(line)
                         ?.groupValues
                         ?.get(1)
-                        ?.toIntOrNull() ?: 0
+                        ?.toDoubleOrNull()
+                        ?.let { Math.round(it).toInt() }
+                        ?.takeIf { it in 1..100 } ?: 0
 
                 if (weight == 0) {
                     weight = determineWeight(line, type, gradingWeights)
@@ -769,16 +835,24 @@ object DesktopSyllabusParser {
             )
         val stripDates =
             Regex(
-                """(?i)\b(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?|\d{4}-\d{1,2}-\d{1,2}|\b\d{1,2}-\d{1,2}\b)\b""",
+                """(?i)\b(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+20\d{2})?|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b\.?(?:,?\s+20\d{2})?|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}-\d{1,2}-\d{2,4})""",
             )
-        val stripWeights = Regex("""(?i)\(\s*\d{1,2}%\s*\)|\b\d{1,2}%\b""")
+        val stripShortHyphenDate =
+            Regex(
+                """(?i)(?:[-–—:]|\bdue|\bon)\s*\b\d{1,2}-\d{1,2}\b(?!\s*(?:pages?|pgs?|pp|mins?|minutes?|hrs?|hours?|secs?|seconds?|words?|slides?|chapters?|problems?|questions?|points?|pts?)\b)""",
+            )
+        val stripWeights =
+            Regex(
+                """(?i)\(\s*\d{1,3}(?:\.\d+)?\s*(?:%|pts\.?|points?)\s*\)|\b\d{1,3}(?:\.\d+)?\s*(?:%|pts\.?|points?)(?!\w)""",
+            )
         var clean =
             raw
                 .replace(Regex("""(?i)\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\.?,?\s*"""), "")
                 .replace(stripBoilerplate, "")
                 .replace(stripWeights, "")
                 .replace(stripDates, "")
-                .replace(Regex("""(?i)\b\d{1,2}/\d{1,2}\b"""), "")
+                .replace(stripShortHyphenDate, "")
+                .replace(Regex("""(?i)\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b"""), "")
                 .replace(Regex("""(?i)\bCh\.?\s*\d+(?:-\d+)?\s*\([A-Za-z\s]+\)"""), "")
                 .replace(Regex("""(?i)\bTBA\b|\bTBD\b"""), "")
                 .replace(Regex("""^[0-9\-\*\•\.\)]+\s*"""), "")

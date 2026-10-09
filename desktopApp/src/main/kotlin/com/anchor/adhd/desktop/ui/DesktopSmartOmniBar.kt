@@ -54,6 +54,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -185,7 +190,19 @@ fun DesktopSmartOmniBar(
                             }
                         }
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .onPreviewKeyEvent { event ->
+                                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                                    activeJob?.cancel()
+                                    activeResult = null
+                                    rawInput = ""
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
                     singleLine = true,
                     colors =
                         OutlinedTextFieldDefaults.colors(
@@ -319,13 +336,29 @@ fun DesktopSmartOmniBar(
                                         }
                                     }
 
+                                    if (result.microSteps.size > 3) {
+                                        Text(
+                                            text = "+${result.microSteps.size - 3} more steps will be saved to your Milestones",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.55f),
+                                            modifier = Modifier.padding(start = 4.dp),
+                                        )
+                                    }
+
                                     Spacer(modifier = Modifier.height(8.dp))
 
                                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                         Button(
                                             onClick = {
                                                 activeJob?.cancel()
-                                                onStartFocusWithTask(result.taskTitle, result.suggestedMinutes)
+                                                val remainingSteps = result.microSteps.drop(1)
+                                                if (remainingSteps.isNotEmpty()) {
+                                                    onSaveTasksToInbox(remainingSteps)
+                                                }
+                                                onStartFocusWithTask(
+                                                    result.step1Starter.ifBlank { result.taskTitle },
+                                                    result.suggestedMinutes,
+                                                )
                                                 activeResult = null
                                                 rawInput = ""
                                             },

@@ -170,7 +170,8 @@ class GrowRepository(
 
     suspend fun rewardFocusComplete(partialCredit: Float = 1f) {
         val current = companionDao.observe().first() ?: CompanionStateEntity()
-        if (isPaused(current)) return
+        val activePause = current.pauseUntilMillis?.takeIf { it > System.currentTimeMillis() }
+        if (activePause != null) return
         val gain = (25 * partialCredit).toInt().coerceAtLeast(5)
         val zone = ZoneId.systemDefault()
         val todayStart = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -185,17 +186,12 @@ class GrowRepository(
             twoDaysAgoStart -> current.streakDays
             else -> 1
         }
-        val pauseUntil = if (current.lastActiveDayMillis == twoDaysAgoStart && current.pauseUntilMillis == null) {
-            LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        } else {
-            current.pauseUntilMillis
-        }
         companionDao.upsert(
             current.copy(
                 energy = (current.energy + gain).coerceAtMost(current.maxEnergy),
                 streakDays = newStreak,
                 lastActiveDayMillis = todayStart,
-                pauseUntilMillis = pauseUntil,
+                pauseUntilMillis = activePause,
                 stage = PipStages.stageForWeeklySessions(weeklySessions)
             )
         )

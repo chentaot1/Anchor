@@ -197,10 +197,28 @@ class PlanRepository(
 
     suspend fun completeTask(taskId: Long) = taskDao.markComplete(taskId)
 
-    /** Completes a parent task and all its child steps (cascading). */
+    /** Completes a parent task and all its child steps (cascading), or completes a child and promotes next sibling / parent. */
     suspend fun completeTaskCascade(taskId: Long) {
-        val task = taskDao.getById(taskId) ?: return
-        taskDao.completeTaskCascade(task.id, isParent = task.parentTaskId == null)
+        db.withTransaction {
+            val now = System.currentTimeMillis()
+            val task = taskDao.getById(taskId) ?: return@withTransaction
+            taskDao.completeTaskCascade(task.id, isParent = task.parentTaskId == null, at = now)
+            if (task.isNextAction) {
+                taskDao.update(task.copy(isCompleted = true, completedAtMillis = now, isNextAction = false))
+            }
+            val parentId = task.parentTaskId
+            if (parentId != null) {
+                val remaining = taskDao.getChildren(parentId).filter { !it.isCompleted }
+                if (remaining.isEmpty()) {
+                    taskDao.markComplete(parentId, now)
+                } else if (remaining.none { it.isNextAction }) {
+                    val nextSibling = remaining.minWithOrNull(compareBy({ it.sortOrder }, { it.createdAtMillis }))
+                    if (nextSibling != null) {
+                        taskDao.update(nextSibling.copy(isNextAction = true))
+                    }
+                }
+            }
+        }
     }
 
     /** Un-completes a parent task and its child steps (cascading), or just the child if it is one. */
@@ -213,8 +231,49 @@ class PlanRepository(
     suspend fun addInboxTaskReturningId(title: String, state: InboxState = InboxState.TODAY): Long =
         captureToInbox(listOf(title), state).first()
 
-    suspend fun addAssignment(title: String, course: String, dueAtMillis: Long) {
-        assignmentDao.insert(AssignmentEntity(title = title, course = course, dueAtMillis = dueAtMillis))
+    suspend fun addAssignment(title: String, course: String, dueAtMillis: Long, notes: String = "") {
+        assignmentDao.insert(AssignmentEntity(title = title, course = course, dueAtMillis = dueAtMillis, notes = notes))
+    }
+
+    suspend fun importParsedSyllabus(parsed: com.anchor.adhd.domain.ParsedSyllabus): Int {
+        if (parsed.deliverables.isEmpty()) return 0
+        val defaultDue = System.currentTimeMillis() + 14L * 86_400_000L
+        db.withTransaction {
+            parsed.deliverables.forEach { d ->
+                val dueMillis = if (d.dueDateMillis > 0L) d.dueDateMillis else defaultDue
+                assignmentDao.insert(
+                    AssignmentEntity(
+                        title = d.title,
+                        course = parsed.courseCode,
+                        dueAtMillis = dueMillis,
+                        notes = d.prepSteps.joinToString("; ")
+                    )
+                )
+                if (d.prepSteps.isNotEmpty()) {
+                    val parent = TaskEntity(
+                        title = "${parsed.courseCode}: ${d.title}",
+                        notes = "Due ${d.dueDateText}",
+                        inboxState = InboxState.TODAY,
+                        dueAtMillis = dueMillis,
+                        isNextAction = true,
+                        aiGenerated = true
+                    )
+                    val children = d.prepSteps.mapIndexed { idx, step ->
+                        TaskEntity(
+                            title = step,
+                            inboxState = InboxState.TODAY,
+                            durationMinutes = if (idx == 0) 15 else 25,
+                            isNextAction = idx == 0,
+                            aiGenerated = true,
+                            sortOrder = idx,
+                            dueAtMillis = dueMillis
+                        )
+                    }
+                    taskDao.insertParentWithChildren(parent, children)
+                }
+            }
+        }
+        return parsed.deliverables.size
     }
 
     suspend fun completeAssignment(id: Long) {
@@ -391,6 +450,17 @@ class PlanRepository(
         if (steps.isNotEmpty()) routineDao.insertSteps(steps)
     }
 
+    suspend fun deleteRoutine(routineId: Long) {
+        db.withTransaction {
+            routineDao.deleteStepsForRoutine(routineId)
+            routineDao.deleteById(routineId)
+        }
+    }
+
+    suspend fun deleteAssignment(assignmentId: Long) {
+        assignmentDao.deleteById(assignmentId)
+    }
+
     suspend fun setTaskActualMinutes(taskId: Long, actualMinutes: Int) {
         val task = taskDao.getById(taskId) ?: return
         taskDao.update(task.copy(actualMinutes = actualMinutes))
@@ -401,7 +471,24 @@ class PlanRepository(
     }
 
     suspend fun deleteTask(taskId: Long) {
-        taskDao.deleteById(taskId)
+        db.withTransaction {
+            val task = taskDao.getById(taskId)
+            val children = taskDao.getChildren(taskId)
+            children.forEach { child -> replanDao.deleteForTask(child.id) }
+            replanDao.deleteForTask(taskId)
+            taskDao.deleteChildrenOf(taskId)
+            taskDao.deleteById(taskId)
+            val parentId = task?.parentTaskId
+            if (parentId != null && task.isNextAction) {
+                val remaining = taskDao.getChildren(parentId)
+                    .filter { !it.isCompleted }
+                    .sortedWith(compareBy({ it.sortOrder }, { it.createdAtMillis }))
+                if (remaining.isNotEmpty() && remaining.none { it.isNextAction }) {
+                    val next = remaining.first()
+                    taskDao.update(next.copy(isNextAction = true))
+                }
+            }
+        }
     }
 
     suspend fun deferTaskToTomorrow(taskId: Long) {

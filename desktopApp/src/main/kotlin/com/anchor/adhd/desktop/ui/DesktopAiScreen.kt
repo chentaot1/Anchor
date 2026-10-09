@@ -23,6 +23,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -42,6 +45,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -71,6 +75,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anchor.adhd.desktop.ai.DesktopAiEngine
@@ -129,6 +134,28 @@ fun DesktopAiScreen(
     val breakdownSteps = remember { mutableStateListOf<String>() }
     var isBreakingDown by remember { mutableStateOf(false) }
     var breakdownSavedMessage by remember { mutableStateOf<String?>(null) }
+
+    val runBreakdownForGranularity: (DesktopAiEngine.DesktopBreakdownGranularity) -> Unit = { targetGranularity ->
+        val trimmed = breakdownInput.trim()
+        if (trimmed.isNotBlank()) {
+            breakdownSavedMessage = null
+            val instant = DesktopAiEngine.generateMicroSteps(trimmed, targetGranularity)
+            breakdownSteps.clear()
+            breakdownSteps.addAll(instant)
+
+            if (isModelReady || DesktopAiEngine.isModelReady()) {
+                isBreakingDown = true
+                scope.launch {
+                    val aiSteps = DesktopAiEngine.generateMicroStepsAsync(trimmed, targetGranularity)
+                    if (aiSteps.isNotEmpty()) {
+                        breakdownSteps.clear()
+                        breakdownSteps.addAll(aiSteps)
+                    }
+                    isBreakingDown = false
+                }
+            }
+        }
+    }
 
     // Brain Dump Tab State
     var brainDumpInput by remember { mutableStateOf("") }
@@ -312,31 +339,16 @@ fun DesktopAiScreen(
                             input = breakdownInput,
                             onInputChange = { breakdownInput = it },
                             granularity = granularity,
-                            onGranularityChange = { granularity = it },
+                            onGranularityChange = { newGranularity ->
+                                granularity = newGranularity
+                                if (breakdownSteps.isNotEmpty() && breakdownInput.isNotBlank()) {
+                                    runBreakdownForGranularity(newGranularity)
+                                }
+                            },
                             steps = breakdownSteps,
                             isLoading = isBreakingDown,
                             savedMessage = breakdownSavedMessage,
-                            onBreakdown = {
-                                val trimmed = breakdownInput.trim()
-                                if (trimmed.isNotBlank()) {
-                                    breakdownSavedMessage = null
-                                    val instant = DesktopAiEngine.generateMicroSteps(trimmed, granularity)
-                                    breakdownSteps.clear()
-                                    breakdownSteps.addAll(instant)
-
-                                    if (isModelReady || DesktopAiEngine.isModelReady()) {
-                                        isBreakingDown = true
-                                        scope.launch {
-                                            val aiSteps = DesktopAiEngine.generateMicroStepsAsync(trimmed, granularity)
-                                            if (aiSteps.isNotEmpty()) {
-                                                breakdownSteps.clear()
-                                                breakdownSteps.addAll(aiSteps)
-                                            }
-                                            isBreakingDown = false
-                                        }
-                                    }
-                                }
-                            },
+                            onBreakdown = { runBreakdownForGranularity(granularity) },
                             onAddAllToMilestones = {
                                 scope.launch {
                                     breakdownSteps.forEach { step ->
@@ -375,6 +387,9 @@ fun DesktopAiScreen(
                                         }
                                     }
                                 }
+                            },
+                            onRemoveExtracted = { itemToRemove ->
+                                extractedTasks.remove(itemToRemove)
                             },
                             onAddAllToMilestones = {
                                 scope.launch {
@@ -510,6 +525,15 @@ private fun BreakdownToolCanvas(
                         unfocusedTextColor = Color.White,
                     ),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions =
+                    KeyboardActions(
+                        onDone = {
+                            if (input.isNotBlank() && !isLoading) {
+                                onBreakdown()
+                            }
+                        },
+                    ),
             )
 
             Button(
@@ -736,6 +760,7 @@ private fun BrainDumpToolCanvas(
     isLoading: Boolean,
     savedMessage: String?,
     onParse: () -> Unit,
+    onRemoveExtracted: (String) -> Unit,
     onAddAllToMilestones: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -847,7 +872,23 @@ private fun BrainDumpToolCanvas(
                                 modifier = Modifier.size(16.dp),
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = task, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = task,
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(
+                                onClick = { onRemoveExtracted(task) },
+                                modifier = Modifier.size(24.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove task",
+                                    tint = Color.White.copy(alpha = 0.45f),
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            }
                         }
                     }
                 }

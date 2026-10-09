@@ -109,6 +109,18 @@ object DesktopCompatibleRouter {
             RegexOption.IGNORE_CASE,
         )
 
+    private val BREAKDOWN_CUE_REGEX =
+        Regex(
+            """\b(break\s+(?:it\s+|this\s+|that\s+|.+?\s+)?down|breakdown|decompose|split\s+into\s+steps|into\s+(?:micro[- ]?|small\s+|tiny\s+)?steps|micro[- ]?steps?|sub[- ]?tasks?|steps\s+(?:for|to)|first\s+step|help\s+me\s+start|how\s+(?:do\s+i|to)\s+start)\b""",
+            RegexOption.IGNORE_CASE,
+        )
+
+    fun hasExplicitBreakdownCue(rawInput: String): Boolean {
+        val trimmed = rawInput.trim()
+        if (trimmed.isBlank()) return false
+        return BREAKDOWN_CUE_REGEX.containsMatchIn(trimmed)
+    }
+
     /**
      * Robust, flexible timer intent parser covering all common ADHD timer phrasings:
      * - "timer 25", "timer 15m", "25m timer", "25 min timer", "set timer 30m"

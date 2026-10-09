@@ -338,6 +338,35 @@ fun GroveHomeScreen(
                     Text(if (restExpanded) "Hide rest of today" else "Rest of today (${later.size + replan.size})")
                 }
                 if (restExpanded) {
+                    later.forEach { item ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "${item.title} (${item.durationMinutes}m)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFCBD5E1),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = { vm.startFocus(workMinutes = item.durationMinutes, taskId = item.id) }) {
+                                    Text("Focus")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        vm.completeTask(item.id)
+                                        showCelebration = true
+                                    }
+                                ) {
+                                    Text("Done")
+                                }
+                            }
+                        }
+                    }
                     if (replan.isNotEmpty()) {
                         TextButton(onClick = { vm.openReplanTab() }) {
                             Text("${replan.size} items to replan")

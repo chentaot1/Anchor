@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -105,6 +106,7 @@ fun DesktopSyllabusScreen(
 
     var selectedCourseCode by remember { mutableStateOf<String?>(null) } // null = All
     var showPasteDialog by remember { mutableStateOf(false) }
+    var showAddDeliverableDialog by remember { mutableStateOf(false) }
     var showAirlockDialog by remember { mutableStateOf(false) }
     var stagedSyllabus by remember { mutableStateOf<ParsedSyllabus?>(null) }
     var isParsingFile by remember { mutableStateOf(false) }
@@ -239,6 +241,22 @@ fun DesktopSyllabusScreen(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Paste Syllabus", color = Color.White)
+                }
+
+                // Manual Add Deliverable Button
+                OutlinedButton(
+                    onClick = { showAddDeliverableDialog = true },
+                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                    border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.5f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = AnchorColors.HarborPrimary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add Deliverable", color = AnchorColors.HarborPrimary)
                 }
             }
         }
@@ -424,6 +442,11 @@ fun DesktopSyllabusScreen(
                                 onStartFocusWithTask(taskTitle, mins)
                             },
                             onPlanWithAi = onPlanWithAi?.let { plan -> { plan(item) } },
+                            onAddStepToPlan = { step ->
+                                scope.launch {
+                                    db.insertTask("[${item.courseCode}] $step", 20)
+                                }
+                            },
                         )
                     }
                 }
@@ -440,6 +463,31 @@ fun DesktopSyllabusScreen(
                 stagedSyllabus = parsed
                 showPasteDialog = false
                 showAirlockDialog = true
+            },
+        )
+    }
+
+    // Modal 1b: Manual Add Deliverable Dialog
+    if (showAddDeliverableDialog) {
+        AddManualDeliverableDialog(
+            defaultCourseCode = selectedCourseCode ?: courses.firstOrNull()?.code ?: "CS 101",
+            onDismiss = { showAddDeliverableDialog = false },
+            onAdd = { courseCode, title, itemType, dueDateText, weightPercent ->
+                scope.launch {
+                    val cleanCode = courseCode.trim().uppercase()
+                    db.insertCourse(cleanCode, cleanCode)
+                    val prepSteps = DesktopSyllabusParser.generateBackwardChainedPrepSteps(itemType, title)
+                    db.insertSyllabusItem(
+                        courseCode = cleanCode,
+                        title = title.trim(),
+                        itemType = itemType,
+                        dueDateText = dueDateText.trim().ifBlank { "TBD" },
+                        dueDateMillis = System.currentTimeMillis() + 7L * 86_400_000L,
+                        weightPercent = weightPercent,
+                        prepSteps = prepSteps,
+                    )
+                    showAddDeliverableDialog = false
+                }
             },
         )
     }
@@ -528,6 +576,7 @@ private fun SyllabusItemCard(
     onDelete: () -> Unit,
     onStartFocus: (taskTitle: String, durationMinutes: Int) -> Unit,
     onPlanWithAi: (() -> Unit)? = null,
+    onAddStepToPlan: ((String) -> Unit)? = null,
 ) {
     val (typeColor, typeBg) =
         when (item.itemType) {
@@ -779,33 +828,69 @@ private fun SyllabusItemCard(
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                color = AnchorColors.HarborGrowth.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, AnchorColors.HarborGrowth.copy(alpha = 0.45f)),
-                                modifier =
-                                    Modifier
-                                        .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                                        .clickable { onStartFocus(step, 15) },
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
+                                if (onAddStepToPlan != null) {
+                                    Surface(
+                                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                        color = AnchorColors.HarborPrimary.copy(alpha = 0.14f),
+                                        border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.4f)),
+                                        modifier =
+                                            Modifier
+                                                .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
+                                                .clickable { onAddStepToPlan(step) },
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Add,
+                                                contentDescription = null,
+                                                tint = AnchorColors.HarborPrimary,
+                                                modifier = Modifier.size(11.dp),
+                                            )
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text(
+                                                text = "Send to Today's Plan",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = AnchorColors.HarborPrimary,
+                                            )
+                                        }
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                    color = AnchorColors.HarborGrowth.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, AnchorColors.HarborGrowth.copy(alpha = 0.45f)),
+                                    modifier =
+                                        Modifier
+                                            .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
+                                            .clickable { onStartFocus(step, 15) },
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = AnchorColors.HarborFoliage,
-                                        modifier = Modifier.size(11.dp),
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Start Prep",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = AnchorColors.HarborFoliage,
-                                    )
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            tint = AnchorColors.HarborFoliage,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "Start Prep",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AnchorColors.HarborFoliage,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1092,8 +1177,9 @@ private fun SyllabusAirlockDialog(
                     Button(
                         onClick = {
                             val selectedItems = staged.deliverables.filterIndexed { index, _ -> index in selectedIndices }
-                            onCommit(courseCode, courseName, selectedItems)
+                            onCommit(courseCode.trim(), courseName.trim().ifBlank { courseCode.trim() }, selectedItems)
                         },
+                        enabled = courseCode.isNotBlank() && selectedIndices.isNotEmpty(),
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                         colors =
                             ButtonDefaults.buttonColors(
@@ -1104,6 +1190,157 @@ private fun SyllabusAirlockDialog(
                         Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Anchor ${selectedIndices.size} Milestones to Plan", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Manual Deliverable Creation Dialog
+ */
+@Composable
+private fun AddManualDeliverableDialog(
+    defaultCourseCode: String,
+    onDismiss: () -> Unit,
+    onAdd: (courseCode: String, title: String, itemType: SyllabusItemType, dueDateText: String, weightPercent: Int) -> Unit,
+) {
+    var courseCode by remember { mutableStateOf(defaultCourseCode) }
+    var title by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(SyllabusItemType.EXAM) }
+    var dueDateText by remember { mutableStateOf("") }
+    var weightText by remember { mutableStateOf("15") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
+            color = Color(0xFF161E30),
+            border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.4f)),
+            modifier = Modifier.fillMaxWidth(0.9f),
+        ) {
+            Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "➕ Add Academic Deliverable",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+                Text(
+                    text = "Anchor automatically generates backward-chained preparation milestones for this deliverable.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f),
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SyllabusItemType.entries.forEach { type ->
+                        val isSelected = selectedType == type
+                        Surface(
+                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                            color = if (isSelected) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.08f),
+                            modifier = Modifier.clickable { selectedType = type },
+                        ) {
+                            Text(
+                                text = type.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) Color(0xFF002A4A) else Color.White,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = courseCode,
+                        onValueChange = { courseCode = it },
+                        label = { Text("Course Code", color = Color.White.copy(alpha = 0.6f)) },
+                        modifier = Modifier.width(130.dp),
+                        singleLine = true,
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = AnchorColors.HarborPrimary,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            ),
+                    )
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Deliverable Title", color = Color.White.copy(alpha = 0.6f)) },
+                        placeholder = { Text("e.g. Midterm Exam 2", color = Color.White.copy(alpha = 0.35f)) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = AnchorColors.HarborPrimary,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            ),
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = dueDateText,
+                        onValueChange = { dueDateText = it },
+                        label = { Text("Due Date", color = Color.White.copy(alpha = 0.6f)) },
+                        placeholder = { Text("e.g. Oct 24 or Week 8", color = Color.White.copy(alpha = 0.35f)) },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = AnchorColors.HarborPrimary,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            ),
+                    )
+                    OutlinedTextField(
+                        value = weightText,
+                        onValueChange = { weightText = it.filter { ch -> ch.isDigit() }.take(3) },
+                        label = { Text("Weight %", color = Color.White.copy(alpha = 0.6f)) },
+                        modifier = Modifier.width(110.dp),
+                        singleLine = true,
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = AnchorColors.HarborPrimary,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                            ),
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = Color.White.copy(alpha = 0.6f))
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Button(
+                        onClick = {
+                            onAdd(
+                                courseCode,
+                                title,
+                                selectedType,
+                                dueDateText,
+                                weightText.toIntOrNull()?.coerceIn(0, 100) ?: 0,
+                            )
+                        },
+                        enabled = courseCode.isNotBlank() && title.isNotBlank(),
+                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = AnchorColors.HarborPrimary,
+                                contentColor = Color(0xFF002A4A),
+                            ),
+                    ) {
+                        Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Add Deliverable", fontWeight = FontWeight.Bold)
                     }
                 }
             }

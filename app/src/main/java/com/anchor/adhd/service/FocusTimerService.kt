@@ -53,7 +53,10 @@ class FocusTimerService : Service() {
                 startWorkPhase(sessionId, taskId, taskTitle, workMin, breakMin, locked)
             }
             ACTION_CANCEL -> stopSession(completed = false, notify = false)
-            ACTION_STOP -> stopSession(completed = false, notify = true)
+            ACTION_STOP -> {
+                val inBreak = FocusTimerState.state.value.phase == FocusTimerState.Phase.BREAK
+                stopSession(completed = inBreak, notify = true)
+            }
             ACTION_COMPLETE -> stopSession(completed = true, notify = true)
         }
         return START_STICKY

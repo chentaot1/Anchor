@@ -102,7 +102,9 @@ class LlamaServerClient(
             if (f.exists() && f.isFile) return f
         }
 
-        val appData = System.getenv("APPDATA") ?: (System.getProperty("user.home") + "/AppData/Roaming")
+        val userHome = System.getProperty("user.home")
+        val downloadsDir = File(userHome, "Downloads")
+        val appData = System.getenv("APPDATA") ?: "$userHome/AppData/Roaming"
         val appDataBinary = File(appData, "Anchor/bin/llama/llama-server.exe")
         if (appDataBinary.exists() && appDataBinary.isFile) return appDataBinary
 
@@ -116,11 +118,7 @@ class LlamaServerClient(
                 File("../../../bin/llama/llama-server.exe"),
                 File("../../../../bin/llama/llama-server.exe"),
                 File("../../../../../bin/llama/llama-server.exe"),
-                File("C:/Users/johnb/Downloads/anchor-adhd/desktopApp/bin/llama/llama-server.exe"),
-                File(
-                    System.getProperty("user.home"),
-                    ".gemini/antigravity/brain/287b0aaa-e491-4dfe-9ca2-131df1c808b9/scratch/llama_bin/llama-server.exe",
-                ),
+                File(downloadsDir, "anchor-adhd/desktopApp/bin/llama/llama-server.exe"),
             )
 
         return candidates.firstOrNull { it.exists() && it.isFile }
@@ -144,25 +142,22 @@ class LlamaServerClient(
             if (f.exists() && f.isFile) return f
         }
 
+        val userHome = System.getProperty("user.home")
+        val downloadsDir = File(userHome, "Downloads")
+        val appData = System.getenv("APPDATA") ?: "$userHome/AppData/Roaming"
         val candidates =
             listOf(
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Q5_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Q5_K_M.gguf"),
-                File(System.getProperty("user.home"), "Downloads/MiniCPM5-1B-Q4_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/MiniCPM5-1B-Q4_K_M.gguf"),
-                File(System.getProperty("user.home"), "Downloads/Ling-3.0-tiny-Q5_K_M.gguf"),
-                File("C:/Users/johnb/Downloads/Ling-3.0-tiny-Q5_K_M.gguf"),
-                File(System.getenv("APPDATA") ?: "", "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
-                File(System.getenv("APPDATA") ?: "", "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
-                File(System.getenv("APPDATA") ?: "", "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
-                File(System.getenv("APPDATA") ?: "", "Anchor/models/MiniCPM5-1B-Q5_K_M.gguf"),
-                File(System.getenv("APPDATA") ?: "", "Anchor/models/Ling-3.0-tiny-Q5_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Q5_K_M.gguf"),
+                File(downloadsDir, "MiniCPM5-1B-Q4_K_M.gguf"),
+                File(downloadsDir, "Ling-3.0-tiny-Q5_K_M.gguf"),
+                File(appData, "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"),
+                File(appData, "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q5_K_M.gguf"),
+                File(appData, "Anchor/models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q4_K_M.gguf"),
+                File(appData, "Anchor/models/MiniCPM5-1B-Q5_K_M.gguf"),
+                File(appData, "Anchor/models/Ling-3.0-tiny-Q5_K_M.gguf"),
             )
 
         return candidates.firstOrNull { it.exists() && it.isFile }

@@ -35,4 +35,14 @@ class DesktopCompatibleRouterTest {
     @Test fun destructiveRequestsAreRoutedToReview() {
         assertTrue(DesktopCompatibleRouter.routeQuick("factory reset") is SmartRouteResult.ResetDataAction)
     }
+
+    @Test fun explicitBreakdownCueDistinguishesPlainTasksFromBreakdownRequests() {
+        assertFalse(DesktopCompatibleRouter.hasExplicitBreakdownCue("buy milk"))
+        assertFalse(DesktopCompatibleRouter.hasExplicitBreakdownCue("call dentist tomorrow"))
+        assertFalse(DesktopCompatibleRouter.hasExplicitBreakdownCue("write essay"))
+        assertTrue(DesktopCompatibleRouter.hasExplicitBreakdownCue("break down my biology paper"))
+        assertTrue(DesktopCompatibleRouter.hasExplicitBreakdownCue("breakdown my taxes"))
+        assertTrue(DesktopCompatibleRouter.hasExplicitBreakdownCue("steps for cleaning the kitchen"))
+        assertTrue(DesktopCompatibleRouter.hasExplicitBreakdownCue("how to start my lab report"))
+    }
 }

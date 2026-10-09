@@ -180,4 +180,47 @@ class DesktopSmartRouterTest {
         val breakdown = r as SmartRouteResult.TaskBreakdown
         assertNotNull(breakdown.step1Starter)
     }
+
+    @Test
+    fun testDecimalHourTimersAndWholeWordTaskTimerPrefix() {
+        val r90 = DesktopSmartRouter.routeQuick("1.5 hours")
+        assertTrue(r90 is SmartRouteResult.TimerAction)
+        assertEquals(90, (r90 as SmartRouteResult.TimerAction).durationMinutes)
+
+        val focusOn = DesktopSmartRouter.routeQuick("focus on biology for 25m")
+        assertTrue(focusOn is SmartRouteResult.TimerAction)
+        assertEquals("Biology", (focusOn as SmartRouteResult.TimerAction).taskTitle)
+
+        val starterPack = DesktopSmartRouter.routeQuick("starter pack review for 25m")
+        assertTrue(starterPack is SmartRouteResult.TimerAction)
+        assertEquals("Starter pack review", (starterPack as SmartRouteResult.TimerAction).taskTitle)
+    }
+
+    @Test
+    fun testBlockerUrlExtractionAndStopWordProtection() {
+        val urlBlock = DesktopSmartRouter.routeQuick("block https://www.reddit.com/r/all")
+        assertTrue(urlBlock is SmartRouteResult.BlockerAction)
+        assertEquals("reddit.com", (urlBlock as SmartRouteResult.BlockerAction).target)
+
+        // Natural language task containing "allow" or "block out" must not trigger BlockerAction
+        val allowTask = DesktopSmartRouter.routeQuick("allow extra time for the biology assignment")
+        assertTrue(allowTask is SmartRouteResult.TaskBreakdown)
+
+        val blockOutTask = DesktopSmartRouter.routeQuick("block out 2 hours for exam prep")
+        assertTrue(blockOutTask !is SmartRouteResult.BlockerAction)
+    }
+
+    @Test
+    fun testSafeResetAndQuickNoteRouting() {
+        val clearAll = DesktopSmartRouter.routeQuick("clear all tasks")
+        assertTrue(clearAll is SmartRouteResult.ResetDataAction)
+        assertEquals(ResetType.CLEAR_TASKS, (clearAll as SmartRouteResult.ResetDataAction).resetType)
+
+        val notReset = DesktopSmartRouter.routeQuick("clear tasks for all classes")
+        assertTrue(notReset is SmartRouteResult.TaskBreakdown)
+
+        val quickNote = DesktopSmartRouter.routeQuick("note: buy milk on the way home")
+        assertTrue(quickNote is SmartRouteResult.QuickNote)
+        assertEquals("Buy milk on the way home", (quickNote as SmartRouteResult.QuickNote).noteTitle)
+    }
 }

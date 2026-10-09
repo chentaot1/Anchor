@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.anchor.adhd.data.model.BreakdownGranularity
 import com.anchor.adhd.ui.chat.ChatScreen
 import com.anchor.adhd.ui.copy.AppCopy
 import com.anchor.adhd.ui.theme.AnchorColors
@@ -25,6 +26,12 @@ private val AI_TOOLS = listOf(
     AiTool("Ask Anchor", "A calm, practical executive coach. Ask for help or a two-minute starter.")
 )
 
+private fun BreakdownGranularity.displayLabel(): String = when (this) {
+    BreakdownGranularity.MILD -> "Mild (2–3)"
+    BreakdownGranularity.NORMAL -> "Normal (3–5)"
+    BreakdownGranularity.SPICY -> "Spicy (5–7)"
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AiScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
@@ -38,6 +45,7 @@ fun AiScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
     val chatBusy by vm.chatBusy.collectAsState()
     val error by vm.aiError.collectAsState()
     val modelReady by vm.modelDownloaded.collectAsState()
+    val granularity by vm.breakdownGranularity.collectAsState()
     LaunchedEffect(Unit) { vm.refreshModelStatus() }
     var selectedTool by rememberSaveable { mutableIntStateOf(0) }
     var breakdownInput by rememberSaveable { mutableStateOf("") }
@@ -80,6 +88,19 @@ fun AiScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                         OutlinedTextField(value = input,
                             onValueChange = { if (selectedTool == 0) breakdownInput = it else brainDumpInput = it },
                             modifier = Modifier.fillMaxWidth(), label = { Text(current.inputHint) }, minLines = 3, maxLines = 8)
+                        if (selectedTool == 0) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                BreakdownGranularity.entries.forEach { option ->
+                                    FilterChip(
+                                        selected = granularity == option,
+                                        onClick = { vm.setBreakdownGranularity(option) },
+                                        label = { Text(option.displayLabel()) }
+                                    )
+                                }
+                            }
+                        }
                     } else {
                         val count = if (selectedTool == 2) inbox.size else replanQueue.count { it.second != null }
                         Text(if (count > 0) "$count tasks ready" else if (selectedTool == 2)

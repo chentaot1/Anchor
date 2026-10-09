@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anchor.adhd.desktop.ai.ResetType
 import com.anchor.adhd.desktop.db.DesktopFunLink
+import com.anchor.adhd.desktop.db.DesktopHarborState
 import com.anchor.adhd.desktop.db.DesktopTask
 import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
@@ -95,6 +96,7 @@ fun DesktopHomeDeck(
     onApplyBlockerRule: (target: String, enable: Boolean) -> Unit = { _, _ -> },
     onResetData: ((ResetType) -> Unit)? = null,
     onNavigateToSyllabus: (() -> Unit)? = null,
+    harborState: DesktopHarborState = DesktopHarborState(),
     modifier: Modifier = Modifier,
 ) {
     var thoughtInput by remember { mutableStateOf("") }
@@ -348,6 +350,11 @@ fun DesktopHomeDeck(
                         .verticalScroll(rightScrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                // 0. Living Harbor Scene (Visual Progression & Time-of-Day Sky)
+                DesktopHarborScene(
+                    harborState = harborState,
+                )
+
                 // 1. Today's Momentum Hub (Immediate Dopamine Feedback)
                 Surface(
                     modifier =

@@ -72,7 +72,7 @@ object DesktopUpdateManager {
 
     var currentCommit: String = "unknown"
         private set
-    var currentVersionTag: String = "v1.0.3"
+    var currentVersionTag: String = "v1.0.4"
         private set
     var currentBranch: String = "main"
         private set
@@ -102,10 +102,11 @@ object DesktopUpdateManager {
                 }
                 val branchRes = runCommand("git", "rev-parse", "--abbrev-ref", "HEAD")
                 if (branchRes.exitCode == 0 && branchRes.stdout.isNotBlank()) {
-                    currentBranch = branchRes.stdout.trim()
+                    val resolvedBranch = branchRes.stdout.trim()
+                    currentBranch = if (resolvedBranch == "HEAD" || resolvedBranch.isBlank()) "main" else resolvedBranch
                 }
             } else {
-                currentVersionTag = "v1.0.3 (Standalone)"
+                currentVersionTag = "v1.0.4 (Standalone)"
             }
         }
 
@@ -211,7 +212,7 @@ object DesktopUpdateManager {
                     UpdateState.Updating(
                         stage = "Preserving local state and pulling updates from GitHub...",
                         progress = 0.2f,
-                        logs = logLines,
+                        logs = logLines.toList(),
                     )
                 addLog("Anchor repository root: ${projectRoot.absolutePath}")
 
@@ -245,7 +246,7 @@ object DesktopUpdateManager {
                     UpdateState.Updating(
                         stage = "Update completed successfully!",
                         progress = 1.0f,
-                        logs = logLines,
+                        logs = logLines.toList(),
                     )
                 addLog("Updated successfully! Current version is now $currentVersionTag ($currentCommit)")
 

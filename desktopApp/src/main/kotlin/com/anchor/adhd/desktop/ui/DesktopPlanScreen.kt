@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -28,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -44,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +76,16 @@ fun DesktopPlanScreen(
     var nanoStepsByTaskId by remember { mutableStateOf<Map<Long, List<String>>>(emptyMap()) }
     var loadingTaskId by remember { mutableStateOf<Long?>(null) }
 
+    val submitNewTask = {
+        if (newTaskText.isNotBlank()) {
+            val titleToInsert = newTaskText.trim()
+            newTaskText = ""
+            scope.launch {
+                db.insertTask(titleToInsert, durationMinutes)
+            }
+        }
+    }
+
     Column(
         modifier =
             modifier
@@ -98,18 +112,44 @@ fun DesktopPlanScreen(
                 )
             }
 
-            Surface(
-                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                color = AnchorColors.HarborDock,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "${tasks.count { it.isCompleted }} of ${tasks.size} completed",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = AnchorColors.HarborFoliage,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                )
+                if (tasks.any { it.isCompleted }) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                db.deleteCompletedTasks()
+                            }
+                        },
+                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White.copy(alpha = 0.85f)),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Clear Completed", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                    color = AnchorColors.HarborDock,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                ) {
+                    Text(
+                        text = "${tasks.count { it.isCompleted }} of ${tasks.size} completed",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = AnchorColors.HarborFoliage,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
             }
         }
 
@@ -140,17 +180,12 @@ fun DesktopPlanScreen(
                             unfocusedTextColor = Color.White,
                         ),
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submitNewTask() }),
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Button(
-                    onClick = {
-                        if (newTaskText.isNotBlank()) {
-                            scope.launch {
-                                db.insertTask(newTaskText, durationMinutes)
-                                newTaskText = ""
-                            }
-                        }
-                    },
+                    onClick = { submitNewTask() },
                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                     colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborPrimary, contentColor = Color(0xFF002A4A)),
                 ) {
@@ -194,7 +229,15 @@ fun DesktopPlanScreen(
                             } else {
                                 AnchorColors.HarborBackground.copy(alpha = 0.8f)
                             },
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                        border =
+                            BorderStroke(
+                                1.dp,
+                                if (!task.isCompleted && task.isNextAction) {
+                                    AnchorColors.HarborBeaconAmber.copy(alpha = 0.5f)
+                                } else {
+                                    Color.White.copy(alpha = 0.08f)
+                                },
+                            ),
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -213,18 +256,59 @@ fun DesktopPlanScreen(
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = task.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (task.isCompleted) Color.White.copy(alpha = 0.4f) else Color.White,
-                                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text(
+                                        text = task.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (task.isCompleted) Color.White.copy(alpha = 0.4f) else Color.White,
+                                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+                                    )
+                                    if (!task.isCompleted && task.isNextAction) {
+                                        Surface(
+                                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                            color = AnchorColors.HarborBeaconAmber.copy(alpha = 0.2f),
+                                            border = BorderStroke(1.dp, AnchorColors.HarborBeaconAmber.copy(alpha = 0.5f)),
+                                        ) {
+                                            Text(
+                                                text = "NOW",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = AnchorColors.HarborBeaconAmber,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            )
+                                        }
+                                    }
+                                }
                                 Text(
                                     text = "${task.durationMinutes}m duration • ${task.difficulty.lowercase()}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.4f),
                                 )
+                            }
+
+                            if (!task.isCompleted) {
+                                // Set as Next Action (Make NOW) Button
+                                IconButton(
+                                    onClick = { scope.launch { db.setNextActionTask(task.id) } },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = "Set as Next Action",
+                                        tint =
+                                            if (task.isNextAction) {
+                                                AnchorColors.HarborBeaconAmber
+                                            } else {
+                                                Color.White.copy(alpha = 0.4f)
+                                            },
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
                             }
 
                             // AI Nano-Step Button
@@ -404,6 +488,21 @@ fun DesktopPlanScreen(
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text("Start Step 1 Now", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                             }
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { onBreakdownTask(task.title) },
+                                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                            border = BorderStroke(1.dp, AnchorColors.HarborAi.copy(alpha = 0.5f)),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AnchorColors.HarborAi),
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.AutoAwesome,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp),
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Open in AI Studio", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }

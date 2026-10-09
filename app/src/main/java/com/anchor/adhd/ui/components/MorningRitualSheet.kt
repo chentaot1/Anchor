@@ -49,10 +49,13 @@ fun MorningRitualSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var step by remember { mutableIntStateOf(0) }
-    val totalSteps = if (replanItems.isEmpty()) 3 else 4
+    val activeReplan = replanItems.mapNotNull { (item, task) -> task?.let { item to it } }
+    val totalSteps = if (activeReplan.isEmpty()) 3 else 4
+    val effectiveStep = if (step == 1 && activeReplan.isEmpty()) 2 else step
+    val progressIndex = if (activeReplan.isEmpty() && effectiveStep >= 2) effectiveStep - 1 else effectiveStep
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        val sunriseAlpha = 0.35f + (step + 1) / totalSteps.toFloat() * 0.45f
+        val sunriseAlpha = 0.35f + (progressIndex + 1) / totalSteps.toFloat() * 0.45f
         Box(
             Modifier
                 .fillMaxWidth()
@@ -70,25 +73,24 @@ fun MorningRitualSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Morning check-in", style = MaterialTheme.typography.headlineSmall)
-            LinearProgressIndicator(progress = { (step + 1) / totalSteps.toFloat() }, modifier = Modifier.fillMaxWidth())
+            LinearProgressIndicator(progress = { (progressIndex + 1) / totalSteps.toFloat() }, modifier = Modifier.fillMaxWidth())
 
-            when (step) {
+            when (effectiveStep) {
                 0 -> {
                     Text("How's your energy?", style = MaterialTheme.typography.titleMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         EnergyLevel.entries.forEach { level ->
                             OutlinedButton(onClick = {
                                 onEnergySelected(level)
-                                step++
+                                step = if (activeReplan.isEmpty()) 2 else 1
                             }) { Text(level.name.lowercase().replaceFirstChar { it.uppercase() }) }
                         }
                     }
-                    TextButton(onClick = { step++ }) { Text("Skip") }
+                    TextButton(onClick = { step = if (activeReplan.isEmpty()) 2 else 1 }) { Text("Skip") }
                 }
-                1 -> if (replanItems.isNotEmpty()) {
+                1 -> {
                     Text("Missed blocks", style = MaterialTheme.typography.titleMedium)
-                    replanItems.forEach { (item, task) ->
-                        val t = task ?: return@forEach
+                    activeReplan.forEach { (item, t) ->
                         Text(t.title, style = MaterialTheme.typography.bodyLarge)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { onReplanReschedule(item.id, t.id, t.durationMinutes) }) { Text("Reschedule") }
@@ -96,8 +98,8 @@ fun MorningRitualSheet(
                             TextButton(onClick = { onReplanDismiss(item.id) }) { Text("Dismiss") }
                         }
                     }
-                    Button(onClick = { step++ }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
-                } else step++
+                    Button(onClick = { step = 2 }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
+                }
                 2 -> {
                     WorkloadBanner(workload = workload, estimateErrorPercent = estimateErrorPercent)
                     Text(
@@ -105,7 +107,7 @@ fun MorningRitualSheet(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Button(onClick = { step++ }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
+                    Button(onClick = { step = 3 }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
                 }
                 else -> {
                     Text("Optional: run your morning routine?", style = MaterialTheme.typography.titleMedium)

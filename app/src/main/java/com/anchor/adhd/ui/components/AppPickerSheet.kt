@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.domain.InstalledApp
+import com.anchor.adhd.domain.WhitelistBasics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,8 +29,9 @@ fun AppPickerSheet(
 ) {
     var query by remember { mutableStateOf("") }
     val filtered = remember(apps, query) {
-        if (query.isBlank()) apps
-        else apps.filter {
+        val selectable = apps.filterNot { it.packageName in WhitelistBasics.essentialPackages }
+        if (query.isBlank()) selectable
+        else selectable.filter {
             it.label.contains(query, ignoreCase = true) ||
                 it.packageName.contains(query, ignoreCase = true)
         }

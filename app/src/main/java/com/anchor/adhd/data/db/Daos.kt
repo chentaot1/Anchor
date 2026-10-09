@@ -145,6 +145,12 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM tasks WHERE parentTaskId = :parentId")
+    suspend fun deleteChildrenOf(parentId: Long)
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -158,11 +164,20 @@ interface AssignmentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(assignment: AssignmentEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(assignments: List<AssignmentEntity>)
+
     @Update
     suspend fun update(assignment: AssignmentEntity)
 
     @Query("SELECT * FROM assignments WHERE isCompleted = 0 AND dueAtMillis <= :deadline ORDER BY dueAtMillis")
     fun observeDueBefore(deadline: Long): Flow<List<AssignmentEntity>>
+
+    @Query("DELETE FROM assignments WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM assignments")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -200,6 +215,12 @@ interface CalendarEventDao {
 
 @Dao
 interface RoutineDao {
+    @Query("SELECT * FROM routines")
+    suspend fun getAll(): List<RoutineEntity>
+
+    @Query("SELECT * FROM routine_steps")
+    suspend fun getAllSteps(): List<RoutineStepEntity>
+
     @Query("SELECT * FROM routines WHERE isEnabled = 1")
     fun observeEnabled(): Flow<List<RoutineEntity>>
 
@@ -210,11 +231,29 @@ interface RoutineDao {
     suspend fun insertRoutine(routine: RoutineEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllRoutines(routines: List<RoutineEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSteps(steps: List<RoutineStepEntity>)
+
+    @Query("DELETE FROM routines WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM routine_steps WHERE routineId = :routineId")
+    suspend fun deleteStepsForRoutine(routineId: Long)
+
+    @Query("DELETE FROM routines")
+    suspend fun deleteAllRoutines()
+
+    @Query("DELETE FROM routine_steps")
+    suspend fun deleteAllSteps()
 }
 
 @Dao
 interface ReplanDao {
+    @Query("SELECT * FROM replan_items")
+    suspend fun getAll(): List<ReplanItemEntity>
+
     @Query("SELECT * FROM replan_items WHERE id = :id")
     suspend fun getById(id: Long): ReplanItemEntity?
 
@@ -224,6 +263,9 @@ interface ReplanDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(item: ReplanItemEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(items: List<ReplanItemEntity>)
+
     @Query(
         "SELECT COUNT(*) FROM replan_items WHERE taskId = :taskId AND missedOnDayMillis = :dayMillis AND resolved = 0"
     )
@@ -231,10 +273,19 @@ interface ReplanDao {
 
     @Query("UPDATE replan_items SET resolved = 1 WHERE id = :id")
     suspend fun resolve(id: Long)
+
+    @Query("DELETE FROM replan_items WHERE taskId = :taskId")
+    suspend fun deleteForTask(taskId: Long)
+
+    @Query("DELETE FROM replan_items")
+    suspend fun deleteAll()
 }
 
 @Dao
 interface FocusSessionDao {
+    @Query("SELECT * FROM focus_sessions")
+    suspend fun getAll(): List<FocusSessionEntity>
+
     @Query("SELECT * FROM focus_sessions WHERE endedAtMillis IS NULL ORDER BY startedAtMillis DESC LIMIT 1")
     suspend fun getActiveSession(): FocusSessionEntity?
 
@@ -256,6 +307,9 @@ interface FocusSessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(session: FocusSessionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(sessions: List<FocusSessionEntity>)
+
     @Update
     suspend fun update(session: FocusSessionEntity)
 
@@ -268,7 +322,7 @@ interface FocusSessionDao {
     @Query("SELECT COUNT(*) FROM focus_sessions WHERE completed = 1 AND startedAtMillis >= :start AND startedAtMillis < :end")
     fun observeCompletedCountBetween(start: Long, end: Long): Flow<Int>
 
-    @Query("SELECT COALESCE(SUM(plannedMinutes), 0) FROM focus_sessions WHERE completed = 1 AND startedAtMillis >= :start AND startedAtMillis < :end")
+    @Query("SELECT COALESCE(SUM(COALESCE(actualMinutes, plannedMinutes)), 0) FROM focus_sessions WHERE completed = 1 AND startedAtMillis >= :start AND startedAtMillis < :end")
     fun observeCompletedMinutesBetween(start: Long, end: Long): Flow<Int>
 
     @Query("SELECT * FROM focus_sessions WHERE completed = 1 AND actualMinutes IS NOT NULL AND startedAtMillis >= :start")
@@ -280,6 +334,9 @@ interface FocusSessionDao {
 
 @Dao
 interface BlockRuleDao {
+    @Query("SELECT * FROM block_rules")
+    suspend fun getAll(): List<BlockRuleEntity>
+
     @Query("SELECT * FROM block_rules ORDER BY packageName")
     fun observeAll(): Flow<List<BlockRuleEntity>>
 
@@ -288,6 +345,9 @@ interface BlockRuleDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(rule: BlockRuleEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(rules: List<BlockRuleEntity>)
 
     @Update
     suspend fun update(rule: BlockRuleEntity)
@@ -304,8 +364,14 @@ interface BlockRuleDao {
 
 @Dao
 interface CheckInDao {
+    @Query("SELECT * FROM check_ins")
+    suspend fun getAll(): List<CheckInEntity>
+
     @Insert
     suspend fun insert(entry: CheckInEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(entries: List<CheckInEntity>)
 
     @Update
     suspend fun update(entry: CheckInEntity)
@@ -315,10 +381,19 @@ interface CheckInDao {
 
     @Query("SELECT * FROM check_ins WHERE recordedAtMillis >= :sinceMillis ORDER BY recordedAtMillis DESC LIMIT 1")
     fun observeLatestSince(sinceMillis: Long): Flow<CheckInEntity?>
+
+    @Query("DELETE FROM check_ins")
+    suspend fun deleteAll()
 }
 
 @Dao
 interface CompanionDao {
+    @Query("SELECT * FROM companion_state")
+    suspend fun getAll(): List<CompanionStateEntity>
+
+    @Query("SELECT * FROM companion_state WHERE id = 1")
+    suspend fun getState(): CompanionStateEntity?
+
     @Query("SELECT * FROM companion_state WHERE id = 1")
     fun observe(): Flow<CompanionStateEntity?>
 
@@ -327,6 +402,12 @@ interface CompanionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTree(tree: FocusGardenEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllGarden(trees: List<FocusGardenEntity>)
+
+    @Query("SELECT * FROM focus_garden")
+    suspend fun getAllGarden(): List<FocusGardenEntity>
 
     @Query("SELECT COUNT(*) FROM focus_garden WHERE sessionId = :sessionId")
     suspend fun countTreesForSession(sessionId: Long): Int
@@ -350,6 +431,12 @@ interface CompanionDao {
         """
     )
     fun observePlantedTiles(): Flow<List<com.anchor.adhd.data.model.PlantedTile>>
+
+    @Query("DELETE FROM focus_garden")
+    suspend fun deleteAllGarden()
+
+    @Query("DELETE FROM companion_state")
+    suspend fun deleteAllCompanion()
 }
 
 @Dao
@@ -381,11 +468,17 @@ interface CbtCardDao {
 
 @Dao
 interface TemptationBundleDao {
+    @Query("SELECT * FROM temptation_bundles")
+    suspend fun getAll(): List<com.anchor.adhd.data.model.TemptationBundleEntity>
+
     @Query("SELECT * FROM temptation_bundles ORDER BY name")
     fun observeAll(): Flow<List<com.anchor.adhd.data.model.TemptationBundleEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(bundle: com.anchor.adhd.data.model.TemptationBundleEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(bundles: List<com.anchor.adhd.data.model.TemptationBundleEntity>)
 
     @Update
     suspend fun update(bundle: com.anchor.adhd.data.model.TemptationBundleEntity)
@@ -395,10 +488,19 @@ interface TemptationBundleDao {
 
     @Query("UPDATE temptation_bundles SET unlockUntilMillis = :until WHERE id = :id")
     suspend fun setUnlockUntil(id: Long, until: Long)
+
+    @Query("DELETE FROM temptation_bundles")
+    suspend fun deleteAll()
 }
 
 @Dao
 interface HabitDao {
+    @Query("SELECT * FROM habits")
+    suspend fun getAll(): List<HabitEntity>
+
+    @Query("SELECT * FROM habit_completions")
+    suspend fun getAllCompletions(): List<HabitCompletionEntity>
+
     @Query("SELECT * FROM habits WHERE isArchived = 0 ORDER BY sortOrder, createdAtMillis")
     fun observeActive(): Flow<List<HabitEntity>>
 
@@ -411,6 +513,9 @@ interface HabitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(habit: HabitEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(habits: List<HabitEntity>)
+
     @Update
     suspend fun update(habit: HabitEntity)
 
@@ -419,6 +524,9 @@ interface HabitDao {
 
     @Query("DELETE FROM habits WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM habits")
+    suspend fun deleteAll()
 
     @Query("SELECT * FROM habit_completions WHERE habitId = :habitId AND dayMillis >= :from AND dayMillis < :to")
     fun observeCompletionsBetween(habitId: Long, from: Long, to: Long): Flow<List<HabitCompletionEntity>>
@@ -432,15 +540,24 @@ interface HabitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCompletion(completion: HabitCompletionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCompletions(completions: List<HabitCompletionEntity>)
+
     @Query("DELETE FROM habit_completions WHERE habitId = :habitId AND dayMillis = :dayMillis")
     suspend fun deleteCompletion(habitId: Long, dayMillis: Long)
 
     @Query("DELETE FROM habit_completions WHERE habitId = :habitId")
     suspend fun deleteCompletionsForHabit(habitId: Long)
+
+    @Query("DELETE FROM habit_completions")
+    suspend fun deleteAllCompletions()
 }
 
 @Dao
 interface FunLinkDao {
+    @Query("SELECT * FROM fun_links ORDER BY sortOrder ASC")
+    suspend fun getAll(): List<FunLinkEntity>
+
     @Query("SELECT * FROM fun_links WHERE enabled = 1 ORDER BY sortOrder ASC")
     fun observeActiveFunLinks(): Flow<List<FunLinkEntity>>
 
@@ -464,5 +581,8 @@ interface FunLinkDao {
 
     @Query("DELETE FROM fun_links WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM fun_links")
+    suspend fun deleteAll()
 }
 

@@ -1,0 +1,23 @@
+import groovy.json.JsonOutput
+
+gradle.projectsEvaluated {
+    rootProject.tasks.register('anchorLicenseInventory') {
+        doLast {
+            def rows = []
+            [':app': ['debugRuntimeClasspath', 'releaseRuntimeClasspath'], ':desktopApp': ['runtimeClasspath']].each { projectPath, names ->
+                def p = rootProject.project(projectPath)
+                names.each { name ->
+                    def c = p.configurations.getByName(name)
+                    def artifacts = c.incoming.artifactView { componentFilter { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier } }.artifacts.artifacts.collect { a ->
+                        [coordinate: a.id.componentIdentifier.displayName, file: a.file.absolutePath]
+                    }
+                    def deps = c.incoming.resolutionResult.allComponents.collect { it.id.displayName }.sort()
+                    rows << [project: projectPath, configuration: name, components: deps, artifacts: artifacts]
+                }
+            }
+            def out = new File(rootProject.projectDir, 'desktopApp/build/license-inventory.json')
+            out.text = JsonOutput.prettyPrint(JsonOutput.toJson(rows))
+            rows.each { println "${it.project}:${it.configuration}: ${it.components.size()} components, ${it.artifacts.size()} artifacts" }
+        }
+    }
+}

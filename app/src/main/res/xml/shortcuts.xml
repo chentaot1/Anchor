@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="start_focus"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_focus"
+        android:shortcutLongLabel="@string/shortcut_focus_long">
+        <intent
+            android:action="com.anchor.adhd.START_FOCUS"
+            android:targetPackage="com.anchor.adhd"
+            android:targetClass="com.anchor.adhd.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="morning_ritual"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_morning"
+        android:shortcutLongLabel="@string/shortcut_morning_long">
+        <intent
+            android:action="com.anchor.adhd.OPEN_MORNING_RITUAL"
+            android:targetPackage="com.anchor.adhd"
+            android:targetClass="com.anchor.adhd.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="check_in"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_checkin">
+        <intent
+            android:action="com.anchor.adhd.CHECK_IN"
+            android:targetPackage="com.anchor.adhd"
+            android:targetClass="com.anchor.adhd.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="shutdown"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_shutdown">
+        <intent
+            android:action="com.anchor.adhd.SHUTDOWN"
+            android:targetPackage="com.anchor.adhd"
+            android:targetClass="com.anchor.adhd.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="open_grove"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_grove">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="com.anchor.adhd"
+            android:targetClass="com.anchor.adhd.MainActivity">
+            <extra
+                android:name="open_tab"
+                android:value="0" />
+        </intent>
+    </shortcut>
+</shortcuts>

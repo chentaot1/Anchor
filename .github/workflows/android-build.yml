@@ -22,6 +22,9 @@ jobs:
       - name: Verify public edition boundary checks
         run: python3 -m unittest discover -s tools -p 'test_public_source_boundary.py'
 
+      - name: Test APK model exclusion checks
+        run: python3 -m unittest discover -s tools -p 'test_android_apk_delivery.py'
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -78,9 +81,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-anchor-
 
-      - name: Bundle verified desktop model
-        run: python3 tools/fetch_desktop_model.py
-
       - name: Restore persistent Android signing key
         env:
           ANCHOR_ANDROID_KEYSTORE_BASE64: ${{ secrets.ANCHOR_ANDROID_KEYSTORE_BASE64 }}
@@ -102,7 +102,7 @@ jobs:
           CMAKE_FETCHCONTENT_CACHE_DIR: ${{ github.workspace }}/.cache/fetchcontent
         run: chmod +x gradlew && ./gradlew :app:assembleDebug --stacktrace
 
-      - name: Verify packaged desktop model and ARM64 runtime
+      - name: Verify model-free APK and ARM64 runtime
         run: python3 tools/verify_android_apk.py
 
       - name: Rename APK

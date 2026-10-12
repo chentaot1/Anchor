@@ -166,7 +166,7 @@ class AiRepository(
         history: List<Pair<String, String>> = emptyList(),
         academicContext: String = ""
     ): Result<String> = runCatching {
-        check(preferences.isModelDownloaded()) { "The bundled desktop model is still being prepared" }
+        check(preferences.isModelDownloaded()) { "Download the optional AI model in Settings first" }
         val systemPrompt = buildString {
             append(LocalAiEngine.CHAT_RESPONSE_SYSTEM)
             if (compactDayContext.isNotBlank()) {

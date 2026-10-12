@@ -48,7 +48,7 @@ object AppCopy {
     const val CBT_HINT = "Tap to read"
 
     const val AI_MODE_HINT = "Review output before adding to your plan"
-    const val AI_STUB = "Preparing local AI · check Settings"
+    const val AI_STUB = "Basic tools · optional AI download in Settings"
     const val AI_ON_DEVICE = "Desktop model · ready offline"
     const val AI_STUB_FILE_ONLY = "Model file only · native runtime unavailable"
     const val AI_NO_NATIVE = "On-device AI unavailable in this build"

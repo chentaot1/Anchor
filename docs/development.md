@@ -119,25 +119,20 @@ Today's Windows focus minutes count saved work by its completion timestamp, matc
 
 ## Android model and APK
 
-The default bundled model is **MiniCPM5-1B-Claude-Opus-Fable5-Thinking Q8_0**. This is a local GGUF artifact; its name does not imply a hosted Claude API integration. The pinned weight file is 1,153,529,792 bytes. Model weights stay out of Git.
+The optional model is **MiniCPM5-1B-Claude-Opus-Fable5-Thinking Q8_0**. This is a local GGUF artifact; its name does not imply a hosted Claude API integration. The pinned weight file is 1,153,529,792 bytes. Model weights stay out of Git and new APKs.
 
-Stage the verified asset, test, build, and inspect the resulting APK:
+Test, build, and inspect the resulting model-free APK:
 
 ```powershell
-python tools/fetch_desktop_model.py
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug
 python tools/verify_android_apk.py
 ```
 
-If you already have the exact model locally, stage it without downloading another copy:
+No model download or staging is required to build. The APK verifier rejects GGUF weights and checks the ARM64 JNI library. Native inference uses a pinned, hash-checked llama.cpp b9371 source archive; the default Android build targets ARM64. A locally staged GGUF is excluded from packaging too.
 
-```powershell
-python tools/fetch_desktop_model.py --source "C:/Models/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf"
-```
+First-run onboarding offers an optional 1.2 GB download from Hugging Face or Skip for now. Settings → AI provides it later. Allow the model's size plus 500 MB free space if enabling local AI. Pause/retry preserves and resumes partial bytes; checksums are verified before activation. Existing installed models are retained. Build intermediates and emulator disks require additional development storage.
 
-Both paths verify the model size and SHA-256. The APK verifier checks the packaged model bytes, asset compression, and the ARM64 JNI library. Native inference uses a pinned, hash-checked llama.cpp b9371 source archive; the default Android build targets ARM64.
-
-The Android APK is approximately **1.24 GB** because it bundles the model. Allow around **2.4 GB** for the APK and extracted weights, plus existing data and old models. Build intermediates and emulator disks can require substantially more development storage.
+The retained GPL preview 5 download still bundles its model; this change applies to newly built APKs. See [F-Droid preparation](fdroid.md) for the SDK-free edition's submission requirements.
 
 See [Android inference implementation](desktop-model-on-android.md) for the model hash, runtime settings, and validation details.
 
@@ -148,7 +143,7 @@ Download the latest APK from the [public Android release](https://github.com/che
 1. Build the APK using the commands above.
 2. Transfer `app/build/outputs/apk/debug/app-debug.apk` to the phone.
 3. Open the file and allow installation from the file manager when Android prompts.
-4. Let Settings finish preparing the bundled model. Anchor copies it into private storage, verifies it, and activates it; old weight files are preserved.
+4. For a new build, choose Download model or Skip for now during onboarding. For the retained preview 5 release, let its bundled model finish installing. Existing private model files are preserved on upgrade.
 5. Enable Anchor in **Android Accessibility settings** for app protection. On Samsung, set its battery mode to **Unrestricted**.
 6. Optional: sync Google calendars in the device calendar app, then allow Anchor calendar access. For step/exercise habits, connect Health Connect in Settings and allow both read permissions. Enable Samsung Health sharing with Health Connect if that is your data source. Android 13 and earlier may need the Health Connect app installed.
 

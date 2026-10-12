@@ -133,7 +133,7 @@ cd Anchor
 
 Desktop unit tests do not require model weights. To enable local AI, configure a compatible `llama-server.exe` and a GGUF file in Settings. Build a Windows application image with `:desktopApp:createDistributable`; `Launch-Anchor.bat` starts that image when available and otherwise uses Gradle.
 
-Models, runtime binaries, build outputs, credentials, and personal databases are excluded from Git. Run the [publication privacy checks](docs/publication-privacy.md) before publishing. The Android package bundles a large model; the source repository does not contain those weights.
+Models, runtime binaries, build outputs, credentials, and personal databases are excluded from Git. Run the [publication privacy checks](docs/publication-privacy.md) before publishing. New Android APKs exclude model weights and offer an optional download during onboarding or later in Settings. Existing installed models are retained. The older GPL preview 5 APK still bundles its model. An Android-only repository is not needed for [F-Droid preparation](docs/fdroid.md).
 
 ## Validation and current status
 

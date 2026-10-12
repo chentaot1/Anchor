@@ -8,7 +8,8 @@ data class ModelCatalogEntry(
     val url: String,
     val sizeBytes: Long,
     val quant: String,
-    val recommendedForRamGb: Int = 8
+    val recommendedForRamGb: Int = 8,
+    val sha256: String = DesktopInferenceProfile.MODEL_SHA256
 ) {
     fun sizeLabel(): String = when {
         sizeBytes >= 1_000_000_000 -> "%.1f GB".format(sizeBytes / 1_000_000_000.0)
@@ -21,7 +22,7 @@ object ModelCatalog {
         ModelCatalogEntry(
             id = "q8",
             label = "MiniCPM5-1B Claude-Opus-Fable5 Thinking Q8_0",
-            subtitle = "Desktop main model · bundled · CPU profile · reasoning off",
+            subtitle = "Optional download · CPU profile · reasoning off",
             filename = ModelDownloadManager.MODEL_FILENAME,
             url = ModelDownloadManager.DEFAULT_MODEL_URL,
             sizeBytes = DesktopInferenceProfile.MODEL_BYTES,

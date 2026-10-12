@@ -104,7 +104,7 @@ class LocalAiEngine(
 
     private suspend fun ensureLoadedLocked(contextSize: Int = MOBILE_CONTEXT_SIZE) {
         if (!preferences.isModelDownloaded()) {
-            throw IllegalStateException("Desktop model is being installed or is unavailable — check Settings")
+            throw IllegalStateException("Download the optional AI model in Settings first")
         }
         val path = preferences.getActiveModelPath()
         if (loadedPath != null && loadedPath != path) {

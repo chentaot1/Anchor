@@ -1,6 +1,6 @@
 # Desktop model on Android
 
-On September 30, 2026, the running desktop `llama-server.exe` command line and its local `/props` endpoint identified the active model as `MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf`. Android now bundles that exact file, rather than selecting an older Qwen model.
+Android uses `MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0.gguf`, matching the desktop profile. New APKs exclude its weights. First-run onboarding offers an optional download from Hugging Face and an equally accessible Skip choice; Settings → AI offers the download later. The retained GPL preview 5 release still bundles its model.
 
 - Weight size: 1,153,529,792 bytes.
 - SHA-256: `8125095ae223278e728adb4148a8a466cec920929c1de5a5f5ebcb479ec31a2c`.
@@ -22,15 +22,15 @@ Server settings such as HTTP host/port, continuous batching, slot prompt similar
 
 The former Android llama.cpp b5046 runtime cannot recognize this GGUF's `minicpm5` tokenizer. The build is now pinned to official [llama.cpp b9371](https://github.com/ggml-org/llama.cpp/releases/tag/b9371), with a verified source archive hash and MiniCPM5 tokenizer support. OpenCL is disabled to match the active desktop CPU profile.
 
-On first launch, Anchor copies the uncompressed APK asset to a temporary private file, verifies GGUF magic, length and SHA-256, then replaces the target file and selects it. Interrupted copies cannot become active. Existing Qwen selection and GPU preferences migrate to this CPU profile. Old weight files remain on disk. Settings shows preparation progress and errors; downloading the same verified model remains available as a fallback for a build without the bundled asset.
+Startup and skipping onboarding never download weights. An explicit download writes a private `.part` file, verifies GGUF magic, length and SHA-256, then replaces the target file and selects it. Interrupted or corrupt downloads cannot become active. Leaving onboarding does not cancel a download; pausing or process termination preserves partial bytes for an explicit retry. Android may stop the process in the background. Existing installed weights are verified and retained on upgrade. Existing Qwen selection and GPU preferences migrate to this CPU profile; old weight files remain on disk.
 
-Run `python tools/verify_android_apk.py` after building to verify the actual APK model bytes, lack of asset compression and presence of the ARM64 JNI library. Tagged release CI runs the same verifier.
+Run `python tools/verify_android_apk.py` after building to reject any packaged GGUF weights and verify the ARM64 JNI library. Tagged release CI runs the same verifier without fetching weights.
 
 ## Validation on the S24 Ultra
 
-Host verification includes the Android unit suite, native ARM64 compilation, APK packaging and SHA-256 verification of its embedded weights. Android x86_64 emulator verification also ran the actual model through JNI, checked valid structured task output and forced emoji output. UI checks used 1440 × 3120 at normal and 130% text size, and verified a natural 10-minute command started the correct timer. These checks do not run ARM64 inference or Android Accessibility on a physical phone.
+Earlier bundled-model validation included the Android unit suite, native ARM64 compilation, APK packaging and SHA-256 verification of embedded weights. Android x86_64 emulator verification ran the actual model through JNI, checked valid structured task output and forced emoji output. UI checks used 1440 × 3120 at normal and 130% text size, and verified a natural 10-minute command started the correct timer. These historical checks do not verify the new onboarding or ARM64 inference and Android Accessibility on a physical phone.
 
-On the phone, check the release's installation notes first: the former v1.0.3 GitHub APK has a different signing identity and cannot be updated in place with the preview. Preserve needed data before considering an uninstall, which clears app data. The existing JSON backup only includes tasks, assignments and calendar events. After installing, let Settings finish preparing the model and run **Benchmark active model**. Confirm the desktop model name and successful CPU inference. Then try task breakdown and two consecutive chat messages, exercising a reused model context.
+On the phone, check the release's installation notes first: the former v1.0.3 GitHub APK has a different signing identity and cannot be updated in place with the preview. Preserve needed data before considering an uninstall, which clears app data. The existing JSON backup only includes tasks, assignments and calendar events. For a new build, download the optional model during onboarding or from Settings and run **Benchmark active model**. Confirm the desktop model name and successful CPU inference. Then try task breakdown and two consecutive chat messages, exercising a reused model context.
 
 For protection, enable Accessibility and Samsung's Unrestricted battery setting. Check an always-protected app, an exhausted daily allowance, a curfew boundary while the app stays open, and a rule frozen for 24 hours. Return to Anchor during rapid app switches to ensure no stale overlay follows. Check that earned leisure opens eligible protection and cannot override focus, curfew, study windows, quotas or lockdown. Avoid enabling lockdown until you want it to last until the next 4 AM.
 

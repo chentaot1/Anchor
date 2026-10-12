@@ -22,6 +22,8 @@ Server settings such as HTTP host/port, continuous batching, slot prompt similar
 
 The former Android llama.cpp b5046 runtime cannot recognize this GGUF's `minicpm5` tokenizer. The build is now pinned to official [llama.cpp b9371](https://github.com/ggml-org/llama.cpp/releases/tag/b9371), with a verified source archive hash and MiniCPM5 tokenizer support. OpenCL is disabled to match the active desktop CPU profile.
 
+The single C++ JNI library links the C++ runtime statically and uses 16 KB LOAD alignment and RELRO padding. The APK gate checks all ARM64 libraries for aligned LOAD segments and rejects RELRO page protection overlapping writable data. See [Android page-size guidance](https://developer.android.com/guide/practices/page-sizes).
+
 Startup and skipping onboarding never download weights. An explicit download writes a private `.part` file, verifies GGUF magic, length and SHA-256, then replaces the target file and selects it. Interrupted or corrupt downloads cannot become active. Leaving onboarding does not cancel a download; pausing or process termination preserves partial bytes for an explicit retry. Android may stop the process in the background. Existing installed weights are verified and retained on upgrade. Existing Qwen selection and GPU preferences migrate to this CPU profile; old weight files remain on disk.
 
 Run `python tools/verify_android_apk.py` after building to reject any packaged GGUF weights and verify the ARM64 JNI library. Tagged release CI runs the same verifier without fetching weights.

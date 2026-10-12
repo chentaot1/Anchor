@@ -4,6 +4,11 @@ project(anchor_llama)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (ANDROID)
+    # NDK r27 needs both flags: 16 KB load segments and RELRO padding.
+    add_link_options("-Wl,-z,max-page-size=16384" "-Wl,-z,common-page-size=16384")
+endif()
+
 # Prevent local build directories from appearing in diagnostics or native debug data.
 # Apply before FetchContent so the bundled inference library is covered too.
 get_filename_component(ANCHOR_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)

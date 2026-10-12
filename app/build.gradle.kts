@@ -33,7 +33,8 @@ android {
             cmake {
                 cppFlags += "-std=c++17 -O3"
                 arguments += listOf(
-                    "-DANDROID_STL=c++_shared",
+                    // One C++ shared library: avoid NDK r27's prebuilt shared STL RELRO alignment.
+                    "-DANDROID_STL=c++_static",
                     "-DGGML_OPENMP=OFF",
                     "-DLLAMA_BUILD_COMMON=OFF",
                     "-DLLAMA_BUILD_TESTS=OFF",

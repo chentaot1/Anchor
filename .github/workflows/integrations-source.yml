@@ -18,5 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test edition boundary checks
         run: python3 -m unittest discover -s tools -p 'test_public_source_boundary.py'
+      - name: Test APK model exclusion checks
+        run: python3 -m unittest discover -s tools -p 'test_android_apk_delivery.py'
       - name: Screen public integration source
         run: python3 tools/verify_public_source.py --edition integrations

@@ -80,8 +80,8 @@ android {
 
     androidResources {
         noCompress += "gguf"
-        // Small, isolated emulator build for layout checks; phone releases always bundle the model.
-        if (providers.gradleProperty("anchorUiPreview").isPresent) ignoreAssetsPattern = "*.gguf"
+        // Model weights are an optional in-app download, including when locally staged for testing.
+        ignoreAssetsPattern = "models:*.gguf:*.GGUF"
     }
 
     testOptions {

@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.anchor.adhd.data.model.EnergyLevel
 import com.anchor.adhd.ui.AnchorRoot
+import com.anchor.adhd.ui.onboarding.ModelOnboarding
 import com.anchor.adhd.ui.theme.AnchorTheme
 
 class MainActivity : ComponentActivity() {
@@ -32,19 +33,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             val params = launchParams
             AnchorTheme {
-                AnchorRoot(
-                    container = container,
-                    initialInboxText = params.sharedText,
-                    startFocusOnLaunch = params.startFocus,
-                    focusTaskId = params.focusTaskId,
-                    initialTab = params.openTab,
-                    initialPlanTab = params.planTab,
-                    openMorningRitual = params.openMorningRitual,
-                    openShutdown = params.openShutdown,
-                    openCheckIn = params.openCheckIn,
-                    checkInEnergy = params.checkInEnergy,
-                    intentVersion = intentVersion
-                )
+                ModelOnboarding(container) {
+                    AnchorRoot(
+                        container = container,
+                        initialInboxText = params.sharedText,
+                        startFocusOnLaunch = params.startFocus,
+                        focusTaskId = params.focusTaskId,
+                        initialTab = params.openTab,
+                        initialPlanTab = params.planTab,
+                        openMorningRitual = params.openMorningRitual,
+                        openShutdown = params.openShutdown,
+                        openCheckIn = params.openCheckIn,
+                        checkInEnergy = params.checkInEnergy,
+                        intentVersion = intentVersion
+                    )
+                }
             }
         }
     }

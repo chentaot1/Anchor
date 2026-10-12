@@ -23,4 +23,9 @@ releases are prior builds; this branch does not publish an integration APK.
 
 See the [AGPL migration and retained GPL releases](docs/license-migration.md).
 
+New Android builds exclude model weights and offer an optional download during
+onboarding or later in Settings. Existing installed weights survive upgrades.
+For a possible F-Droid submission, use the SDK-free main edition and read
+[F-Droid preparation](docs/fdroid.md). No Android-only repository is required.
+
 Downloads: [Android preview 5](https://github.com/chentaot1/Anchor/releases/tag/android-v1.1.0-preview.5) and [Windows 1.0.6](https://github.com/chentaot1/Anchor/releases/tag/windows-v1.0.6). These retained GPLv3 builds use the SDK-free edition; current branch source uses AGPLv3.

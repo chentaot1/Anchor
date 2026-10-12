@@ -24,7 +24,26 @@ import kotlinx.serialization.decodeFromString
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "anchor_prefs")
 
-class UserPreferences(private val context: Context) {
+class UserPreferences(
+    private val context: Context,
+    private val store: DataStore<Preferences> = context.dataStore,
+) {
+    private val modelOnboardingCompleteKey = booleanPreferencesKey("model_onboarding_complete")
+    val modelOnboardingComplete: Flow<Boolean?> = store.data.map { it[modelOnboardingCompleteKey] }
+
+    /** Run before seeding: upgrades bypass setup, while a fresh install retains its explicit choice. */
+    suspend fun initializeModelOnboarding() {
+        store.edit { prefs ->
+            if (prefs[modelOnboardingCompleteKey] == null) {
+                prefs[modelOnboardingCompleteKey] = prefs[seedComplete] == true || isModelDownloaded()
+            }
+        }
+    }
+
+    suspend fun completeModelOnboarding() {
+        store.edit { it[modelOnboardingCompleteKey] = true }
+    }
+
     private val modelDownloaded = booleanPreferencesKey("model_downloaded")
     private val modelPath = stringPreferencesKey("model_path")
     private val energyToday = stringPreferencesKey("energy_today")
@@ -66,7 +85,7 @@ class UserPreferences(private val context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    val planningSettings: Flow<PlanningSettings> = context.dataStore.data.map { prefs ->
+    val planningSettings: Flow<PlanningSettings> = store.data.map { prefs ->
         PlanningSettings(
             dailyCapacityMinutes = prefs[dailyCapacityMinutes] ?: 360,
             todayOnlyMode = prefs[todayOnlyMode] ?: false,
@@ -77,12 +96,12 @@ class UserPreferences(private val context: Context) {
         )
     }
 
-    val breakdownGranularityFlow: Flow<BreakdownGranularity> = context.dataStore.data.map { prefs ->
+    val breakdownGranularityFlow: Flow<BreakdownGranularity> = store.data.map { prefs ->
         prefs[breakdownGranularity]?.let { runCatching { BreakdownGranularity.valueOf(it) }.getOrNull() }
             ?: BreakdownGranularity.NORMAL
     }
 
-    val blockListModeFlow: Flow<BlockListMode> = context.dataStore.data.map { prefs ->
+    val blockListModeFlow: Flow<BlockListMode> = store.data.map { prefs ->
         prefs[blockListMode]?.let { runCatching { BlockListMode.valueOf(it) }.getOrNull() }
             ?: BlockListMode.BLOCKLIST
     }
@@ -90,56 +109,56 @@ class UserPreferences(private val context: Context) {
     suspend fun getPlanningSettings(): PlanningSettings = planningSettings.first()
 
     suspend fun setDailyCapacityMinutes(minutes: Int) {
-        context.dataStore.edit { it[dailyCapacityMinutes] = minutes.coerceIn(120, 720) }
+        store.edit { it[dailyCapacityMinutes] = minutes.coerceIn(120, 720) }
     }
 
     suspend fun setTodayOnlyMode(enabled: Boolean) {
-        context.dataStore.edit { it[todayOnlyMode] = enabled }
+        store.edit { it[todayOnlyMode] = enabled }
     }
 
     suspend fun setShutdownHour(hour: Int) {
-        context.dataStore.edit { it[shutdownHour] = hour.coerceIn(17, 23) }
+        store.edit { it[shutdownHour] = hour.coerceIn(17, 23) }
     }
 
     suspend fun setShutdownNotificationEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[shutdownNotificationEnabled] = enabled }
+        store.edit { it[shutdownNotificationEnabled] = enabled }
     }
 
     suspend fun markMorningRitualComplete(day: String = java.time.LocalDate.now().toString()) {
-        context.dataStore.edit { it[lastMorningRitualDay] = day }
+        store.edit { it[lastMorningRitualDay] = day }
     }
 
     suspend fun markShutdownComplete(day: String = java.time.LocalDate.now().toString()) {
-        context.dataStore.edit { it[lastShutdownDay] = day }
+        store.edit { it[lastShutdownDay] = day }
     }
 
     suspend fun setBreakdownGranularity(granularity: BreakdownGranularity) {
-        context.dataStore.edit { it[breakdownGranularity] = granularity.name }
+        store.edit { it[breakdownGranularity] = granularity.name }
     }
 
     suspend fun setBlockListMode(mode: BlockListMode) {
-        context.dataStore.edit { it[blockListMode] = mode.name }
+        store.edit { it[blockListMode] = mode.name }
     }
 
     suspend fun getCompanionCosmeticsJson(): String? =
-        context.dataStore.data.first()[companionCosmeticsJson]
+        store.data.first()[companionCosmeticsJson]
 
     suspend fun setCompanionCosmeticsJson(value: String?) {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             if (value == null) prefs.remove(companionCosmeticsJson) else prefs[companionCosmeticsJson] = value
         }
     }
 
-    val funCreditsFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+    val funCreditsFlow: Flow<Int> = store.data.map { prefs ->
         prefs[funCredits] ?: 0
     }
 
-    val funStrictModeFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
+    val funStrictModeFlow: Flow<Boolean> = store.data.map { prefs ->
         prefs[funStrictMode] ?: false
     }
 
     suspend fun addFunCredit(amount: Int = 1) {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             val current = prefs[funCredits] ?: 0
             prefs[funCredits] = (current + amount).coerceAtLeast(0)
         }
@@ -147,7 +166,7 @@ class UserPreferences(private val context: Context) {
 
     suspend fun consumeFunCredit(): Boolean {
         var consumed = false
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             val current = prefs[funCredits] ?: 0
             if (current > 0) {
                 prefs[funCredits] = current - 1
@@ -158,13 +177,13 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun setFunStrictMode(enabled: Boolean) {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             prefs[funStrictMode] = enabled
         }
     }
 
     suspend fun checkDailyFreshStart(todayStr: String = java.time.LocalDate.now().toString()) {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             val lastDate = prefs[lastFunLinkDate]
             if (lastDate != todayStr) {
                 prefs[lastFunLinkDate] = todayStr
@@ -179,7 +198,7 @@ class UserPreferences(private val context: Context) {
         }
     }
 
-    val energyTodayFlow: Flow<EnergyLevel> = context.dataStore.data.map { prefs ->
+    val energyTodayFlow: Flow<EnergyLevel> = store.data.map { prefs ->
         val today = java.time.LocalDate.now().toString()
         val storedDay = prefs[energyDay]
         if (storedDay != null && storedDay != today) {
@@ -189,7 +208,7 @@ class UserPreferences(private val context: Context) {
         }
     }
 
-    val reminderSettings: Flow<ReminderSettings> = context.dataStore.data.map { prefs ->
+    val reminderSettings: Flow<ReminderSettings> = store.data.map { prefs ->
         ReminderSettings(
             enabled = prefs[remindersEnabled] ?: true,
             blockReminders = prefs[blockReminders] ?: true,
@@ -207,14 +226,14 @@ class UserPreferences(private val context: Context) {
 
     suspend fun setEnergy(level: EnergyLevel) {
         val today = java.time.LocalDate.now().toString()
-        context.dataStore.edit {
+        store.edit {
             it[energyToday] = level.name
             it[energyDay] = today
         }
     }
 
     suspend fun updateReminderSettings(update: ReminderSettings) {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             prefs[remindersEnabled] = update.enabled
             prefs[blockReminders] = update.blockReminders
             prefs[assignmentReminders] = update.assignmentReminders
@@ -228,11 +247,13 @@ class UserPreferences(private val context: Context) {
     }
 
     fun isModelDownloaded(): Boolean =
-        ModelCatalog.entries.any { entry -> modelFile(entry.filename).exists() }
+        ModelCatalog.entries.any { entry -> modelFile(entry.filename).let {
+            it.length() == entry.sizeBytes && com.anchor.adhd.ai.ModelFileVerifier.isGguf(it)
+        } }
 
     suspend fun getActiveModelPath(): String {
         applyDesktopModelProfile()
-        val prefs = context.dataStore.data.first()
+        val prefs = store.data.first()
         val stored = prefs[modelPath]
         if (!stored.isNullOrBlank() && ModelCatalog.findByFilename(java.io.File(stored).name) != null && java.io.File(stored).exists()) return stored
         val preferred = prefs[activeModelFilename] ?: ModelDownloadManager.Q4_FILENAME
@@ -250,7 +271,7 @@ class UserPreferences(private val context: Context) {
     private fun modelFile(filename: String): java.io.File =
         context.filesDir.resolve("models/$filename")
 
-    val aiGpuSettings: Flow<AiGpuSettings> = context.dataStore.data.map { prefs ->
+    val aiGpuSettings: Flow<AiGpuSettings> = store.data.map { prefs ->
         AiGpuSettings(
             enabled = prefs[aiGpuEnabled] ?: false,
             layers = prefs[aiGpuLayers] ?: LocalAiEngine.DEFAULT_GPU_LAYERS
@@ -262,7 +283,7 @@ class UserPreferences(private val context: Context) {
     suspend fun getGpuLayerCount(): Int = com.anchor.adhd.ai.DesktopInferenceProfile.GPU_LAYERS
 
     suspend fun applyDesktopModelProfile() {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             if ((prefs[desktopAiProfileVersion] ?: 0) < 1) {
                 prefs[activeModelFilename] = ModelDownloadManager.MODEL_FILENAME
                 prefs[modelPath] = modelFile(ModelDownloadManager.MODEL_FILENAME).absolutePath
@@ -274,15 +295,15 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun setGpuOffloadEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[aiGpuEnabled] = enabled }
+        store.edit { it[aiGpuEnabled] = enabled }
     }
 
     suspend fun setGpuLayerCount(layers: Int) {
-        context.dataStore.edit { it[aiGpuLayers] = layers.coerceIn(0, 99) }
+        store.edit { it[aiGpuLayers] = layers.coerceIn(0, 99) }
     }
 
     suspend fun setActiveModel(path: String, filename: String) {
-        context.dataStore.edit {
+        store.edit {
             it[modelDownloaded] = true
             it[modelPath] = path
             it[activeModelFilename] = filename
@@ -303,30 +324,30 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun activeModelEntryId(): String {
-        val filename = context.dataStore.data.first()[activeModelFilename]
+        val filename = store.data.first()[activeModelFilename]
             ?: ModelDownloadManager.Q4_FILENAME
         return ModelCatalog.findByFilename(filename)?.id ?: "q8"
     }
 
-    val focusDurations: Flow<Pair<Int, Int>> = context.dataStore.data.map { prefs ->
+    val focusDurations: Flow<Pair<Int, Int>> = store.data.map { prefs ->
         Pair(prefs[focusWorkMinutes] ?: 20, prefs[focusBreakMinutes] ?: 5)
     }
 
     suspend fun setFocusDurations(workMinutes: Int, breakMinutes: Int) {
-        context.dataStore.edit {
+        store.edit {
             it[focusWorkMinutes] = workMinutes.coerceIn(5, 90)
             it[focusBreakMinutes] = breakMinutes.coerceIn(1, 30)
         }
     }
 
     suspend fun getTodayStrategyCardId(): String? {
-        val prefs = context.dataStore.data.first()
+        val prefs = store.data.first()
         val today = java.time.LocalDate.now().toString()
         return if (prefs[dailyStrategyDay] == today) prefs[dailyStrategyCardId] else null
     }
 
     suspend fun setDailyStrategy(day: String, cardId: String) {
-        context.dataStore.edit {
+        store.edit {
             it[dailyStrategyDay] = day
             it[dailyStrategyCardId] = cardId
             it[lastStrategyCardId] = cardId
@@ -334,24 +355,24 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun getStrategiesSeedVersion(): Int =
-        context.dataStore.data.first()[strategiesSeedVersion] ?: 0
+        store.data.first()[strategiesSeedVersion] ?: 0
 
     suspend fun setStrategiesSeedVersion(version: Int) {
-        context.dataStore.edit { it[strategiesSeedVersion] = version }
+        store.edit { it[strategiesSeedVersion] = version }
     }
 
-    suspend fun isSeedComplete(): Boolean = context.dataStore.data.first()[seedComplete] == true
+    suspend fun isSeedComplete(): Boolean = store.data.first()[seedComplete] == true
 
     suspend fun setSeedComplete() {
-        context.dataStore.edit { it[seedComplete] = true }
+        store.edit { it[seedComplete] = true }
     }
 
     suspend fun resetSeedFlagForTests() {
-        context.dataStore.edit { it.remove(seedComplete) }
+        store.edit { it.remove(seedComplete) }
     }
 
     suspend fun clearAll() {
-        context.dataStore.edit { it.clear() }
+        store.edit { it.clear() }
     }
 
     fun deleteDownloadedModel() {
@@ -360,7 +381,7 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun savePendingPostFocus(summary: PostFocusSummary?) {
-        context.dataStore.edit { prefs ->
+        store.edit { prefs ->
             if (summary == null) {
                 prefs.remove(pendingPostFocusJson)
             } else {
@@ -370,7 +391,7 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun loadPendingPostFocus(): PostFocusSummary? {
-        val raw = context.dataStore.data.first()[pendingPostFocusJson] ?: return null
+        val raw = store.data.first()[pendingPostFocusJson] ?: return null
         return runCatching { json.decodeFromString<PostFocusSummary>(raw) }.getOrNull()
     }
 }

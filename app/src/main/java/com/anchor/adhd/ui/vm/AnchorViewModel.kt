@@ -2102,19 +2102,13 @@ class AnchorViewModel(
 
     fun freeDiskBytes(): Long = container.modelDownloadManager.freeDiskBytes()
 
+    fun requiredModelFreeBytes(entry: ModelCatalogEntry): Long = container.modelDownloadManager.requiredFreeBytes(entry)
+
+    fun pauseModelDownload() = container.modelDownloadManager.pauseDownload()
+
     fun downloadModelEntry(entryId: String) {
         val entry = ModelCatalog.find(entryId) ?: return
-        if (container.modelDownloadManager.isDownloading) return
-        viewModelScope.launch {
-            try {
-                container.aiEngine.ensureUnloaded()
-                container.modelDownloadManager.downloadEntry(entry)
-                refreshModelStatus()
-                _message.value = "${entry.label} downloaded"
-            } catch (e: Exception) {
-                _aiError.value = e.message
-            }
-        }
+        container.modelDownloadManager.startDownload(entry)
     }
 
     fun setActiveModelEntry(entryId: String) {

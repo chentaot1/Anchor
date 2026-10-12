@@ -131,7 +131,7 @@ fun SettingsScreen(
         if (showAppPicker) installedApps = InstalledApps.loadLaunchable(context)
     }
 
-    val downloading = download.totalBytes > 0 && !download.done && download.error == null
+    val downloading = download.active
 
     val signInLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -652,7 +652,7 @@ fun SettingsScreen(
                         modelReady && vm.aiNativeRuntime ->
                             "Ready offline · same model and settings as desktop"
                         modelReady -> "Model on disk; native runtime unavailable"
-                        vm.aiNativeRuntime -> "Preparing the model included in this app"
+                        vm.aiNativeRuntime -> "Optional AI model · download below to enable offline AI"
                         else -> "Local AI runtime unavailable on this device"
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -664,7 +664,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (download.totalBytes > 0 && !download.done && download.error == null) {
+                if (downloading) {
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = {
@@ -677,9 +677,10 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        "Preparing desktop model…",
+                        "Downloading model… ${download.bytesRead / 1_000_000} MB",
                         style = MaterialTheme.typography.bodySmall
                     )
+                    TextButton(onClick = vm::pauseModelDownload) { Text("Pause download") }
                 }
                 download.error?.let { err ->
                     Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -717,6 +718,7 @@ fun SettingsScreen(
                     active = activeModelId == entry.id,
                     downloading = downloading && download.filename == entry.filename,
                     freeDiskBytes = vm.freeDiskBytes(),
+                    requiredFreeBytes = vm.requiredModelFreeBytes(entry),
                     onDownload = { vm.downloadModelEntry(entry.id) },
                     onActivate = { vm.setActiveModelEntry(entry.id) },
                 )
@@ -920,10 +922,11 @@ private fun ModelCatalogCard(
     active: Boolean,
     downloading: Boolean,
     freeDiskBytes: Long,
+    requiredFreeBytes: Long,
     onDownload: () -> Unit,
     onActivate: () -> Unit
 ) {
-    val needsSpace = freeDiskBytes < entry.sizeBytes + 500_000_000L
+    val needsSpace = freeDiskBytes < requiredFreeBytes
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Desktop main model", style = MaterialTheme.typography.titleMedium)
@@ -933,10 +936,10 @@ private fun ModelCatalogCard(
                 Text(if (active) "Installed and active" else "Installed", color = MaterialTheme.colorScheme.primary)
                 if (!active) Button(onClick = onActivate, modifier = Modifier.fillMaxWidth()) { Text("Use desktop model") }
             } else {
-                Text(if (needsSpace) "Free ${entry.sizeLabel()} plus 500 MB to install the model." else "Included in this app. Installation normally starts automatically.",
+                Text(if (needsSpace) "Free storage for the remaining download plus 500 MB." else "Optional ${entry.sizeLabel()} download from Hugging Face. Wi-Fi is recommended. Tasks and conversations stay on your device.",
                     color = if (needsSpace) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 Button(onClick = onDownload, enabled = !downloading && !needsSpace, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (downloading) "Preparing model…" else "Retry model installation")
+                    Text(if (downloading) "Downloading…" else "Download / resume (${entry.sizeLabel()})")
                 }
             }
         }

@@ -61,9 +61,10 @@ class AnchorApp : Application() {
         super.onCreate()
         container = AnchorContainer(this)
         appScope.launch(Dispatchers.IO) {
+            container.preferences.initializeModelOnboarding()
             SeedData.seedIfNeeded(container.database, container.preferences)
-            runCatching { container.modelDownloadManager.installBundledModel() }
-                .onFailure { android.util.Log.e("AnchorApp", "Bundled desktop model installation failed", it) }
+            runCatching { container.modelDownloadManager.prepareInstalledModel() }
+                .onFailure { android.util.Log.e("AnchorApp", "Installed model validation failed", it) }
         }
         val filter = IntentFilter(FocusTimerService.ACTION_SESSION_ENDED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

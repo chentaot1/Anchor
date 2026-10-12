@@ -13,8 +13,8 @@ git clone --single-branch --branch codex/vendor-integrations https://github.com/
 ```
 
 Its new history starts from a source snapshot without vendor SDK binaries. The
-public branches also use clean snapshots. Only the latest release, Windows 1.0.6, and
-its GPLv3 source archives remain available; older release downloads are removed.
+public branches also use clean snapshots. Prior GPLv3 downloads and matching
+source archives remain available; pre-GPL releases are removed.
 
 Use JDK 17, Android SDK 36 and NDK 27.0.12077973 as documented in development.md.
 Download Samsung Health Data SDK **1.1.0** directly from Samsung and accept its

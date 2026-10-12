@@ -15,8 +15,8 @@ https://github.com/chentaot1/Anchor
 
 Versions previously distributed under MIT or GPLv3 retain their existing
 license grants. The prior MIT notice is preserved in licenses/MIT-previous.txt;
-licenses/GPL-3.0-only.txt retains the standard GPLv3 text. Windows 1.0.6 remains a GPLv3 release
-with its matching source archives. All earlier release downloads are removed.
+licenses/GPL-3.0-only.txt retains the standard GPLv3 text. Android preview 5 and
+Windows 1.0.6 remain GPLv3 releases with their matching source archives.
 
 On codex/vendor-integrations, original Anchor code also carries the additional
 permission under AGPLv3 section 7 in licenses/ANDROID_SDK_EXCEPTION.txt. Vendor

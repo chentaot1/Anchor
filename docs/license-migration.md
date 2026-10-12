@@ -1,4 +1,4 @@
-# AGPLv3 source and retained latest GPLv3 release
+# AGPLv3 source and retained GPLv3 releases
 
 As of 12 October 2026, original Anchor code and documentation on the two current
 public branches use GNU Affero General Public License version 3 only
@@ -18,15 +18,15 @@ notices. This change applies to original Anchor material, not upstream code.
 Earlier MIT and GPLv3 grants remain valid. Deleting a release or rewriting Git
 history does not revoke rights already granted or recall downloaded copies.
 
-Only the latest public release, Windows `1.0.6`, remains available. Its GPLv3
-binary assets and matching `anchor-gpl-source.zip`, third-party and runtime
-source archives remain unchanged. Its tag points to a parentless snapshot with
-the same tracked source tree as the original GPL release commit. Do not treat
-those binaries as AGPL releases; future AGPL binaries need matching AGPL notices
-and corresponding source.
+Android `1.1.0-preview.5` and Windows `1.0.6` remain GPLv3 releases. Their binary
+assets and matching `anchor-gpl-source.zip`, third-party and runtime source
+archives remain unchanged. Their tags point to a parentless snapshot with the
+same tracked source tree as the original GPL release commit. Do not treat those
+binaries as AGPL releases; future AGPL binaries need matching AGPL notices and
+corresponding source.
 
-Current public branches use new parentless snapshots. All earlier release
-downloads and tags, including both Android previews, are removed. A local history backup is retained separately.
+Public branch histories start from clean source snapshots. Older pre-GPL release
+downloads and tags are removed. A local history backup is retained separately.
 Existing clones need resynchronizing after the rewrite; GitHub caches and
 downloaded copies may retain old commits or files.
 

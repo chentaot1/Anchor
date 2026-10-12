@@ -1,0 +1,32 @@
+Additional permission under GNU Affero GPL version 3 section 7
+
+For original Anchor code covered by this permission, if you modify this Program,
+or any covered work, by linking or combining it with Google Play Services
+authentication (com.google.android.gms:play-services-auth and the Google Play
+Services components required by that SDK), and/or the Samsung Health Data SDK
+(com.samsung.android.sdk.health.data), containing parts covered by the respective
+proprietary terms of Google LLC and Samsung Electronics Co., Ltd., the licensors
+of this Program grant you additional permission to convey the resulting work.
+
+This permission applies only to original Anchor code for which its licensors
+have authority to grant it. It does not change the licenses of third-party code,
+does not grant any rights to the SDKs themselves, and does not waive their vendor
+terms, approvals or distribution requirements. All other AGPLv3 obligations
+applicable to covered Anchor code remain in effect, including section 13
+for modified versions supporting remote network interaction. This permission
+does not waive the corresponding-source requirements for covered Anchor code.
+
+The standard AGPLv3 text in LICENSE remains unchanged. Recipients may remove
+this additional permission as provided by AGPLv3 section 7.
+
+Component versions used by this branch:
+- Google Play Services authentication: 21.3.0, resolved through Gradle.
+- Samsung Health Data SDK: 1.1.0, obtained directly by each developer.
+
+Vendor documentation and terms:
+https://developer.samsung.com/health/data/process.html
+https://developer.samsung.com/health/data/overview.html
+https://developer.android.com/studio/terms
+
+This source branch does not distribute the Samsung AAR or publish an integration
+APK. Its linking permission is separate from vendor permission to distribute.

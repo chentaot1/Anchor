@@ -1,0 +1,22 @@
+name: Integration Source Checks
+
+on:
+  push:
+    branches: [codex/vendor-integrations]
+  pull_request:
+    branches: [codex/vendor-integrations]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test edition boundary checks
+        run: python3 -m unittest discover -s tools -p 'test_public_source_boundary.py'
+      - name: Screen public integration source
+        run: python3 tools/verify_public_source.py --edition integrations

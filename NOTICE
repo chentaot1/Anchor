@@ -1,0 +1,23 @@
+Anchor
+Copyright (c) 2026 chentaot1
+
+Anchor's original source code and documentation are licensed under the
+GNU Affero General Public License, version 3 only (SPDX: AGPL-3.0-only).
+You may redistribute and modify them under that license.
+This program comes without any warranty, including merchantability or
+fitness for a particular purpose. See LICENSE for the full terms.
+
+Third-party libraries, bundled model weights, and runtimes retain their
+own licenses. See licenses/THIRD_PARTY_NOTICES.txt and the license texts
+beside it. The Windows runtime also retains its complete runtime/legal
+directory. Source and build instructions are at:
+https://github.com/chentaot1/Anchor
+
+Versions previously distributed under MIT or GPLv3 retain their existing
+license grants. The prior MIT notice is preserved in licenses/MIT-previous.txt;
+licenses/GPL-3.0-only.txt retains the standard GPLv3 text. Windows 1.0.6 remains a GPLv3 release
+with its matching source archives. All earlier release downloads are removed.
+
+On codex/vendor-integrations, original Anchor code also carries the additional
+permission under AGPLv3 section 7 in licenses/ANDROID_SDK_EXCEPTION.txt. Vendor
+SDKs retain their own terms; this does not grant rights to vendor SDK binaries.

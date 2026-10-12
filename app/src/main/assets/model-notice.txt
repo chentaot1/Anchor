@@ -1,0 +1,6 @@
+Bundled model: MiniCPM5-1B-Claude-Opus-Fable5-Thinking Q8_0
+Source: https://huggingface.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF
+Base: https://huggingface.co/openbmb/MiniCPM5-1B
+License: Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+SHA-256: 8125095ae223278e728adb4148a8a466cec920929c1de5a5f5ebcb479ec31a2c
+The exact GGUF file used by Anchor Desktop is bundled for offline installation.

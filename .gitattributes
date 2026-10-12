@@ -1,0 +1,5 @@
+LICENSE text eol=lf
+NOTICE text eol=lf
+licenses/*.txt text eol=lf whitespace=-trailing-space,-space-before-tab,-blank-at-eof
+licenses/*.json text eol=lf
+tools/upstream_notice_checksums.json text eol=lf

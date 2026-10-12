@@ -2,7 +2,7 @@
 
 ## Current AGPLv3 source
 
-Anchor's original code and documentation now use **AGPL-3.0-only**. The prior MIT notice and standard GPLv3 text remain in `licenses/`; existing MIT and GPLv3 grants are not revoked. Only Windows 1.0.6 remains available as a GPLv3 release with its original corresponding-source archives; older downloads are removed.
+Anchor's original code and documentation now use **AGPL-3.0-only**. The prior MIT notice and standard GPLv3 text remain in `licenses/`; existing MIT and GPLv3 grants are not revoked. Android preview 5 and Windows 1.0.6 remain GPLv3 releases with their original corresponding-source archives.
 
 The Samsung Health Data SDK AAR and Google Play Services authentication integration have been removed. Health habits use **AndroidX Health Connect 1.1.0 (Apache-2.0)**. Calendar occupancy uses the Android Calendar Provider, including Google calendars synced by the device's calendar app. No proprietary health or authentication SDK remains in the resolved runtime graph.
 

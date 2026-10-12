@@ -143,7 +143,7 @@ See [Android inference implementation](desktop-model-on-android.md) for the mode
 
 ## Install on Android without ADB
 
-Build the APK locally using the commands above. Only the latest public release, Windows 1.0.6, remains available; earlier Android release downloads have been removed.
+Download the latest APK from the [public Android release](https://github.com/chentaot1/Anchor/releases/tag/android-v1.1.0-preview.5), or build it locally using the commands above.
 
 1. Build the APK using the commands above.
 2. Transfer `app/build/outputs/apk/debug/app-debug.apk` to the phone.

@@ -12,15 +12,15 @@ Anchor combines task planning, calendar-aware scheduling, syllabus extraction, a
 
 The `main` branch contains the SDK-free **AGPL-3.0-only** edition. Android uses Health Connect and the device Calendar Provider. The public [`codex/vendor-integrations` branch](https://github.com/chentaot1/Anchor/tree/codex/vendor-integrations) contains direct Samsung Health and Google integration source, with a scoped AGPLv3 linking permission. Obtain Samsung's SDK directly for local builds; vendor SDK binaries, credentials and personal defaults must stay out of new commits on both branches.
 
-**Maintenance status:** The SDK-free edition on `main` is provided as an unmaintained snapshot. Active development focuses on `codex/vendor-integrations`. This SDK-free edition does not receive regular updates or support. Current branches use clean source snapshots. Only the latest public release, Windows 1.0.6, remains available with its GPLv3 license and matching source archives; older downloads and tags are removed.
+**Maintenance status:** The SDK-free edition on `main` is provided as an unmaintained snapshot. Active development focuses on `codex/vendor-integrations`. This SDK-free edition does not receive regular updates or support. Current branches use clean source snapshots. Android preview 5 and Windows 1.0.6 remain GPLv3 releases with matching source archives; older pre-GPL downloads are removed.
 
 See [edition boundaries and development workflow](docs/editions.md).
 
 ## Latest source update
 
-**Latest public release: Windows 1.0.6 · October 12, 2026**
+**Latest releases per platform: Android 1.1.0-preview.5 · Windows 1.0.6 · October 12, 2026**
 
-- The retained Windows release uses GPLv3 with bundled third-party notices. Current branch source uses AGPLv3. Proprietary Samsung Health and Google Play Services SDKs are replaced by Health Connect and the device Calendar Provider.
+- These retained releases use GPLv3 with bundled third-party notices. Current branch source uses AGPLv3. Proprietary Samsung Health and Google Play Services SDKs are replaced by Health Connect and the device Calendar Provider.
 - All plant models and the forest gallery are removed. Focus rewards continue without planting entries; the harbor uses original Compose geometry.
 
 - Transfer supported tasks, assignments, focus history, and fun links between Android and Windows using JSON backups.
@@ -31,7 +31,7 @@ See [edition boundaries and development workflow](docs/editions.md).
 - Windows offers exact one-through-240-minute durations, compact layouts, and scrollable custom entry. Use Ctrl+K for Airlock, Ctrl+1–7 for navigation, Ctrl+I for Floating Island, and Space to start/pause focus.
 - Desktop backup replacement validates data and saves a safety backup; single-instance startup, updater failure handling, native icons, and packaged Access Bridge support are improved.
 
-Download the [Windows 1.0.6 installers](https://github.com/chentaot1/Anchor/releases/tag/windows-v1.0.6), built from sanitized GPLv3 source. This is the only retained public release. Build Android locally using the [development instructions](docs/development.md). See the [Windows notes](docs/releases/windows-1.0.6.md) and [detailed Windows verification](docs/windows-improvements.md) for changes and verification limits.
+Download [Windows 1.0.6 installers](https://github.com/chentaot1/Anchor/releases/tag/windows-v1.0.6) or the [Android preview 5 APK](https://github.com/chentaot1/Anchor/releases/tag/android-v1.1.0-preview.5). Both are built from sanitized public source. See the [Android preview notes](docs/releases/android-1.1.0-preview.5.md), [Windows notes](docs/releases/windows-1.0.6.md), and [detailed Windows verification](docs/windows-improvements.md) for changes and verification limits.
 
 ## From an assignment to a focus session
 

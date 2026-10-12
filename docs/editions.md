@@ -13,7 +13,7 @@ Plant models and the forest stay removed from the current source of both edition
 
 The public repository contains the AGPL-3.0-only Android and Windows snapshot. Android uses AndroidX Health Connect and the device Calendar Provider. Samsung Health can share data through Health Connect; a Google calendar can be read when synced to the device calendar. No Samsung SDK or Google Play Services SDK is required.
 
-The SDK-free edition is an unmaintained snapshot. Current public branches start from clean source snapshots. Only the latest release, Windows 1.0.6, remains available. All older release downloads and their tags are removed. Windows 1.0.6 retains its GPLv3 license, matching source archives and a parentless GPL source tag; its binaries are not relabeled AGPL. Notices and build instructions remain available. Third-party components retain their own licenses.
+The SDK-free edition is an unmaintained snapshot. Current public branches start from clean source snapshots. Pre-GPL releases and their tags are removed. Android preview 5 and Windows 1.0.6 remain GPLv3 downloads with matching source archives and parentless GPL source tags; their binaries are not relabeled AGPL. Notices and build instructions remain available. Third-party components retain their own licenses.
 
 ## Integration source
 

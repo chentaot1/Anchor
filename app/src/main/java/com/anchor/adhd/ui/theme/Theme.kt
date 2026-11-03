@@ -1,16 +1,14 @@
 package com.anchor.adhd.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Immutable
@@ -25,32 +23,9 @@ data class AnchorExtras(
     val planGradient: Brush
 )
 
-private val AnchorDark = darkColorScheme(
-    primary = AnchorColors.HarborPrimary,
-    onPrimary = Color(0xFF002A4A),
-    primaryContainer = Color(0xFF1A4A6E),
-    onPrimaryContainer = Color(0xFFD6EBFF),
-    secondary = AnchorColors.HarborAi,
-    onSecondary = Color(0xFF1A1030),
-    secondaryContainer = Color(0xFF2D2448),
-    onSecondaryContainer = Color(0xFFE8DEFF),
-    tertiary = AnchorColors.HarborAction,
-    onTertiary = Color(0xFF3D2200),
-    tertiaryContainer = Color(0xFF5C3D1A),
-    onTertiaryContainer = Color(0xFFFFE8D0),
-    background = AnchorColors.HarborBackground,
-    onBackground = Color(0xFFE8EDF3),
-    surface = Color(0xFF121820),
-    onSurface = Color(0xFFE8EDF3),
-    surfaceVariant = Color(0xFF1A2330),
-    onSurfaceVariant = Color(0xFFA8B4C0),
-    outline = Color(0xFF3A4D62),
-    outlineVariant = Color(0xFF243040),
-    error = Color(0xFFFFB4AB),
-    onError = Color(0xFF690005),
-    errorContainer = Color(0xFF93000A),
-    onErrorContainer = Color(0xFFFFDAD6)
-)
+/** Schemes live in shared so desktop renders the same Anchor. */
+private val AnchorDark get() = anchorDarkColorScheme()
+private val AnchorLight get() = anchorLightColorScheme()
 
 private val AnchorExtrasDark = AnchorExtras(
     screenGradient = Brush.verticalGradient(
@@ -59,19 +34,42 @@ private val AnchorExtrasDark = AnchorExtras(
     heroGradient = Brush.linearGradient(
         colors = listOf(Color(0xFF1A3D5C), Color(0xFF152535), Color(0xFF1A2E40))
     ),
-    accentGlow = Color(0x337EB8FF),
+    accentGlow = Color(0x338AB4E8),
     cardBorder = Color(0xFF2A3A4E),
     focusRing = Brush.sweepGradient(
         colors = listOf(AnchorColors.HarborPrimary, AnchorColors.HarborGrowth, AnchorColors.HarborPrimary)
     ),
     groveGradient = Brush.verticalGradient(
-        listOf(AnchorColors.HarborBackground, Color(0xFF121820), AnchorColors.HarborDock.copy(alpha = 0.6f))
+        listOf(AnchorColors.HarborBackground, AnchorColors.HarborSurface, AnchorColors.HarborDock.copy(alpha = 0.6f))
     ),
     focusGradient = Brush.verticalGradient(
-        listOf(AnchorColors.HarborBackground, Color(0xFF121820), Color(0xFF1B2838))
+        listOf(AnchorColors.HarborBackground, AnchorColors.HarborSurface, Color(0xFF1B2838))
     ),
     planGradient = Brush.verticalGradient(
         listOf(Color(0xFF0A1420), AnchorColors.HarborBackground, Color(0xFF101828))
+    )
+)
+
+private val AnchorExtrasLight = AnchorExtras(
+    screenGradient = Brush.verticalGradient(
+        colors = listOf(Color(0xFFFFFDF8), AnchorColors.MorningCanvas, Color(0xFFEFE7D3))
+    ),
+    heroGradient = Brush.linearGradient(
+        colors = listOf(Color(0xFFD4E7F2), Color(0xFFEDE7D8), Color(0xFFF7E3C8))
+    ),
+    accentGlow = Color(0x33D97E2B),
+    cardBorder = Color(0xFFDCD5C2),
+    focusRing = Brush.sweepGradient(
+        colors = listOf(AnchorColors.MorningPrimary, AnchorColors.MorningSage, AnchorColors.MorningPrimary)
+    ),
+    groveGradient = Brush.verticalGradient(
+        listOf(AnchorColors.MorningCard, AnchorColors.MorningCanvas, AnchorColors.MorningContainer)
+    ),
+    focusGradient = Brush.verticalGradient(
+        listOf(AnchorColors.MorningCard, AnchorColors.MorningCanvas, Color(0xFFE4EBF2))
+    ),
+    planGradient = Brush.verticalGradient(
+        listOf(Color(0xFFFFFDF8), AnchorColors.MorningCanvas, Color(0xFFEDE7D8))
     )
 )
 
@@ -83,20 +81,20 @@ private val AnchorShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
-private val BaseTypography = Typography()
-
 val LocalAnchorExtras = staticCompositionLocalOf { AnchorExtrasDark }
 
 @Composable
-fun AnchorTheme(content: @Composable () -> Unit) {
-    androidx.compose.runtime.CompositionLocalProvider(LocalAnchorExtras provides AnchorExtrasDark) {
+fun AnchorTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val scheme = if (darkTheme) AnchorDark else AnchorLight
+    val extras = if (darkTheme) AnchorExtrasDark else AnchorExtrasLight
+    androidx.compose.runtime.CompositionLocalProvider(LocalAnchorExtras provides extras) {
         MaterialTheme(
-            colorScheme = AnchorDark,
-            typography = anchorTypography(BaseTypography),
+            colorScheme = scheme,
+            typography = anchorTypography(),
             shapes = AnchorShapes,
             content = {
                 androidx.compose.runtime.CompositionLocalProvider(
-                    androidx.compose.material3.LocalContentColor provides AnchorDark.onSurface
+                    androidx.compose.material3.LocalContentColor provides scheme.onSurface
                 ) { content() }
             }
         )

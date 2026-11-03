@@ -183,10 +183,10 @@ fun GroveHomeScreen(
                                         .background(AnchorColors.HarborAction, shape = CircleShape)
                                 )
                                 Text(
-                                    "N O W",
+                                    "Now",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 2.sp
+                                        letterSpacing = 1.sp
                                     ),
                                     color = AnchorColors.HarborAction
                                 )

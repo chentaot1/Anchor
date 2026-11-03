@@ -3,28 +3,35 @@ package com.anchor.adhd.desktop.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.anchor.adhd.ui.theme.AnchorColors as SharedColors
+import com.anchor.adhd.ui.theme.anchorDarkColorScheme
+import com.anchor.adhd.ui.theme.anchorLightColorScheme
+import com.anchor.adhd.ui.theme.anchorTypography
 
+/**
+ * Desktop theme delegates to shared (`com.anchor.adhd.ui.theme`) so Windows
+ * and Android render one Anchor. Do not fork hex codes, fonts, or motion
+ * here — change shared and both apps follow.
+ */
 object AnchorColors {
-    val HarborBackground = Color(0xFF0A0E18)
-    val HarborPrimary = Color(0xFF7EB8FF)
-    val HarborAction = Color(0xFFFFAB6B)
-    val HarborAi = Color(0xFFA78BFA)
-    val HarborGrowth = Color(0xFF2D6A4F)
-    val HarborFoliage = Color(0xFF74C69D)
-    val HarborFoliageDark = Color(0xFF52B788)
-    val HarborDock = Color(0xFF1A2836)
-    val HarborMist = Color(0x33A78BFA)
-    val HarborSkyNight = Color(0xFF1B2838)
-    val HarborWater = Color(0x597EB8FF)
-    val HarborBeaconAmber = Color(0xFFF0A04B)
+    val HarborBackground get() = SharedColors.HarborBackground
+    val HarborPrimary get() = SharedColors.HarborPrimary
+    val HarborAction get() = SharedColors.HarborAction
+    val HarborAi get() = SharedColors.HarborAi
+    val HarborGrowth get() = SharedColors.HarborGrowth
+    val HarborFoliage get() = SharedColors.HarborFoliage
+    val HarborFoliageDark get() = SharedColors.HarborFoliageDark
+    val HarborDock get() = SharedColors.HarborDock
+    val HarborMist get() = SharedColors.HarborMist
+    val HarborSkyNight get() = SharedColors.HarborSkyNight
+    val HarborWater get() = SharedColors.HarborWater
+    val HarborBeaconAmber get() = SharedColors.HarborBeaconAmber
 }
 
 object AnchorSpacing {
@@ -51,34 +58,6 @@ data class AnchorExtras(
     val planGradient: Brush,
 )
 
-private val AnchorDark =
-    darkColorScheme(
-        primary = AnchorColors.HarborPrimary,
-        onPrimary = Color(0xFF002A4A),
-        primaryContainer = Color(0xFF1A4A6E),
-        onPrimaryContainer = Color(0xFFD6EBFF),
-        secondary = AnchorColors.HarborAi,
-        onSecondary = Color(0xFF1A1030),
-        secondaryContainer = Color(0xFF2D2448),
-        onSecondaryContainer = Color(0xFFE8DEFF),
-        tertiary = AnchorColors.HarborAction,
-        onTertiary = Color(0xFF3D2200),
-        tertiaryContainer = Color(0xFF5C3D1A),
-        onTertiaryContainer = Color(0xFFFFE8D0),
-        background = AnchorColors.HarborBackground,
-        onBackground = Color(0xFFE8EDF3),
-        surface = Color(0xFF121820),
-        onSurface = Color(0xFFE8EDF3),
-        surfaceVariant = Color(0xFF1A2330),
-        onSurfaceVariant = Color(0xFFA8B4C0),
-        outline = Color(0xFF3A4D62),
-        outlineVariant = Color(0xFF243040),
-        error = Color(0xFFFFB4AB),
-        onError = Color(0xFF690005),
-        errorContainer = Color(0xFF93000A),
-        onErrorContainer = Color(0xFFFFDAD6),
-    )
-
 val AnchorExtrasDark =
     AnchorExtras(
         screenGradient =
@@ -89,7 +68,7 @@ val AnchorExtrasDark =
             Brush.linearGradient(
                 colors = listOf(Color(0xFF1A3D5C), Color(0xFF152535), Color(0xFF1A2E40)),
             ),
-        accentGlow = Color(0x337EB8FF),
+        accentGlow = Color(0x338AB4E8),
         cardBorder = Color(0xFF2A3A4E),
         focusRing =
             Brush.sweepGradient(
@@ -121,11 +100,14 @@ private val AnchorShapes =
 val LocalAnchorExtras = staticCompositionLocalOf { AnchorExtrasDark }
 
 @Composable
-fun AnchorTheme(content: @Composable () -> Unit) {
+fun AnchorTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
+    // Desktop stays dark-first: many surfaces use hardcoded white-on-dark.
+    // Light follows once those migrate to MaterialTheme tokens.
+    val scheme = if (darkTheme) anchorDarkColorScheme() else anchorLightColorScheme()
     androidx.compose.runtime.CompositionLocalProvider(LocalAnchorExtras provides AnchorExtrasDark) {
         MaterialTheme(
-            colorScheme = AnchorDark,
-            typography = Typography(),
+            colorScheme = scheme,
+            typography = anchorTypography(display = NunitoFontFamily, body = AtkinsonFontFamily),
             shapes = AnchorShapes,
             content = content,
         )

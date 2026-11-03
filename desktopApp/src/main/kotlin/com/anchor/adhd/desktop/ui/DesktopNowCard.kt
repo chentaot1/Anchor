@@ -119,10 +119,10 @@ fun DesktopNowCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "N  O  W",
+                        text = "Now",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
+                        letterSpacing = 1.sp,
                         color = AnchorColors.HarborBeaconAmber,
                     )
                 }
@@ -217,8 +217,8 @@ fun DesktopNowCard(
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                 colors =
                     ButtonDefaults.buttonColors(
-                        containerColor = if (isFocusActive) AnchorColors.HarborDock else AnchorColors.HarborPrimary,
-                        contentColor = if (isFocusActive) Color.White else Color(0xFF002A4A),
+                        containerColor = if (isFocusActive) AnchorColors.HarborDock else AnchorColors.HarborBeaconAmber,
+                        contentColor = if (isFocusActive) Color.White else Color(0xFF1A1206),
                     ),
             ) {
                 Icon(

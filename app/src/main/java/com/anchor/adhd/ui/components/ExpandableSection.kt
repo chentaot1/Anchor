@@ -1,6 +1,7 @@
 package com.anchor.adhd.ui.components
 
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.anchor.adhd.ui.theme.AnchorMotion
 
 @Composable
 fun ExpandableSection(
@@ -33,7 +35,7 @@ fun ExpandableSection(
     Column(
         modifier
             .fillMaxWidth()
-            .animateContentSize()
+            .animateContentSize(tween(AnchorMotion.QUICK_MS))
     ) {
         Row(
             Modifier

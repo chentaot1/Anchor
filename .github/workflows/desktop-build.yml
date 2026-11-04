@@ -1,0 +1,85 @@
+name: Desktop CI
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['desktop-v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests
+        run: ./gradlew :desktopApp:test :shared:desktopTest --stacktrace
+
+  release:
+    name: Build & Release Installers
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/desktop-v') && vars.ANCHOR_DESKTOP_CI_RELEASES == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure WiX Toolset (MSI packaging)
+        shell: powershell
+        run: |
+          if (-not (Get-Command light.exe -ErrorAction SilentlyContinue)) {
+            choco install wixtoolset --no-progress -y
+          }
+          light.exe -help | Select-Object -First 1
+
+      - name: Build installers
+        shell: bash
+        run: ./gradlew :desktopApp:packageReleaseMsi :desktopApp:packageReleaseExe "-PanchorDesktopVersion=${GITHUB_REF_NAME#desktop-v}" --stacktrace
+
+      - name: Resolve version and release notes
+        id: package
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          SRC="docs/releases/windows-${VERSION}.md"
+          if [ -f "$SRC" ]; then
+            cp "$SRC" release-notes.md
+          else
+            printf '# Anchor Desktop %s\n\nAutomated installer build (MSI + EXE, bundled OpenJDK 17, unsigned). Curated notes were not committed for this tag.\n' "$VERSION" > release-notes.md
+          fi
+          cp "desktopApp/build/compose/binaries/main/msi/Anchor-${VERSION}.msi" "anchor-desktop-${VERSION}-setup.msi"
+          cp "desktopApp/build/compose/binaries/main/exe/Anchor-${VERSION}.exe" "anchor-desktop-${VERSION}.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body_path: release-notes.md
+          name: Desktop ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-preview.') || contains(github.ref_name, '-beta.') || contains(github.ref_name, '-rc.') }}
+          files: anchor-desktop-*

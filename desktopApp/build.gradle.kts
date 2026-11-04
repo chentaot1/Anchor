@@ -53,7 +53,8 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe,
             )
             packageName = "Anchor"
-            packageVersion = "1.0.6"
+            // Release CI overrides this with -PanchorDesktopVersion=<tag version>.
+            packageVersion = providers.gradleProperty("anchorDesktopVersion").getOrElse("1.0.6")
             licenseFile.set(rootProject.file("LICENSE"))
             windows {
                 iconFile.set(project.file("src/main/resources/anchor.ico"))

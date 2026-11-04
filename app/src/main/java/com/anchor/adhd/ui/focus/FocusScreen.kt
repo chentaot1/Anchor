@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -49,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.anchor.adhd.service.FocusBlockService
 import com.anchor.adhd.service.FocusTimerState
 import com.anchor.adhd.ui.components.CustomDurationDialog
+import com.anchor.adhd.ui.components.HarborCtaButton
 import com.anchor.adhd.ui.components.RaindropAnimation
 import com.anchor.adhd.ui.copy.AppCopy
 import com.anchor.adhd.ui.theme.AnchorColors
@@ -127,7 +126,7 @@ fun FocusScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                         .padding(horizontal = 8.dp, vertical = 12.dp)
                 )
                 if (active) {
-                    Button(
+                    HarborCtaButton(
                         onClick = {
                             showRaindrop = true
                             vm.requestEndFocus(true)
@@ -139,11 +138,7 @@ fun FocusScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 54.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AnchorColors.HarborAction,
-                            contentColor = AnchorColors.HarborBackground
-                        )
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Text(
                             "Complete session",
@@ -204,7 +199,7 @@ fun FocusScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                             border = null
                         )
                     }
-                    Button(
+                    HarborCtaButton(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             vm.startFocus(pickerMinutes, breakMin, now.task?.id)
@@ -212,11 +207,7 @@ fun FocusScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 54.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AnchorColors.HarborAction,
-                            contentColor = AnchorColors.HarborBackground
-                        )
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Text(
                             "Start focus · $pickerMinutes min",

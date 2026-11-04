@@ -5,6 +5,10 @@ import androidx.compose.ui.graphics.Color
 /**
  * Single source of truth for Anchor color.
  *
+ * The trio is blue + orange + violet: blue carries information, orange
+ * carries the ONE next action per screen, violet carries AI. Green carries
+ * growth. Neutrals are warm paper / deep harbor night.
+ *
  * Both Android (`com.anchor.adhd.ui.theme`) and desktop
  * (`com.anchor.adhd.desktop.theme`, which re-exports these values) build their
  * Material3 schemes from here. Do not fork hex codes per platform.

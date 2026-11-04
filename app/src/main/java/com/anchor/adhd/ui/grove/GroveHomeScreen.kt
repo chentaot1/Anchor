@@ -21,12 +21,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.ButtonDefaults
+import com.anchor.adhd.ui.components.HarborCtaButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -266,13 +266,9 @@ fun GroveHomeScreen(
                             if (isSessionActive) {
                                 val remainingMin = (timerState.remainingSeconds / 60).coerceAtLeast(1)
                                 val phaseLabel = if (timerState.phase == FocusTimerState.Phase.WORK) "In Focus" else "In Break"
-                                Button(
+                                HarborCtaButton(
                                     onClick = { vm.openFocusTab() },
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = AnchorColors.HarborAction,
-                                        contentColor = Color(0xFF0A0E18)
-                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
@@ -281,13 +277,9 @@ fun GroveHomeScreen(
                                     )
                                 }
                             } else {
-                                Button(
+                                HarborCtaButton(
                                     onClick = { vm.startFocus(selectedWorkMinutes, focusDurations.second, now.task?.id) },
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = AnchorColors.HarborAction,
-                                        contentColor = Color(0xFF0A0E18)
-                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(

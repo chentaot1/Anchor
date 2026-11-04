@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.data.model.BreakdownGranularity
@@ -57,7 +59,12 @@ fun AiScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().statusBarsPadding().imePadding()) {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Executive Function Studio", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                "Executive Function Studio",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() }
+            )
             Text(when {
                 modelReady && vm.aiNativeRuntime -> "MiniCPM5 Q8_0 - offline AI"
                 modelReady -> AppCopy.AI_STUB_FILE_ONLY

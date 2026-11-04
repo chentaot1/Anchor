@@ -1,7 +1,7 @@
 package com.anchor.adhd.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.ui.theme.AnchorColors
 import com.anchor.adhd.ui.theme.AnchorSpacing
@@ -100,13 +101,17 @@ fun AnchorBottomBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
-                        .clickable { onTabSelected(tab.index) }
+                        .selectable(
+                            selected = selected,
+                            onClick = { onTabSelected(tab.index) },
+                            role = Role.Tab
+                        )
                         .background(if (selected) AnchorColors.HarborAction.copy(alpha = 0.22f) else Color.Transparent)
                         .padding(vertical = 8.dp)
                 ) {
                     Icon(
                         tab.icon,
-                        contentDescription = tab.label,
+                        contentDescription = null,
                         tint = if (selected) AnchorColors.HarborAction else Color(0xFFA8B4C0)
                     )
                     Text(

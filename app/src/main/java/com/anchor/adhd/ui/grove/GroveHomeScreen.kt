@@ -55,6 +55,8 @@ import androidx.compose.runtime.setValue
 import com.anchor.adhd.service.FocusTimerState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -111,7 +113,11 @@ fun GroveHomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Today", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "Today",
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.semantics { heading() }
+                    )
                     Text("One small step at a time", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
@@ -215,7 +221,7 @@ fun GroveHomeScreen(
                                         fontWeight = FontWeight.Medium,
                                         letterSpacing = 1.sp
                                     ),
-                                    color = Color(0xFF64748B)
+                                    color = Color(0xFF8FA0B5)
                                 )
                             }
                         }

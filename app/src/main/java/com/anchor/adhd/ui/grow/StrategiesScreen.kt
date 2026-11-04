@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import com.anchor.adhd.ui.components.AnchorCard
 import com.anchor.adhd.ui.components.ScreenPadding
 import com.anchor.adhd.ui.components.SectionHeader
@@ -28,7 +29,7 @@ fun StrategiesScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
     ) {
         item { SectionHeader(AppCopy.STRATEGY_SECTION, AppCopy.STRATEGY_HINT) }
         items(cards, key = { it.id }) { card ->
-            AnchorCard(Modifier.clickable { vm.showCbt(card) }) {
+            AnchorCard(Modifier.clickable(role = Role.Button, onClickLabel = card.title) { vm.showCbt(card) }) {
                 Text(card.title, style = MaterialTheme.typography.titleSmall)
                 Text(
                     card.body.lines().first(),

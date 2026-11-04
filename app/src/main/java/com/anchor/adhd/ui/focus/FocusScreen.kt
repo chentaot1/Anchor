@@ -40,6 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -82,12 +85,18 @@ fun FocusScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (active) "Focus in progress" else "Focus", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                Text(
+                    if (active) "Focus in progress" else "Focus",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() }
+                )
                 IconButton(onClick = { vm.openAppBlocker() }) {
                     Icon(Icons.Outlined.Shield, contentDescription = "App protection")
                 }
             }
-            Box(Modifier.fillMaxWidth().height(310.dp)) {
+            Box(Modifier.fillMaxWidth().heightIn(min = 310.dp)) {
                 FocusCanvas(
                     progress = progress,
                     isWorkPhase = timer.phase == FocusTimerState.Phase.WORK || !active,
@@ -109,7 +118,13 @@ fun FocusScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                     if (FocusBlockService.isEnabled()) "App protection on · $blockedAttempts blocked" else "Set up app protection",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.clickable { vm.openAppBlocker() }.padding(8.dp)
+                    modifier = Modifier
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = "Open app protection",
+                            onClick = { vm.openAppBlocker() }
+                        )
+                        .padding(horizontal = 8.dp, vertical = 12.dp)
                 )
                 if (active) {
                     Button(

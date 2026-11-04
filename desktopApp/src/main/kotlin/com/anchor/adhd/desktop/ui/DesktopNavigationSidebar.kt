@@ -178,10 +178,11 @@ fun DesktopNavigationSidebar(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
+                                    .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
                                     .selectable(selected = isSelected, role = Role.Tab, onClick = { onScreenSelected(item.screen) }),
-                            color = if (isSelected) AnchorColors.HarborPrimary.copy(alpha = 0.18f) else Color.Transparent,
-                            border = if (isSelected) BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.4f)) else null,
+                            // M3 rail language shared with mobile: tonal pill, no border.
+                            color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+                            border = null,
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -190,7 +191,7 @@ fun DesktopNavigationSidebar(
                                 Icon(
                                     imageVector = item.icon,
                                     contentDescription = null,
-                                    tint = if (isSelected) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.6f),
+                                    tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else Color.White.copy(alpha = 0.6f),
                                     modifier = Modifier.size(20.dp),
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -198,7 +199,7 @@ fun DesktopNavigationSidebar(
                                     text = item.label,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else Color.White.copy(alpha = 0.7f),
                                 )
                                 if (item.screen == DesktopScreen.BLOCKER && (isFocusActive || isStandingShieldActive)) {
                                     Spacer(modifier = Modifier.weight(1f))

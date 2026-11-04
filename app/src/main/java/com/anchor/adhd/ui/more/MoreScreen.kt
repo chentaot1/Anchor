@@ -112,7 +112,6 @@ private fun MoreHub(onRouteChange: (MoreRoute) -> Unit, modifier: Modifier) {
                 .padding(vertical = AnchorSpacing.itemGap)
                 .semantics { heading() }
         )
-        HubCard("Plan", "Inbox, timeline & assignments", Icons.Default.CalendarMonth) { onRouteChange(MoreRoute.Plan) }
         HubCard("App Blocker", "Allowances, shields & earned leisure", Icons.Default.Shield) { onRouteChange(MoreRoute.Blocker) }
         HubCard("Habits", "Heatmap & tracking", Icons.Default.CalendarMonth) { onRouteChange(MoreRoute.Habits) }
         HubCard("Strategies", "In-the-moment tools", Icons.Default.Lightbulb) { onRouteChange(MoreRoute.Strategies) }

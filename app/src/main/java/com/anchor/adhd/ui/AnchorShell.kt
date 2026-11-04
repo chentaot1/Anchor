@@ -1,59 +1,61 @@
 package com.anchor.adhd.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Apps
-import androidx.compose.material.icons.rounded.Park
-import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Park
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
-import com.anchor.adhd.ui.theme.AnchorColors
-import com.anchor.adhd.ui.theme.AnchorSpacing
 import com.anchor.adhd.ui.theme.LocalAnchorExtras
 
+/** Top-level destinations. Aligned with MainActivity.TAB_* so intents map 1:1. */
 object AnchorTabs {
     const val GROVE = 0
-    const val AI = 1
+    const val PLAN = 1
     const val FOCUS = 2
-    const val MORE = 3
+    const val AI = 3
+    const val MORE = 4
 }
 
 enum class MoreRoute { Hub, Grow, Ai, Settings, Habits, Strategies, Blocker, Plan }
 
-data class TabItem(val index: Int, val label: String, val icon: ImageVector)
+data class TabItem(
+    val index: Int,
+    val label: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector
+)
 
 val ANCHOR_TAB_ITEMS = listOf(
-    TabItem(AnchorTabs.GROVE, "Grove", Icons.Rounded.Park),
-    TabItem(AnchorTabs.AI, "AI", Icons.Rounded.AutoAwesome),
-    TabItem(AnchorTabs.FOCUS, "Focus", Icons.Rounded.Timer),
-    TabItem(AnchorTabs.MORE, "More", Icons.Rounded.Apps)
+    TabItem(AnchorTabs.GROVE, "Grove", Icons.Outlined.Park, Icons.Filled.Park),
+    TabItem(AnchorTabs.PLAN, "Plan", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
+    TabItem(AnchorTabs.FOCUS, "Focus", Icons.Outlined.Timer, Icons.Filled.Timer),
+    TabItem(AnchorTabs.AI, "AI", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
+    TabItem(AnchorTabs.MORE, "More", Icons.Outlined.Apps, Icons.Filled.Apps)
 )
 
 @Composable
@@ -62,6 +64,7 @@ fun AnchorShell(
     onTabSelected: (Int) -> Unit,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
+    planBadgeCount: Int = 0,
     tabBackground: @Composable (Int) -> Brush = { LocalAnchorExtras.current.screenGradient },
     content: @Composable (PaddingValues) -> Unit
 ) {
@@ -72,7 +75,11 @@ fun AnchorShell(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                AnchorBottomBar(selectedTab = selectedTab, onTabSelected = onTabSelected)
+                AnchorBottomBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = onTabSelected,
+                    planBadgeCount = planBadgeCount
+                )
             }
         ) { padding ->
             content(padding)
@@ -81,46 +88,36 @@ fun AnchorShell(
 }
 
 @Composable
-fun AnchorBottomBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(AnchorColors.HarborDock)
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = AnchorSpacing.screenHorizontal, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            ANCHOR_TAB_ITEMS.forEach { tab ->
-                val selected = selectedTab == tab.index
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
-                        .selectable(
-                            selected = selected,
-                            onClick = { onTabSelected(tab.index) },
-                            role = Role.Tab
+fun AnchorBottomBar(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    planBadgeCount: Int = 0
+) {
+    // Transparent container lets the per-tab harbor gradient flow behind the
+    // bar; the M3 active-indicator pill carries selection state.
+    NavigationBar(modifier = modifier, containerColor = Color.Transparent) {
+        ANCHOR_TAB_ITEMS.forEach { tab ->
+            val selected = selectedTab == tab.index
+            NavigationBarItem(
+                selected = selected,
+                onClick = { onTabSelected(tab.index) },
+                icon = {
+                    BadgedBox(
+                        badge = {
+                            if (tab.index == AnchorTabs.PLAN && planBadgeCount > 0) {
+                                Badge { Text("$planBadgeCount") }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            if (selected) tab.selectedIcon else tab.icon,
+                            contentDescription = null
                         )
-                        .background(if (selected) AnchorColors.HarborAction.copy(alpha = 0.22f) else Color.Transparent)
-                        .padding(vertical = 8.dp)
-                ) {
-                    Icon(
-                        tab.icon,
-                        contentDescription = null,
-                        tint = if (selected) AnchorColors.HarborAction else Color(0xFFA8B4C0)
-                    )
-                    Text(
-                        tab.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (selected) AnchorColors.HarborAction else Color(0xFFA8B4C0)
-                    )
-                }
-            }
+                    }
+                },
+                label = { Text(tab.label) }
+            )
         }
     }
 }

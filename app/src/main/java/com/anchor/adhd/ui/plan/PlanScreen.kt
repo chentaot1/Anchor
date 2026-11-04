@@ -16,9 +16,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
@@ -38,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.anchor.adhd.data.model.InboxState
 import com.anchor.adhd.data.model.TaskEntity
 import com.anchor.adhd.ui.components.AnchorCard
-import com.anchor.adhd.ui.components.EmptyState
+import com.anchor.adhd.ui.components.HarborEmptyState
 import com.anchor.adhd.ui.components.ItemSpacing
 import com.anchor.adhd.ui.components.ScreenPadding
 import com.anchor.adhd.ui.components.SectionHeader
@@ -187,7 +190,7 @@ private fun PlanTimelineFirst(
                 }
             }
             if (showListView) {
-                PlanCompactListTab(vm, Modifier.weight(1f))
+                PlanCompactListTab(vm, Modifier.weight(1f)) { showInbox = true; onOpenInbox() }
             } else {
                 TimelineTab(vm, Modifier.weight(1f))
             }
@@ -197,13 +200,13 @@ private fun PlanTimelineFirst(
             containerColor = AnchorColors.HarborPrimary,
             modifier = Modifier.align(Alignment.BottomEnd).padding(AnchorSpacing.screenHorizontal)
         ) {
-            Text("+")
+            Icon(Icons.Default.Add, contentDescription = "Capture")
         }
     }
 }
 
 @Composable
-private fun PlanCompactListTab(vm: AnchorViewModel, modifier: Modifier) {
+private fun PlanCompactListTab(vm: AnchorViewModel, modifier: Modifier, onCapture: () -> Unit = {}) {
     val scheduled by vm.scheduled.collectAsState()
     val nowTask by vm.nowTask.collectAsState()
     val timeFmt = remember { DateTimeFormatter.ofPattern("h:mm a") }
@@ -212,7 +215,12 @@ private fun PlanCompactListTab(vm: AnchorViewModel, modifier: Modifier) {
     Column(modifier.padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(ItemSpacing)) {
         SectionHeader("Today", "Compact list")
         if (scheduled.isEmpty()) {
-            EmptyState("Nothing scheduled. Tap + to capture.")
+            HarborEmptyState(
+                title = "No blocks scheduled",
+                message = "Nothing scheduled yet.",
+                actionLabel = "Capture",
+                onAction = onCapture
+            )
         } else {
             scheduled.forEach { task ->
                 val start = task.scheduledStartMillis
@@ -399,7 +407,7 @@ private fun InboxTab(vm: AnchorViewModel, modifier: Modifier) {
             InboxState.WAITING -> waiting
         }
         if (list.isEmpty()) {
-            EmptyState(AppCopy.INBOX_EMPTY)
+            HarborEmptyState(title = "Inbox is clear", message = AppCopy.INBOX_EMPTY)
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
             items(list, key = { it.id }) { task ->
@@ -444,7 +452,7 @@ private fun ReplanTab(vm: AnchorViewModel, modifier: Modifier) {
     Column(modifier.padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(ItemSpacing)) {
         SectionHeader("Replan queue", AppCopy.REPLAN_SECTION)
         if (replan.isEmpty()) {
-            EmptyState(AppCopy.REPLAN_EMPTY)
+            HarborEmptyState(title = "All caught up", message = AppCopy.REPLAN_EMPTY)
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
             items(replan, key = { it.first.id }) { (item, task) ->
@@ -592,7 +600,14 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
                 ) { Text("Save routine") }
             }
         }
-        if (routines.isEmpty()) EmptyState(AppCopy.ROUTINES_EMPTY)
+        if (routines.isEmpty()) {
+            HarborEmptyState(
+                title = "No routines yet",
+                message = AppCopy.ROUTINES_EMPTY,
+                actionLabel = "Add routine",
+                onAction = { showRoutineForm = true }
+            )
+        }
         routines.forEach { r ->
             AnchorCard {
                 Text(r.name, style = MaterialTheme.typography.titleSmall)

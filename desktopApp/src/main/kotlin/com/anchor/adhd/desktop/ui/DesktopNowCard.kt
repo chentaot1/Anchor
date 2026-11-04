@@ -48,6 +48,8 @@ import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
 import com.anchor.adhd.ui.components.HarborCtaButton
 import com.anchor.adhd.ui.theme.AnchorGradients
+import com.anchor.adhd.ui.theme.beaconGlow
+import com.anchor.adhd.ui.theme.topSheen
 
 /**
  * Living Beacon NOW Card for Windows 11.
@@ -89,6 +91,7 @@ fun DesktopNowCard(
         modifier =
             modifier
                 .fillMaxWidth()
+                .beaconGlow(RoundedCornerShape(AnchorSpacing.radiusCard))
                 .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                 .background(AnchorGradients.harborHero(), RoundedCornerShape(AnchorSpacing.radiusCard))
                 .border(
@@ -100,7 +103,9 @@ fun DesktopNowCard(
         color = Color.Transparent,
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .topSheen(RoundedCornerShape(AnchorSpacing.radiusCard))
+                .padding(20.dp),
         ) {
             // Header Row: Tracked N O W badge + Duration Pill
             Row(

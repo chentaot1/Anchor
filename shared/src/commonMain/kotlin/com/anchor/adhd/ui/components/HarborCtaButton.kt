@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.ui.theme.AnchorGradients
+import com.anchor.adhd.ui.theme.beaconGlow
 
 /**
  * The ONE next-action button per screen, shared by Android and desktop:
@@ -27,7 +28,9 @@ fun HarborCtaButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.background(AnchorGradients.beaconCta(), shape),
+        modifier = modifier
+            .beaconGlow(shape)
+            .background(AnchorGradients.beaconCta(), shape),
         shape = shape,
         enabled = enabled,
         colors = ButtonDefaults.buttonColors(

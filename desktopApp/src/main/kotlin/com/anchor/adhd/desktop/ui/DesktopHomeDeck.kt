@@ -68,6 +68,7 @@ import com.anchor.adhd.desktop.db.DesktopTask
 import com.anchor.adhd.desktop.db.DesktopThoughtCaptureState
 import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.harborEntrance
 
 /** Home actions, thought capture, daily totals, upcoming tasks, and optional break links. */
 @Composable
@@ -128,6 +129,7 @@ internal fun DesktopHomeDeck(
                     durationMinutes = durationMinutes,
                     onStartFocus = onStartFocus,
                     onOpenDurationPicker = onOpenDurationPicker,
+                    modifier = Modifier.harborEntrance(0),
                 )
 
                 // 2. Low-Friction Momentum Starters (Activation Energy Reducers)
@@ -135,6 +137,7 @@ internal fun DesktopHomeDeck(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .harborEntrance(1)
                             .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                             .border(
                                 1.dp,
@@ -231,6 +234,7 @@ internal fun DesktopHomeDeck(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .harborEntrance(2)
                             .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                             .border(
                                 1.dp,
@@ -341,6 +345,7 @@ internal fun DesktopHomeDeck(
                 // 0. Living Harbor Scene (Visual Progression & Time-of-Day Sky)
                 DesktopHarborScene(
                     harborState = harborState,
+                    modifier = Modifier.harborEntrance(0),
                 )
 
                 // 1. Today's Momentum Hub (Immediate Dopamine Feedback)
@@ -348,6 +353,7 @@ internal fun DesktopHomeDeck(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .harborEntrance(1)
                             .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                             .border(
                                 1.dp,
@@ -424,6 +430,7 @@ internal fun DesktopHomeDeck(
                     modifier =
                         Modifier
                             .fillMaxWidth()
+                            .harborEntrance(2)
                             .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                             .border(
                                 1.dp,
@@ -595,7 +602,7 @@ internal fun DesktopHomeDeck(
                 }
 
                 // 3. Brain Breaks (Trojan Dopamine Resets)
-                DesktopFunLinks(links = funLinks)
+                DesktopFunLinks(links = funLinks, modifier = Modifier.harborEntrance(3))
             }
         },
     )

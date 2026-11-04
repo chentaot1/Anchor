@@ -66,6 +66,10 @@ import com.anchor.adhd.ui.components.DailyCheckInSection
 import com.anchor.adhd.ui.components.DailyStrategyCard
 import com.anchor.adhd.ui.theme.AnchorColors
 import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.beaconGlow
+import com.anchor.adhd.ui.theme.harborEntrance
+import com.anchor.adhd.ui.theme.rememberReducedMotion
+import com.anchor.adhd.ui.theme.topSheen
 import com.anchor.adhd.ui.vm.AnchorViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -130,7 +134,13 @@ fun GroveHomeScreen(
             ) {
                 // Living Maritime Beacon ("NOW" Card)
                 val isSessionActive = timerState.phase != FocusTimerState.Phase.IDLE
-                Box(modifier = Modifier.fillMaxWidth()) {
+                val reducedMotion = rememberReducedMotion()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .beaconGlow(RoundedCornerShape(24.dp))
+                        .harborEntrance(0, animate = !reducedMotion)
+                ) {
                     // Soft ambient amber halo back-glow
                     Box(
                         modifier = Modifier
@@ -171,6 +181,7 @@ fun GroveHomeScreen(
                                 ),
                                 RoundedCornerShape(20.dp)
                             )
+                            .topSheen(RoundedCornerShape(20.dp), alpha = 0.10f)
                             .padding(18.dp)
                     ) {
                         // Beacon Header Row: Pulsing Amber Anchor Dot + N O W Nautical Tracking Badge
@@ -325,12 +336,20 @@ fun GroveHomeScreen(
                 }
                 FunLinksStrip(
                     vm = vm,
+                    modifier = Modifier.harborEntrance(1, animate = !reducedMotion),
                     onOpenSettings = onOpenSettings
                 )
                 dailyStrategy?.let { card ->
-                    DailyStrategyCard(card = card, onOpen = { vm.showCbt(card) })
+                    DailyStrategyCard(
+                        card = card,
+                        onOpen = { vm.showCbt(card) },
+                        modifier = Modifier.harborEntrance(2, animate = !reducedMotion)
+                    )
                 }
-                TextButton(onClick = { restExpanded = !restExpanded }) {
+                TextButton(
+                    onClick = { restExpanded = !restExpanded },
+                    modifier = Modifier.harborEntrance(3, animate = !reducedMotion)
+                ) {
                     Text(if (restExpanded) "Hide rest of today" else "Rest of today (${later.size + replan.size})")
                 }
                 if (restExpanded) {

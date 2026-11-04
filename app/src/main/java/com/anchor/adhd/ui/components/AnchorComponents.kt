@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.ui.theme.LocalAnchorExtras
+import com.anchor.adhd.ui.theme.topSheen
 
 val ScreenPadding = 16.dp
 val SectionSpacing = 20.dp
@@ -130,7 +131,9 @@ fun AnchorCard(
         )
     ) {
         Column(
-            Modifier.padding(18.dp),
+            Modifier
+                .topSheen(MaterialTheme.shapes.large, alpha = 0.07f)
+                .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content
         )

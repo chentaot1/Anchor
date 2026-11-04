@@ -1,7 +1,6 @@
 package com.anchor.adhd.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.ui.theme.AnchorColors
+import com.anchor.adhd.ui.theme.AnchorMotion
 import com.anchor.adhd.ui.theme.rememberReducedMotion
 import kotlin.random.Random
 
@@ -53,7 +53,7 @@ fun CelebrationEffect(
     }
     val progress = remember { Animatable(0f) }
     LaunchedEffect(active) {
-        progress.animateTo(1f, tween(1200))
+        progress.animateTo(1f, AnchorMotion.slowGlow())
         onFinished()
     }
     Box(modifier = modifier.fillMaxSize()) {

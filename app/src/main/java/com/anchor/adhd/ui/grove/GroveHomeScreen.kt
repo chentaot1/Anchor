@@ -21,12 +21,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.ButtonDefaults
+import com.anchor.adhd.ui.components.HarborCtaButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +55,8 @@ import androidx.compose.runtime.setValue
 import com.anchor.adhd.service.FocusTimerState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -64,6 +66,10 @@ import com.anchor.adhd.ui.components.DailyCheckInSection
 import com.anchor.adhd.ui.components.DailyStrategyCard
 import com.anchor.adhd.ui.theme.AnchorColors
 import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.beaconGlow
+import com.anchor.adhd.ui.theme.harborEntrance
+import com.anchor.adhd.ui.theme.rememberReducedMotion
+import com.anchor.adhd.ui.theme.topSheen
 import com.anchor.adhd.ui.vm.AnchorViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -111,7 +117,11 @@ fun GroveHomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Today", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "Today",
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.semantics { heading() }
+                    )
                     Text("One small step at a time", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
@@ -124,7 +134,13 @@ fun GroveHomeScreen(
             ) {
                 // Living Maritime Beacon ("NOW" Card)
                 val isSessionActive = timerState.phase != FocusTimerState.Phase.IDLE
-                Box(modifier = Modifier.fillMaxWidth()) {
+                val reducedMotion = rememberReducedMotion()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .beaconGlow(RoundedCornerShape(24.dp))
+                        .harborEntrance(0, animate = !reducedMotion)
+                ) {
                     // Soft ambient amber halo back-glow
                     Box(
                         modifier = Modifier
@@ -165,6 +181,7 @@ fun GroveHomeScreen(
                                 ),
                                 RoundedCornerShape(20.dp)
                             )
+                            .topSheen(RoundedCornerShape(20.dp), alpha = 0.10f)
                             .padding(18.dp)
                     ) {
                         // Beacon Header Row: Pulsing Amber Anchor Dot + N O W Nautical Tracking Badge
@@ -183,10 +200,10 @@ fun GroveHomeScreen(
                                         .background(AnchorColors.HarborAction, shape = CircleShape)
                                 )
                                 Text(
-                                    "N O W",
+                                    "Now",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 2.sp
+                                        letterSpacing = 1.sp
                                     ),
                                     color = AnchorColors.HarborAction
                                 )
@@ -215,7 +232,7 @@ fun GroveHomeScreen(
                                         fontWeight = FontWeight.Medium,
                                         letterSpacing = 1.sp
                                     ),
-                                    color = Color(0xFF64748B)
+                                    color = Color(0xFF8FA0B5)
                                 )
                             }
                         }
@@ -260,13 +277,9 @@ fun GroveHomeScreen(
                             if (isSessionActive) {
                                 val remainingMin = (timerState.remainingSeconds / 60).coerceAtLeast(1)
                                 val phaseLabel = if (timerState.phase == FocusTimerState.Phase.WORK) "In Focus" else "In Break"
-                                Button(
+                                HarborCtaButton(
                                     onClick = { vm.openFocusTab() },
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = AnchorColors.HarborAction,
-                                        contentColor = Color(0xFF0A0E18)
-                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
@@ -275,13 +288,9 @@ fun GroveHomeScreen(
                                     )
                                 }
                             } else {
-                                Button(
+                                HarborCtaButton(
                                     onClick = { vm.startFocus(selectedWorkMinutes, focusDurations.second, now.task?.id) },
                                     shape = RoundedCornerShape(14.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = AnchorColors.HarborAction,
-                                        contentColor = Color(0xFF0A0E18)
-                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
@@ -327,12 +336,20 @@ fun GroveHomeScreen(
                 }
                 FunLinksStrip(
                     vm = vm,
+                    modifier = Modifier.harborEntrance(1, animate = !reducedMotion),
                     onOpenSettings = onOpenSettings
                 )
                 dailyStrategy?.let { card ->
-                    DailyStrategyCard(card = card, onOpen = { vm.showCbt(card) })
+                    DailyStrategyCard(
+                        card = card,
+                        onOpen = { vm.showCbt(card) },
+                        modifier = Modifier.harborEntrance(2, animate = !reducedMotion)
+                    )
                 }
-                TextButton(onClick = { restExpanded = !restExpanded }) {
+                TextButton(
+                    onClick = { restExpanded = !restExpanded },
+                    modifier = Modifier.harborEntrance(3, animate = !reducedMotion)
+                ) {
                     Text(if (restExpanded) "Hide rest of today" else "Rest of today (${later.size + replan.size})")
                 }
                 if (restExpanded) {

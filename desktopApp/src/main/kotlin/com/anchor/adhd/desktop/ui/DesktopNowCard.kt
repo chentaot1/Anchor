@@ -27,8 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +46,10 @@ import androidx.compose.ui.unit.sp
 import com.anchor.adhd.desktop.db.DesktopTask
 import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
+import com.anchor.adhd.ui.components.HarborCtaButton
+import com.anchor.adhd.ui.theme.AnchorGradients
+import com.anchor.adhd.ui.theme.beaconGlow
+import com.anchor.adhd.ui.theme.topSheen
 
 /**
  * Living Beacon NOW Card for Windows 11.
@@ -89,17 +91,21 @@ fun DesktopNowCard(
         modifier =
             modifier
                 .fillMaxWidth()
+                .beaconGlow(RoundedCornerShape(AnchorSpacing.radiusCard))
                 .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
+                .background(AnchorGradients.harborHero(), RoundedCornerShape(AnchorSpacing.radiusCard))
                 .border(
                     1.dp,
                     AnchorColors.HarborPrimary.copy(alpha = 0.3f),
                     RoundedCornerShape(AnchorSpacing.radiusCard),
                 ),
         shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-        color = Color(0xFF141F32).copy(alpha = 0.95f),
+        color = Color.Transparent,
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .topSheen(RoundedCornerShape(AnchorSpacing.radiusCard))
+                .padding(20.dp),
         ) {
             // Header Row: Tracked N O W badge + Duration Pill
             Row(
@@ -119,10 +125,10 @@ fun DesktopNowCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "N  O  W",
+                        text = "Now",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
+                        letterSpacing = 1.sp,
                         color = AnchorColors.HarborBeaconAmber,
                     )
                 }
@@ -208,18 +214,13 @@ fun DesktopNowCard(
             }
 
             // Primary Start Button
-            Button(
+            HarborCtaButton(
                 onClick = onStartFocus,
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .heightIn(min = 44.dp),
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = if (isFocusActive) AnchorColors.HarborDock else AnchorColors.HarborPrimary,
-                        contentColor = if (isFocusActive) Color.White else Color(0xFF002A4A),
-                    ),
             ) {
                 Icon(
                     imageVector = if (isFocusActive) Icons.Default.Anchor else Icons.Default.PlayArrow,

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.domain.GroveLevel
 import com.anchor.adhd.ui.theme.AnchorColors
+import com.anchor.adhd.ui.theme.AnchorMotion
 
 @Composable
 fun VitalityBar(
@@ -26,7 +27,7 @@ fun VitalityBar(
     label: String = GroveLevel.vitalityLabel(GroveLevel.vitalityStageForWeeklySessions(weeklyFocusSessions))
 ) {
     val target = GroveLevel.vitalityProgress(weeklyFocusSessions)
-    val progress by animateFloatAsState(target, label = "vitality")
+    val progress by animateFloatAsState(target, AnchorMotion.slowGlow(), label = "vitality")
     val pct = (progress * 100).toInt()
     androidx.compose.foundation.layout.Column(modifier = modifier) {
         androidx.compose.foundation.layout.Row(

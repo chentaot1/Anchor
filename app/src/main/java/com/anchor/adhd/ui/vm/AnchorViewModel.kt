@@ -419,7 +419,7 @@ class AnchorViewModel(
     }
 
     fun openReplanTab() {
-        _pendingNav.value = NavTarget(MainActivity.TAB_MORE, planTab = MainActivity.PLAN_TAB_REPLAN, moreRoute = com.anchor.adhd.ui.MoreRoute.Plan)
+        _pendingNav.value = NavTarget(MainActivity.TAB_PLAN, planTab = MainActivity.PLAN_TAB_REPLAN)
     }
 
     fun openFocusTab() {

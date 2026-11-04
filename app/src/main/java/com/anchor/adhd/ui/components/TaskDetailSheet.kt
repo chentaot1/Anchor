@@ -9,15 +9,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +31,6 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailSheet(
     task: TaskEntity,
@@ -51,7 +47,6 @@ fun TaskDetailSheet(
     onCompleteChild: (TaskEntity) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val zone = ZoneId.systemDefault()
     val dateFmt = DateTimeFormatter.ofPattern("MMM d")
     val timeFmt = DateTimeFormatter.ofPattern("h:mm a")
@@ -70,7 +65,7 @@ fun TaskDetailSheet(
         return "${dt.format(dateFmt)} ${dt.format(timeFmt)}"
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = modifier) {
+    HarborModalSheet(onDismissRequest = onDismiss, modifier = modifier) {
         Column(
             Modifier
                 .padding(horizontal = 20.dp, vertical = 8.dp)

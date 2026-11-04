@@ -23,7 +23,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.anchor.adhd.ui.theme.harborEntrance
+import com.anchor.adhd.ui.theme.rememberReducedMotion
 import com.anchor.adhd.ui.MoreRoute
 import com.anchor.adhd.ui.ai.AiScreen
 import com.anchor.adhd.ui.plan.PlanScreen
@@ -105,19 +110,32 @@ private fun MoreHub(onRouteChange: (MoreRoute) -> Unit, modifier: Modifier) {
             "More",
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(vertical = AnchorSpacing.itemGap)
+            modifier = Modifier
+                .padding(vertical = AnchorSpacing.itemGap)
+                .semantics { heading() }
         )
-        HubCard("Plan", "Inbox, timeline & assignments", Icons.Default.CalendarMonth) { onRouteChange(MoreRoute.Plan) }
-        HubCard("App Blocker", "Allowances, shields & earned leisure", Icons.Default.Shield) { onRouteChange(MoreRoute.Blocker) }
-        HubCard("Habits", "Heatmap & tracking", Icons.Default.CalendarMonth) { onRouteChange(MoreRoute.Habits) }
-        HubCard("Strategies", "In-the-moment tools", Icons.Default.Lightbulb) { onRouteChange(MoreRoute.Strategies) }
-        HubCard("Settings", "Focus, planning, data", Icons.Default.Settings) { onRouteChange(MoreRoute.Settings) }
+        HubCard("App Blocker", "Allowances, shields & earned leisure", Icons.Default.Shield, 1) { onRouteChange(MoreRoute.Blocker) }
+        HubCard("Habits", "Heatmap & tracking", Icons.Default.CalendarMonth, 2) { onRouteChange(MoreRoute.Habits) }
+        HubCard("Strategies", "In-the-moment tools", Icons.Default.Lightbulb, 3) { onRouteChange(MoreRoute.Strategies) }
+        HubCard("Settings", "Focus, planning, data", Icons.Default.Settings, 4) { onRouteChange(MoreRoute.Settings) }
     }
 }
 
 @Composable
-private fun HubCard(title: String, subtitle: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    AnchorCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+private fun HubCard(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    index: Int,
+    onClick: () -> Unit
+) {
+    val reducedMotion = rememberReducedMotion()
+    AnchorCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .harborEntrance(index, animate = !reducedMotion)
+            .clickable(role = Role.Button, onClickLabel = title, onClick = onClick)
+    ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

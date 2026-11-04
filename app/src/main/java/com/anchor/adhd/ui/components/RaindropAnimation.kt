@@ -1,7 +1,6 @@
 package com.anchor.adhd.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import com.anchor.adhd.ui.theme.AnchorColors
+import com.anchor.adhd.ui.theme.AnchorMotion
 import com.anchor.adhd.ui.theme.rememberReducedMotion
 
 @Composable
@@ -22,7 +22,7 @@ fun RaindropAnimation(active: Boolean, modifier: Modifier = Modifier) {
     val reducedMotion = rememberReducedMotion()
     if (reducedMotion) return
     var dropY by remember { mutableFloatStateOf(0f) }
-    val y by animateFloatAsState(dropY, tween(800), label = "rain")
+    val y by animateFloatAsState(dropY, AnchorMotion.standardSlide(), label = "rain")
     LaunchedEffect(active) {
         dropY = 1f
     }

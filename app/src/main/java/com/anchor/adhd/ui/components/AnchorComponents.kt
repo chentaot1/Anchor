@@ -24,9 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.ui.theme.LocalAnchorExtras
+import com.anchor.adhd.ui.theme.topSheen
 
 val ScreenPadding = 16.dp
 val SectionSpacing = 20.dp
@@ -69,7 +73,12 @@ fun SectionHeader(
                 .background(accentColor)
         )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() }
+            )
             subtitle?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -122,7 +131,9 @@ fun AnchorCard(
         )
     ) {
         Column(
-            Modifier.padding(18.dp),
+            Modifier
+                .topSheen(MaterialTheme.shapes.large, alpha = 0.07f)
+                .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content
         )
@@ -162,6 +173,7 @@ fun EmptyState(
         Box(
             Modifier
                 .size(40.dp)
+                .clearAndSetSemantics { }
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center

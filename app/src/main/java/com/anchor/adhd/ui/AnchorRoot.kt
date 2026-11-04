@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
@@ -73,6 +75,7 @@ import com.anchor.adhd.ui.vm.AnchorViewModel
 import com.anchor.adhd.ui.vm.AnchorViewModelFactory
 import com.anchor.adhd.ui.grove.GroveHomeScreen
 import com.anchor.adhd.ui.more.MoreScreen
+import com.anchor.adhd.ui.theme.AnchorMotion
 import com.anchor.adhd.ui.theme.LocalAnchorExtras
 import com.anchor.adhd.MainActivity
 
@@ -153,13 +156,7 @@ fun AnchorRoot(
     }
 
     LaunchedEffect(initialTab, initialPlanTab, intentVersion) {
-        initialTab?.let {
-            tab = it
-            if (initialPlanTab != null && (it == MainActivity.TAB_MORE || it == MainActivity.TAB_AI)) {
-                tab = AnchorTabs.MORE
-                moreRoute = MoreRoute.Plan
-            }
-        }
+        initialTab?.let { tab = it }
         initialPlanTab?.let { planTab = it }
     }
 
@@ -168,7 +165,13 @@ fun AnchorRoot(
             tab = nav.tab
             nav.planTab?.let { planTab = it }
             nav.moreRoute?.let {
-                if (it == MoreRoute.Ai) tab = AnchorTabs.AI else moreRoute = it
+                // Plan and AI graduated to top-level tabs; only other routes
+                // still live inside More.
+                when (it) {
+                    MoreRoute.Ai -> tab = AnchorTabs.AI
+                    MoreRoute.Plan -> tab = AnchorTabs.PLAN
+                    else -> moreRoute = it
+                }
             }
             vm.consumePendingNav()
         }
@@ -355,6 +358,7 @@ fun AnchorRoot(
         )
     }
 
+    val replanCount = replanWithTasks.size
     AnchorShell(
         selectedTab = tab,
         onTabSelected = { selected ->
@@ -362,23 +366,30 @@ fun AnchorRoot(
             if (selected != AnchorTabs.MORE) moreRoute = MoreRoute.Hub
         },
         snackbarHostState = snackbar,
+        planBadgeCount = replanCount,
         tabBackground = { t ->
             val extras = LocalAnchorExtras.current
             when (t) {
                 AnchorTabs.GROVE -> extras.groveGradient
                 AnchorTabs.AI -> extras.screenGradient
                 AnchorTabs.FOCUS -> extras.focusGradient
+                AnchorTabs.PLAN -> extras.planGradient
                 else -> extras.screenGradient
             }
         }
     ) { padding ->
         screenState.SaveableStateProvider(tab) {
-            when (tab) {
+            Crossfade(
+                targetState = tab,
+                animationSpec = tween(AnchorMotion.QUICK_MS),
+                label = "tab"
+            ) { current ->
+            when (current) {
             AnchorTabs.GROVE -> GroveHomeScreen(
                 vm,
                 Modifier.padding(bottom = padding.calculateBottomPadding()),
                 onOpenSettings = { tab = AnchorTabs.MORE; moreRoute = MoreRoute.Settings },
-                onOpenInbox = { tab = AnchorTabs.MORE; moreRoute = MoreRoute.Plan; planTab = 1 },
+                onOpenInbox = { tab = AnchorTabs.PLAN; planTab = 1 },
                 onOpenChat = {
                     vm.prepareChatSheet(panic = false)
                     showChatSheet = true
@@ -392,19 +403,35 @@ fun AnchorRoot(
                     showChatSheet = true
                 }
             )
+            AnchorTabs.PLAN -> PlanScreen(
+                vm,
+                planTab,
+                { planTab = it },
+                Modifier.padding(bottom = padding.calculateBottomPadding()),
+                timelineFirst = planTab == 0,
+                showListView = planListView,
+                onToggleListView = { planListView = !planListView }
+            )
             AnchorTabs.AI -> AiScreen(vm, Modifier.padding(padding).consumeWindowInsets(padding))
             AnchorTabs.FOCUS -> FocusScreen(vm, Modifier.padding(bottom = padding.calculateBottomPadding()))
             AnchorTabs.MORE -> MoreScreen(
                 vm,
                 container,
                 moreRoute,
-                onRouteChange = { if (it == MoreRoute.Ai) tab = AnchorTabs.AI else moreRoute = it },
+                onRouteChange = {
+                    when (it) {
+                        MoreRoute.Ai -> tab = AnchorTabs.AI
+                        MoreRoute.Plan -> tab = AnchorTabs.PLAN
+                        else -> moreRoute = it
+                    }
+                },
                 Modifier.padding(padding),
                 planTab = planTab,
                 onPlanTabSelected = { planTab = it },
                 showPlanList = planListView,
                 onTogglePlanList = { planListView = !planListView }
             )
+            }
             }
         }
     }

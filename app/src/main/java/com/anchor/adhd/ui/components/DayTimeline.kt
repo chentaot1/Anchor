@@ -28,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.data.model.CalendarEventEntity
@@ -255,6 +257,12 @@ private fun TimelineBlock(
     Box(
         Modifier
             .padding(horizontal = 4.dp)
+            // Raw tap gestures are invisible to screen readers; expose the
+            // same action through semantics (drag rescheduling stays
+            // touch-only, with the detail sheet as the keyboard/AT path).
+            .semantics(mergeDescendants = true) {
+                onClick(label = "Open details", action = { onClick(); true })
+            }
             .offset {
                 IntOffset(0, topDp.dp.roundToPx() + dragOffsetPx.roundToInt())
             }

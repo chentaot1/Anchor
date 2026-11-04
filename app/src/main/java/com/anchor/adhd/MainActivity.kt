@@ -66,14 +66,17 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
         val openTab = when {
-            intent?.action == ACTION_OPEN_REPLAN -> TAB_MORE
+            intent?.action == ACTION_OPEN_REPLAN -> TAB_PLAN
             intent?.action == ACTION_CHECK_IN -> TAB_GROVE
             intent?.action == ACTION_SHUTDOWN -> TAB_GROVE
             intent?.hasExtra(EXTRA_OPEN_TAB) == true -> {
                 val raw = intent.getIntExtra(EXTRA_OPEN_TAB, TAB_GROVE)
                 when (raw) {
-                    4 -> TAB_AI // legacy AI tab
-                    3 -> TAB_MORE // legacy Grow tab
+                    // Pre-5-tab scheme had no Plan tab: 0 Grove, 1 AI, 2 Focus, 3 More, 4 legacy AI.
+                    0 -> TAB_GROVE
+                    1, 4 -> TAB_AI
+                    2 -> TAB_FOCUS
+                    3 -> TAB_MORE
                     else -> raw.coerceIn(TAB_GROVE, TAB_MORE)
                 }
             }
@@ -126,12 +129,11 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_ENERGY = "energy"
         const val TAB_GROVE = 0
         const val TAB_TODAY = 0
-        const val TAB_AI = 1
-        @Deprecated("Planning now lives in More")
-        const val TAB_PLAN = TAB_AI
+        const val TAB_PLAN = 1
         const val TAB_FOCUS = 2
-        const val TAB_MORE = 3
-        const val TAB_GROW = 3
+        const val TAB_AI = 3
+        const val TAB_MORE = 4
+        const val TAB_GROW = 4
         const val PLAN_TAB_REPLAN = 2
     }
 }

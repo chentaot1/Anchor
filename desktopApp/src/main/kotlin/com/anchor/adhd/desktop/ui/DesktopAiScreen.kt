@@ -540,10 +540,10 @@ private fun BreakdownToolCanvas(
                 onClick = onBreakdown,
                 enabled = input.isNotBlank() && !isLoading,
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAi, contentColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAi, contentColor = AnchorColors.HarborPilotInk),
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = AnchorColors.HarborPilotInk, strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Refining...", fontWeight = FontWeight.Bold)
                 } else {
@@ -807,10 +807,10 @@ private fun BrainDumpToolCanvas(
                 onClick = onParse,
                 enabled = input.isNotBlank() && !isLoading,
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAi, contentColor = Color.White),
+                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAi, contentColor = AnchorColors.HarborPilotInk),
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = AnchorColors.HarborPilotInk, strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Extracting Tasks...", fontWeight = FontWeight.Bold)
                 } else {
@@ -1175,7 +1175,7 @@ private fun ChatToolCanvas(
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "CALM ADHD EXECUTIVE COACH",
+                        text = "HARBOR PILOT",
                         style = MaterialTheme.typography.labelSmall,
                         letterSpacing = 1.1.sp,
                         color = AnchorColors.HarborAi,
@@ -1458,14 +1458,14 @@ private fun ChatToolCanvas(
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = AnchorColors.HarborAi,
-                        contentColor = Color.White,
+                        contentColor = AnchorColors.HarborPilotInk,
                         disabledContainerColor = AnchorColors.HarborAi.copy(alpha = 0.2f),
-                        disabledContentColor = Color.White.copy(alpha = 0.3f),
+                        disabledContentColor = AnchorColors.HarborPilotInk.copy(alpha = 0.5f),
                     ),
                 modifier = Modifier.height(54.dp),
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = AnchorColors.HarborPilotInk, strokeWidth = 2.dp)
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,

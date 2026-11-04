@@ -54,7 +54,7 @@ val ANCHOR_TAB_ITEMS = listOf(
     TabItem(AnchorTabs.GROVE, "Grove", Icons.Outlined.Park, Icons.Filled.Park),
     TabItem(AnchorTabs.PLAN, "Plan", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
     TabItem(AnchorTabs.FOCUS, "Focus", Icons.Outlined.Timer, Icons.Filled.Timer),
-    TabItem(AnchorTabs.AI, "AI", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
+    TabItem(AnchorTabs.AI, "Pilot", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
     TabItem(AnchorTabs.MORE, "More", Icons.Outlined.Apps, Icons.Filled.Apps)
 )
 

@@ -79,7 +79,7 @@ internal fun DesktopAirlockDialog(state: DesktopAirlockState, session: DesktopAi
                             Button(
                                 onClick = { session.generate(DesktopAirlockMode.STEPS) },
                                 enabled = !state.isSaving && state.draft.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAi, contentColor = Color.White),
+                                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAi, contentColor = AnchorColors.HarborPilotInk),
                             ) { Text("Decompose (5-Min Steps)") }
                             OutlinedButton(
                                 onClick = { session.generate(DesktopAirlockMode.TASKS) },

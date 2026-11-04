@@ -64,7 +64,7 @@ fun calculateHarborPalette(minuteOfDay: Int): HarborSkyPalette {
         skyTop = Color(0xFF1B1233),
         skyHorizon = Color(0xFFFF8252),
         waterBase = Color(0xFF2E1C3F),
-        specularAccent = Color(0xFFA78BFA)
+        specularAccent = Color(0xFFFFB066)
     )
     val night = HarborSkyPalette(
         skyTop = Color(0xFF0A1120),
@@ -300,7 +300,7 @@ fun GardenScene(
                         listOf(
                             Color(0x0033A78B),
                             Color(0x3074C69D),
-                            Color(0x35A78BFA),
+                            Color(0x356FE3E0),
                             Color(0x0033A78B)
                         )
                     )

@@ -60,7 +60,7 @@ fun AiScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "Executive Function Studio",
+                "Harbor Pilot",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() }

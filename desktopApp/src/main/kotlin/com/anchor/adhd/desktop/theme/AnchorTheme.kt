@@ -24,6 +24,7 @@ object AnchorColors {
     val HarborPrimary get() = SharedColors.HarborPrimary
     val HarborAction get() = SharedColors.HarborAction
     val HarborAi get() = SharedColors.HarborAi
+    val HarborPilotInk get() = SharedColors.HarborPilotInk
     val HarborGrowth get() = SharedColors.HarborGrowth
     val HarborFoliage get() = SharedColors.HarborFoliage
     val HarborFoliageDark get() = SharedColors.HarborFoliageDark

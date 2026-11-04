@@ -219,7 +219,7 @@ internal fun DesktopHomeDeck(
                                     label = "50m Flow",
                                     subtitle = "Deep dive",
                                     color = AnchorColors.HarborAi,
-                                    accent = Color(0xFFC084FC),
+                                    accent = Color(0xFFB9F6EC),
                                     modifier = Modifier.width(tileWidth),
                                     onClick = { onLaunchMomentumPreset(50) },
                                 )
@@ -315,7 +315,7 @@ internal fun DesktopHomeDeck(
                                 colors =
                                     ButtonDefaults.buttonColors(
                                         containerColor = AnchorColors.HarborAi,
-                                        contentColor = Color(0xFF1E0E3E),
+                                        contentColor = AnchorColors.HarborPilotInk,
                                     ),
                                 modifier = Modifier.height(48.dp),
                             ) {

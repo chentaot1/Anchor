@@ -80,7 +80,7 @@ val DESKTOP_NAV_ITEMS =
         NavItem(DesktopScreen.BLOCKER, "App Blocker", Icons.Default.Shield),
         NavItem(DesktopScreen.PLAN, "Milestones", Icons.Default.Checklist),
         NavItem(DesktopScreen.SYLLABUS, "Syllabus", Icons.Default.School),
-        NavItem(DesktopScreen.AI, "AI Tools", Icons.Default.AutoAwesome),
+        NavItem(DesktopScreen.AI, "Pilot", Icons.Default.AutoAwesome),
         NavItem(DesktopScreen.SETTINGS, "Settings", Icons.Default.Settings),
     )
 

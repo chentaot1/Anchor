@@ -6,16 +6,16 @@ import androidx.compose.ui.graphics.Color
 /**
  * Premium gradient language. Rules:
  * - The beacon gradient is reserved for the ONE next action per screen.
- * - Blue gradients carry information/hero surfaces; violet carries AI.
+ * - Blue gradients carry information/hero surfaces; pilot teal carries AI.
  * - Never put body text on a gradient — dark beacon ink on beacon,
- *   white on blue/violet. Same stops in both themes so Android and
+ *   white on blue, deep pilot ink on teal. Same stops in both themes so Android and
  *   desktop render identical heroes.
  */
 object AnchorGradients {
-    /** Blue + orange + violet trio, stated plainly. */
+    /** Blue + orange + pilot-teal trio, stated plainly. */
     val HarborBlue = Color(0xFF5EA8EE)
     val HarborOrange = Color(0xFFFF9E4F)
-    val HarborViolet = Color(0xFFA78BFA)
+    val HarborPilot = Color(0xFF6FE3E0)
 
     /** Hero next-action CTA: warm orange pour, dark beacon ink text. */
     fun beaconCta(): Brush = Brush.linearGradient(
@@ -32,8 +32,8 @@ object AnchorGradients {
         colors = listOf(Color(0x335EA8EE), Color.Transparent)
     )
 
-    /** Violet AI surface wash. */
+    /** Pilot-teal AI surface wash. */
     fun aiWash(): Brush = Brush.linearGradient(
-        colors = listOf(Color(0x40A78BFA), Color(0x14A78BFA))
+        colors = listOf(Color(0x406FE3E0), Color(0x146FE3E0))
     )
 }

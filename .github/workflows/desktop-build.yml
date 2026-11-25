@@ -74,8 +74,8 @@ jobs:
           else
             printf '# Anchor Desktop %s\n\nAutomated installer build (MSI + EXE, bundled OpenJDK 17, unsigned). Curated notes were not committed for this tag.\n' "$VERSION" > release-notes.md
           fi
-          cp "desktopApp/build/compose/binaries/main/msi/Anchor-${VERSION}.msi" "anchor-desktop-${VERSION}-setup.msi"
-          cp "desktopApp/build/compose/binaries/main/exe/Anchor-${VERSION}.exe" "anchor-desktop-${VERSION}.exe"
+          cp "desktopApp/build/compose/binaries/main-release/msi/Anchor-${VERSION}.msi" "anchor-desktop-${VERSION}-setup.msi"
+          cp "desktopApp/build/compose/binaries/main-release/exe/Anchor-${VERSION}.exe" "anchor-desktop-${VERSION}.exe"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

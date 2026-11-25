@@ -1,155 +1,172 @@
 package com.anchor.adhd.ui.preview
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.anchor.adhd.data.model.TaskDifficulty
-import com.anchor.adhd.data.model.TaskEntity
-import com.anchor.adhd.ui.components.AnchorCard
-import com.anchor.adhd.ui.components.AnchorCardStyle
-import com.anchor.adhd.ui.components.AnchorScreenBackground
-import com.anchor.adhd.ui.components.DayProgressBar
-import com.anchor.adhd.ui.components.EmptyState
-import com.anchor.adhd.ui.components.ItemSpacing
-import com.anchor.adhd.ui.components.ScreenPadding
-import com.anchor.adhd.ui.components.SectionHeader
-import com.anchor.adhd.ui.components.SectionSpacing
-import com.anchor.adhd.ui.components.StatusChip
-import com.anchor.adhd.data.model.CheckInTag
-import com.anchor.adhd.data.model.EnergyLevel
-import com.anchor.adhd.ui.components.DailyCheckInSection
-import com.anchor.adhd.ui.components.VisualTimerRing
-import com.anchor.adhd.ui.copy.AppCopy
-import com.anchor.adhd.ui.grove.GardenScene
-import com.anchor.adhd.ui.components.VitalityBar
+import com.anchor.adhd.ui.components.AnchorBeaconPlate
+import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorListRow
+import com.anchor.adhd.ui.components.AnchorQuietButton
+import com.anchor.adhd.ui.components.AnchorSectionHeader
+import com.anchor.adhd.ui.components.AnchorTodayTideStrip
+import com.anchor.adhd.ui.components.AnchorWell
+import com.anchor.adhd.ui.components.HarborCtaButton
+import com.anchor.adhd.ui.components.HarborEmptyState
+import com.anchor.adhd.ui.focus.FocusCanvas
+import com.anchor.adhd.ui.theme.AnchorSpacing
 import com.anchor.adhd.ui.theme.AnchorTheme
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 
-@Preview(name = "Grove scene", showBackground = true, backgroundColor = 0xFF0A0E18, widthDp = 412, heightDp = 360)
+@Preview(name = "Home Next Action — Morning Harbor", showBackground = true, backgroundColor = 0xFFF6F1E7, widthDp = 412, heightDp = 640)
 @Composable
-private fun GroveScenePreview() {
-    AnchorTheme {
-        GardenScene(
-            sessionCount = 4,
-            vitalityStage = 2
-        )
+private fun BeaconPlateMorningPreview() {
+    AnchorTheme(darkTheme = false) {
+        HomePreviewContent()
     }
 }
 
-@Preview(name = "Vitality bar", showBackground = true, backgroundColor = 0xFF0A0E18, widthDp = 412)
+@Preview(name = "Home Next Action — Night Harbor", showBackground = true, backgroundColor = 0xFF0E1624, widthDp = 412, heightDp = 640)
 @Composable
-private fun VitalityBarPreview() {
-    AnchorTheme {
-        VitalityBar(weeklyFocusSessions = 5, modifier = Modifier.padding(16.dp))
+private fun BeaconPlateNightPreview() {
+    AnchorTheme(darkTheme = true) {
+        HomePreviewContent()
     }
 }
 
-@Preview(name = "Today — sample", showBackground = true, backgroundColor = 0xFF080B10, widthDp = 412, heightDp = 892)
+@Preview(name = "Living Tide Focus — Morning Harbor", showBackground = true, backgroundColor = 0xFFF6F1E7, widthDp = 412, heightDp = 360)
 @Composable
-private fun TodaySamplePreview() {
-    AnchorTheme {
-        AnchorScreenBackground(Modifier.fillMaxSize()) {
-            TodaySampleContent()
-        }
+private fun FocusCanvasMorningPreview() {
+    AnchorTheme(darkTheme = false) {
+        FocusCanvasPreviewContent()
     }
 }
 
-@Preview(name = "Cards", showBackground = true, backgroundColor = 0xFF080B10, widthDp = 412)
+@Preview(name = "Living Tide Focus — Night Harbor", showBackground = true, backgroundColor = 0xFF0E1624, widthDp = 412, heightDp = 360)
 @Composable
-private fun CardStylesPreview() {
-    AnchorTheme {
-        AnchorScreenBackground(Modifier.fillMaxSize()) {
-            Column(Modifier.padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AnchorCard(style = AnchorCardStyle.Hero) {
-                    SectionHeader("Now", "One thing to do next", accentColor = MaterialTheme.colorScheme.tertiary)
-                    StatusChip("Medium", MaterialTheme.colorScheme.secondary)
-                    Text("Finish psych reading", style = MaterialTheme.typography.titleLarge)
-                    Text("25 min", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                AnchorCard(style = AnchorCardStyle.Accent) {
-                    SectionHeader("Focus", "Sessions today", accentColor = MaterialTheme.colorScheme.tertiary)
-                    Text(AppCopy.focusSessionsToday(2), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                AnchorCard {
-                    EmptyState("Nothing scheduled. Add a block in Plan.")
-                }
-            }
-        }
-    }
-}
-
-@Preview(name = "Focus timer", showBackground = true, backgroundColor = 0xFF080B10, widthDp = 412)
-@Composable
-private fun TimerPreview() {
-    AnchorTheme {
-        AnchorScreenBackground(Modifier.fillMaxSize()) {
-            Column(Modifier.padding(24.dp)) {
-                VisualTimerRing(
-                    remainingSeconds = 12 * 60 + 34,
-                    totalSeconds = 20 * 60,
-                    label = "Focus",
-                    startedAtMillis = System.currentTimeMillis() - 7 * 60_000L
-                )
-            }
-        }
+private fun FocusCanvasNightPreview() {
+    AnchorTheme(darkTheme = true) {
+        FocusCanvasPreviewContent()
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TodaySampleContent() {
-    val sampleTask = TaskEntity(
-        id = 1,
-        title = "Finish psych reading",
-        durationMinutes = 25,
-        difficulty = TaskDifficulty.MEDIUM
-    )
-
+private fun HomePreviewContent() {
+    val tokens = LocalAnchorTokens.current
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(tokens.paper)
             .verticalScroll(rememberScrollState())
-            .padding(ScreenPadding),
-        verticalArrangement = Arrangement.spacedBy(SectionSpacing)
+            .padding(AnchorSpacing.screenHorizontal),
+        verticalArrangement = Arrangement.spacedBy(AnchorSpacing.sectionGap)
     ) {
-        DayProgressBar(0.42f)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Good morning", style = MaterialTheme.typography.headlineMedium, color = tokens.ink)
+            Text("2 sessions today, 45 min focused", style = MaterialTheme.typography.bodyMedium, color = tokens.muted)
+        }
 
-        AnchorCard(style = AnchorCardStyle.Hero) {
-            SectionHeader("Now", AppCopy.NOW_HINT, accentColor = MaterialTheme.colorScheme.tertiary)
-            StatusChip("Medium", MaterialTheme.colorScheme.secondary)
-            Text(sampleTask.title, style = MaterialTheme.typography.titleLarge)
-            Text("${sampleTask.durationMinutes} min", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                Button(onClick = {}) { Text("Start 10m") }
-                FilledTonalButton(onClick = {}) { Text("Done") }
-                OutlinedButton(onClick = {}) { Text("Replan") }
+        AnchorTodayTideStrip(
+            todayMinutes = 45,
+            goalMinutes = 50,
+            stageLabel = "Growing"
+        )
+
+        AnchorBeaconPlate(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "Next action",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = tokens.beaconPlateCta
+            )
+            Text(
+                text = "Finish psychology reading chapter 4",
+                style = MaterialTheme.typography.titleMedium,
+                color = tokens.beaconPlateInk
+            )
+            Text(
+                text = "Open notes to section 4.2 and summarize key terms.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.beaconPlateInk2
+            )
+            HarborCtaButton(
+                onClick = {},
+                onBeaconPlate = true,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Start 25 min focus")
+            }
+            AnchorQuietButton(
+                label = "Break down with Captain",
+                onClick = {},
+                outlined = false,
+                tint = tokens.beaconPlateCaptain
+            )
+        }
+
+        AnchorWell(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnchorSectionHeader("Quick start", trailingLabel = "Session length")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AnchorChip(label = "3m", selected = false, onClick = {})
+                AnchorChip(label = "15m", selected = false, onClick = {})
+                AnchorChip(label = "25m", selected = true, onClick = {})
+                AnchorChip(label = "50m", selected = false, onClick = {})
             }
         }
 
-        AnchorCard(style = AnchorCardStyle.Accent) {
-            SectionHeader("Focus", "Sessions today", accentColor = MaterialTheme.colorScheme.tertiary)
-            Text(AppCopy.focusSessionsToday(2), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            AnchorSectionHeader("Today's plan", trailingLabel = "Inbox")
+            AnchorListRow(
+                title = "Draft lab report introduction",
+                trailingText = "20m",
+                showDivider = true
+            )
+            AnchorListRow(
+                title = "Email TA about section swap",
+                trailingText = "10m",
+                showDivider = false
+            )
         }
 
-        DailyCheckInSection(
-            activation = EnergyLevel.OK,
-            selectedTags = setOf(CheckInTag.FOGGY),
-            onActivationChange = {},
-            onTagToggle = {}
+        HarborEmptyState(
+            title = "All clear on deck",
+            message = "Capture a thought whenever you are ready."
+        )
+    }
+}
+
+@Composable
+private fun FocusCanvasPreviewContent() {
+    val tokens = LocalAnchorTokens.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(tokens.paper)
+            .padding(24.dp)
+    ) {
+        FocusCanvas(
+            progress = 0.58f,
+            isWorkPhase = true,
+            remainingSeconds = 10 * 60 + 24,
+            taskTitle = "Finish psychology reading",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp)
         )
     }
 }

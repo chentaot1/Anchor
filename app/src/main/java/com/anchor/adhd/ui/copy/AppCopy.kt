@@ -6,24 +6,24 @@ package com.anchor.adhd.ui.copy
 object AppCopy {
     fun focusSessionsToday(count: Int): String =
         when (count) {
-            0 -> "0 today · goal is 1 session"
-            1 -> "1 session today · goal met"
+            0 -> "0 sessions today (goal is 1)"
+            1 -> "1 session today (goal met)"
             else -> "$count sessions today"
         }
 
     const val FOCUS_DAILY_GOAL = "One focus block counts for the day."
 
     fun replanQueue(count: Int): String =
-        "$count missed block${if (count == 1) "" else "s"} · Plan → Replan"
+        "$count missed block${if (count == 1) "" else "s"} — Open Replan in Plan"
 
     const val REPLAN_SECTION = "Missed blocks to reschedule"
     const val REPLAN_EMPTY = "Queue empty."
-    const val SCHEDULE_EMPTY = "No scheduled blocks. Add in Plan or AI breakdown."
+    const val SCHEDULE_EMPTY = "No scheduled blocks. Add in Plan or Captain breakdown."
     const val INBOX_EMPTY = "No tasks here."
     const val ROUTINES_EMPTY = "No routines yet."
 
     const val CHECK_IN_SECTION = "Daily check-in"
-    const val CHECK_IN_ACTIVATION_HINT = "Activation for focused work · drives task order"
+    const val CHECK_IN_ACTIVATION_HINT = "Activation for focused work (guides task order)"
     const val CHECK_IN_TAGS_HINT = "State tags if applicable (optional)"
     const val CHECK_IN_PATTERNS_EMPTY = "No check-ins this week yet."
 
@@ -32,13 +32,13 @@ object AppCopy {
 
     const val NOW_HINT = "One action at a time"
 
-    const val FOCUS_END_EARLY = "End early · still logged"
+    const val FOCUS_END_EARLY = "End early (still logged)"
     const val FOCUS_SESSION_LENGTH = "Session length"
-    const val FOCUS_SHORT_SESSION = "10 min focus · 3 min break"
+    const val FOCUS_SHORT_SESSION = "10 min focus, 3 min break"
 
     const val GROW_SESSION_NOTE = "Ended-early sessions still log."
     const val STRATEGY_SECTION = "Strategies"
-    const val STRATEGY_HINT = "In-the-moment tools · tap to read"
+    const val STRATEGY_HINT = "In-the-moment tools, tap to read"
     const val STRATEGY_TODAY = "Today's strategy"
     const val STRATEGY_TODAY_HINT = "New each day"
 
@@ -48,9 +48,9 @@ object AppCopy {
     const val CBT_HINT = "Tap to read"
 
     const val AI_MODE_HINT = "Review output before adding to your plan"
-    const val AI_STUB = "Basic tools · optional AI download in Settings"
-    const val AI_ON_DEVICE = "Desktop model · ready offline"
-    const val AI_STUB_FILE_ONLY = "Model file only · native runtime unavailable"
+    const val AI_STUB = "Basic tools (optional Captain model download in Settings)"
+    const val AI_ON_DEVICE = "Local model ready offline"
+    const val AI_STUB_FILE_ONLY = "Model file found, native runtime unavailable"
     const val AI_NO_NATIVE = "On-device AI unavailable in this build"
     const val AI_RUNNING = "Running…"
 

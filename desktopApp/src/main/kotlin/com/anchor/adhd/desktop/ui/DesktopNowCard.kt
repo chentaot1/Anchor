@@ -1,18 +1,12 @@
 package com.anchor.adhd.desktop.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,37 +18,37 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anchor.adhd.desktop.db.DesktopTask
-import com.anchor.adhd.desktop.theme.AnchorColors
-import com.anchor.adhd.desktop.theme.AnchorSpacing
+import com.anchor.adhd.ui.components.AnchorBeaconPlate
+import com.anchor.adhd.ui.components.AnchorQuietButton
 import com.anchor.adhd.ui.components.HarborCtaButton
-import com.anchor.adhd.ui.theme.AnchorGradients
-import com.anchor.adhd.ui.theme.beaconGlow
-import com.anchor.adhd.ui.theme.topSheen
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 
 /**
- * Living Beacon NOW Card for Windows 11.
- * Sea-glass surface, ambient amber halo back-glow, tracked N O W badge with beacon dot.
+ * Committed Deep-Harbor Next Action focal plate for desktop Home.
+ * Adapts across Morning Harbor (Light) and Night Harbor (Dark) via [LocalAnchorTokens]
+ * with zero glows, sheens, or infinite loops.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DesktopNowCard(
     currentTask: DesktopTask?,
@@ -65,181 +59,215 @@ fun DesktopNowCard(
     onOpenDurationPicker: () -> Unit,
     isWorkPhase: Boolean = true,
     hasOpenFocusSession: Boolean = false,
+    onBreakDownWithCaptain: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "now_beacon")
-    val beaconPulse by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1.0f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(2000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "beacon_dot",
-    )
-
+    val tokens = LocalAnchorTokens.current
+    val safeRemainingSeconds = remainingSeconds.coerceAtLeast(0)
+    val formattedRemaining = String.format("%02d:%02d", safeRemainingSeconds / 60, safeRemainingSeconds % 60)
+    val showProgress = isFocusActive || hasOpenFocusSession || !isWorkPhase
     val progress =
-        if (isFocusActive || hasOpenFocusSession || !isWorkPhase) {
+        if (showProgress) {
             val totalSecs = (durationMinutes * 60).coerceAtLeast(1)
-            ((totalSecs - remainingSeconds).toFloat() / totalSecs).coerceIn(0f, 1f)
+            ((totalSecs - safeRemainingSeconds).toFloat() / totalSecs).coerceIn(0f, 1f)
         } else {
             0f
         }
+    val statusLabel =
+        when {
+            isFocusActive && isWorkPhase -> "Focus active"
+            isFocusActive && !isWorkPhase -> "Break active"
+            hasOpenFocusSession || !isWorkPhase -> if (isWorkPhase) "Focus paused" else "Break paused"
+            else -> "Next action"
+        }
+    val statusAccent = if (!isWorkPhase) tokens.sage else tokens.beaconPlateCta
+    val firstStep =
+        currentTask
+            ?.notes
+            ?.lineSequence()
+            ?.map(String::trim)
+            ?.firstOrNull { it.isNotEmpty() }
 
-    Surface(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .beaconGlow(RoundedCornerShape(AnchorSpacing.radiusCard))
-                .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
-                .background(AnchorGradients.harborHero(), RoundedCornerShape(AnchorSpacing.radiusCard))
-                .border(
-                    1.dp,
-                    AnchorColors.HarborPrimary.copy(alpha = 0.3f),
-                    RoundedCornerShape(AnchorSpacing.radiusCard),
-                ),
-        shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-        color = Color.Transparent,
+    AnchorBeaconPlate(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .topSheen(RoundedCornerShape(AnchorSpacing.radiusCard))
-                .padding(20.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Header Row: Tracked N O W badge + Duration Pill
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(statusAccent),
+                )
+                Text(
+                    text = statusLabel,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = statusAccent,
+                    maxLines = 1,
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                color = tokens.beaconPlatePill,
+                border = BorderStroke(1.dp, tokens.beaconPlateBorder),
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp,
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
+                        .clickable(role = Role.Button, onClickLabel = "Choose focus duration") {
+                            onOpenDurationPicker()
+                        },
+            ) {
+                Row(
+                    modifier = Modifier.heightIn(min = 32.dp).padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Timer,
+                        contentDescription = null,
+                        tint = tokens.beaconPlateInk2,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = "${durationMinutes}m",
+                        style =
+                            MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFeatureSettings = "tnum",
+                            ),
+                        color = tokens.beaconPlateInk,
+                        maxLines = 1,
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = null,
+                        tint = tokens.beaconPlateInk2,
+                        modifier = Modifier.size(13.dp),
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = currentTask?.title ?: "Select or create a task to begin",
+            style =
+                MaterialTheme.typography.titleMedium.copy(
+                    fontSize = 19.sp,
+                    lineHeight = 25.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+            color = tokens.beaconPlateInk,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        val supportingLine =
+            when {
+                firstStep != null -> firstStep
+                currentTask == null -> "Pick a task from Today's plan or capture a thought to anchor."
+                else -> null
+            }
+        if (supportingLine != null) {
+            Text(
+                text = supportingLine,
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.beaconPlateInk2,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        if (showProgress) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(AnchorColors.HarborBeaconAmber.copy(alpha = beaconPulse)),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Now",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = AnchorColors.HarborBeaconAmber,
-                    )
-                }
-
-                // Custom Duration Chip (e.g. 25m ✎)
-                Surface(
-                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                    color = Color.White.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                    modifier = Modifier.clickable(role = Role.Button, onClickLabel = "Choose focus duration") { onOpenDurationPicker() },
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Timer,
-                            contentDescription = null,
-                            tint = AnchorColors.HarborPrimary,
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${durationMinutes}m ✎",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Task Title
-            Text(
-                text = currentTask?.title ?: "Select or create a task to anchor",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Tide Progress Bar (Active during focus)
-            if (isFocusActive) {
-                val mins = remainingSeconds / 60
-                val secs = remainingSeconds % 60
-                val timeStr = String.format("%02d:%02d", mins, secs)
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "Focus Tide",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = AnchorColors.HarborPrimary,
-                    )
-                    Text(
-                        text = timeStr,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                    color = AnchorColors.HarborPrimary,
-                    trackColor = Color.White.copy(alpha = 0.1f),
+                Text(
+                    text = if (isWorkPhase) "Focus tide" else "Break tide",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.beaconPlateInk2,
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = formattedRemaining,
+                    style =
+                        MaterialTheme.typography.titleSmall.copy(
+                            fontFeatureSettings = "tnum",
+                        ),
+                    color = tokens.beaconPlateInk,
+                )
             }
 
-            // Primary Start Button
-            HarborCtaButton(
-                onClick = onStartFocus,
+            LinearProgressIndicator(
+                progress = { progress },
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 44.dp),
-                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(AnchorSpacing.radiusPill)),
+                color = statusAccent,
+                trackColor = tokens.beaconPlatePill,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HarborCtaButton(
+                onClick = onStartFocus,
+                onBeaconPlate = true,
+                modifier = Modifier.align(Alignment.CenterVertically).heightIn(min = 40.dp),
             ) {
                 Icon(
-                    imageVector = if (isFocusActive) Icons.Default.Anchor else Icons.Default.PlayArrow,
+                    imageVector = if (isFocusActive) Icons.Outlined.Timer else Icons.Default.PlayArrow,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = when {
-                        isFocusActive -> if (isWorkPhase) "Focus Active — Open Timer" else "Break Active — Open Timer"
-                        hasOpenFocusSession || !isWorkPhase -> {
-                            val remaining = "%02d:%02d".format(remainingSeconds / 60, remainingSeconds % 60)
-                            if (isWorkPhase) "Resume Focus ($remaining)" else "Resume Break ($remaining)"
-                        }
-                        else -> "Anchor Now (${durationMinutes}m)"
+                    text =
+                        when {
+                            isFocusActive -> if (isWorkPhase) "Open focus timer" else "Open break timer"
+                            hasOpenFocusSession || !isWorkPhase ->
+                                if (isWorkPhase) "Resume focus ($formattedRemaining)" else "Resume break ($formattedRemaining)"
+                            else -> "Start $durationMinutes min focus"
+                        },
+                    style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            if (onBreakDownWithCaptain != null) {
+                AnchorQuietButton(
+                    label = if (currentTask != null) "Break down with Captain" else "Ask Captain",
+                    onClick = onBreakDownWithCaptain,
+                    outlined = false,
+                    tint = tokens.beaconPlateCaptain,
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
                     },
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
                 )
             }
         }

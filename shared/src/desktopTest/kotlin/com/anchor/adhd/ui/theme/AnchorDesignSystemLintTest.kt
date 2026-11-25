@@ -368,7 +368,6 @@ class AnchorDesignSystemLintTest {
         private val UNMIGRATED_ALLOWLIST = setOf(
             // Shared legacy files
             "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/CustomDurationDialog.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/grove/GardenScene.kt",
             "shared/src/commonMain/kotlin/com/anchor/adhd/ui/theme/AnchorDepth.kt",
             "shared/src/commonMain/kotlin/com/anchor/adhd/ui/theme/AnchorGradients.kt",
             // Android legacy UI files
@@ -378,7 +377,6 @@ class AnchorDesignSystemLintTest {
             "app/src/main/java/com/anchor/adhd/ui/components/VitalityBar.kt",
             "app/src/main/java/com/anchor/adhd/ui/focus/ShieldRescueOverlay.kt",
             "app/src/main/java/com/anchor/adhd/ui/grove/FunLinksStrip.kt",
-            "app/src/main/java/com/anchor/adhd/ui/grove/GroveHomeScreen.kt",
             "app/src/main/java/com/anchor/adhd/ui/grow/HabitHeatmap.kt",
             "app/src/main/java/com/anchor/adhd/ui/more/MoreScreen.kt",
             // Desktop legacy UI files
@@ -389,9 +387,6 @@ class AnchorDesignSystemLintTest {
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFloatingIsland.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFocusScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFunLinks.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopHarborScene.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopHomeDeck.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopNowCard.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopPlanScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSettingsScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSmartOmniBar.kt",

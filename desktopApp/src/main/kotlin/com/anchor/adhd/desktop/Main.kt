@@ -540,6 +540,9 @@ internal fun DesktopAnchorApp(
     val tasks by db.tasks.collectAsState()
     val funLinks by db.funLinks.collectAsState()
     val storedHarborState by db.harborState.collectAsState()
+    val weeklyFocusDays by db.weeklyFocusDays.collectAsState()
+    val weeklySessionCount by db.weeklySessionCount.collectAsState()
+    val todaySessionCount by db.todaySessionCount.collectAsState()
     var statisticsNow by remember { mutableStateOf(java.time.ZonedDateTime.now()) }
     val harborState = storedHarborState.copy(streakDays = DesktopStreak.currentDays(
         storedHarborState.streakDays, storedHarborState.lastFocusLogicalDate,
@@ -662,7 +665,10 @@ internal fun DesktopAnchorApp(
     }
 
     LaunchedEffect(timerRecoveryReady, statisticsNow, focusSaveState.savedRevision) {
-        if (timerRecoveryReady) todayFocusMinutes = db.getTodayFocusMinutes()
+        if (timerRecoveryReady) {
+            todayFocusMinutes = db.getTodayFocusMinutes()
+            db.refreshWeeklyFocusDays()
+        }
     }
 
     LaunchedEffect(focusSaveState.pendingCount, focusSaveState.savedRevision) {
@@ -1008,6 +1014,7 @@ internal fun DesktopAnchorApp(
             scope.launch {
                 db.refreshDailyUsage()
                 todayFocusMinutes = db.getTodayFocusMinutes()
+                db.refreshWeeklyFocusDays()
                 prefs.setEarnedLeisureSpentMinutesToday(0)
                 prefs.setEarnedLeisureExpiryEpoch(0L)
                 prefs.setScopeTaxMinutesToday(0)
@@ -1310,11 +1317,21 @@ internal fun DesktopAnchorApp(
                                         hasFocusSession = false
                                         showSessionCompleteBanner = false
                                         todayFocusMinutes = db.getTodayFocusMinutes()
+                                        db.refreshWeeklyFocusDays()
                                         "Data reset completed. Recovery backup: ${db.lastAutoBackupFile?.absolutePath}"
                                     }
                                 },
                                 onNavigateToSyllabus = { currentScreen = DesktopScreen.SYLLABUS },
                                 harborState = harborState,
+                                weeklyFocusDays = weeklyFocusDays,
+                                weeklySessionCount = weeklySessionCount,
+                                todaySessionCount = todaySessionCount,
+                                onBreakDownWithCaptain = { taskTitle ->
+                                    prefilledAiTask = taskTitle
+                                    currentScreen = DesktopScreen.AI
+                                },
+                                onOpenCaptain = { currentScreen = DesktopScreen.AI },
+                                hourOfDay = statisticsNow.hour,
                             )
                         }
 
@@ -1507,7 +1524,10 @@ internal fun DesktopAnchorApp(
                                 } else "Finish or reset your current timer before restoring or resetting data.",
                                 onBackupRestored = {
                                     taskDeletionHistory.clear()
-                                    scope.launch { todayFocusMinutes = db.getTodayFocusMinutes() }
+                                    scope.launch {
+                                        todayFocusMinutes = db.getTodayFocusMinutes()
+                                        db.refreshWeeklyFocusDays()
+                                    }
                                     if (!focusLedger.isOpen) {
                                         hasFocusSession = false
                                         showSessionCompleteBanner = false

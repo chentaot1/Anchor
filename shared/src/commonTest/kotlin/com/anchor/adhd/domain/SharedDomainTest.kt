@@ -1,6 +1,5 @@
 package com.anchor.adhd.domain
 
-import com.anchor.adhd.ui.grove.calculateHarborPalette
 import com.anchor.adhd.ui.theme.TimeOfDay
 import com.anchor.adhd.ui.theme.currentTimeOfDay
 import kotlin.test.Test
@@ -78,17 +77,12 @@ class SharedDomainTest {
     }
 
     @Test
-    fun timeOfDay_and_harborPalette_coverFull24Hours() {
+    fun timeOfDay_coversFull24Hours() {
         assertEquals(TimeOfDay.DAWN, currentTimeOfDay(6))
         assertEquals(TimeOfDay.DAY, currentTimeOfDay(12))
         assertEquals(TimeOfDay.DUSK, currentTimeOfDay(18))
         assertEquals(TimeOfDay.NIGHT, currentTimeOfDay(23))
         assertTrue(currentTimeOfDay(2).isNight)
-
-        val midnightPalette = calculateHarborPalette(0)
-        val noonPalette = calculateHarborPalette(720)
-        val clampedPalette = calculateHarborPalette(9999)
-        assertTrue(midnightPalette.skyHorizon != noonPalette.skyHorizon)
-        assertEquals(calculateHarborPalette(1439), clampedPalette)
+        assertFalse(currentTimeOfDay(12).isNight)
     }
 }

@@ -150,6 +150,9 @@ class AnchorViewModel(
     val focusCountToday = container.focusRepository.observeTodaySessionCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    val todayFocusMinutes = container.focusRepository.observeTodayFocusMinutes()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     val blockRules = container.focusRepository.observeBlockRules()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

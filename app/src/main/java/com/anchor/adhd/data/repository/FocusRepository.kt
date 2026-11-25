@@ -40,6 +40,14 @@ class FocusRepository(
         return sessionDao.observeCompletedCountForDay(start, end)
     }
 
+    fun observeTodayFocusMinutes(): Flow<Int> {
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val start = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        return sessionDao.observeCompletedMinutesBetween(start, end)
+    }
+
     suspend fun refreshBlockedPackages() {
         val rules = blockRuleDao.observeEnabled().first()
         val bundles = bundleDao.observeAll().first()

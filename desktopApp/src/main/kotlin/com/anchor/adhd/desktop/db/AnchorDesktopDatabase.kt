@@ -1,6 +1,7 @@
 package com.anchor.adhd.desktop.db
 
 import com.anchor.adhd.desktop.DesktopDurationLimits
+import com.anchor.adhd.ui.components.WeeklyTideDay
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +27,11 @@ import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
+import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @kotlinx.serialization.Serializable
@@ -195,6 +199,15 @@ class AnchorDesktopDatabase(
 
     private val _harborState = MutableStateFlow(DesktopHarborState())
     val harborState: StateFlow<DesktopHarborState> = _harborState.asStateFlow()
+
+    private val _weeklyFocusDays = MutableStateFlow(buildEmptyWeeklyTideDays(System.currentTimeMillis(), ZoneId.systemDefault()))
+    val weeklyFocusDays: StateFlow<List<WeeklyTideDay>> = _weeklyFocusDays.asStateFlow()
+
+    private val _weeklySessionCount = MutableStateFlow(0)
+    val weeklySessionCount: StateFlow<Int> = _weeklySessionCount.asStateFlow()
+
+    private val _todaySessionCount = MutableStateFlow(0)
+    val todaySessionCount: StateFlow<Int> = _todaySessionCount.asStateFlow()
 
     private val _blockRules = MutableStateFlow<List<DesktopBlockRule>>(emptyList())
     val blockRules: StateFlow<List<DesktopBlockRule>> = _blockRules.asStateFlow()
@@ -525,6 +538,7 @@ class AnchorDesktopDatabase(
         refreshSyllabusItemsSync()
         refreshFunLinks()
         refreshHarborState()
+        refreshWeeklyFocusDaysSync()
         refreshBlockRules()
         refreshClassSchedules()
         refreshDailyUsage()
@@ -932,6 +946,102 @@ class AnchorDesktopDatabase(
             minutes
         }
 
+    private data class WeeklyFocusSnapshot(
+        val days: List<WeeklyTideDay>,
+        val weeklyCompletedSessions: Int,
+        val todayCompletedSessions: Int,
+    )
+
+    suspend fun getLast7LogicalDaysFocusMinutes(
+        nowMillis: Long = System.currentTimeMillis(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): List<WeeklyTideDay> =
+        withContext(Dispatchers.IO) {
+            queryWeeklyFocusSnapshotSync(nowMillis, zone).days
+        }
+
+    suspend fun refreshWeeklyFocusDays(
+        nowMillis: Long = System.currentTimeMillis(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ) = withContext(Dispatchers.IO) {
+        refreshWeeklyFocusDaysSync(nowMillis, zone)
+    }
+
+    private fun refreshWeeklyFocusDaysSync(
+        nowMillis: Long = System.currentTimeMillis(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ) {
+        val snapshot = queryWeeklyFocusSnapshotSync(nowMillis, zone)
+        _weeklyFocusDays.value = snapshot.days
+        _weeklySessionCount.value = snapshot.weeklyCompletedSessions
+        _todaySessionCount.value = snapshot.todayCompletedSessions
+    }
+
+    private fun queryWeeklyFocusSnapshotSync(
+        nowMillis: Long,
+        zone: ZoneId,
+    ): WeeklyFocusSnapshot {
+        val nowZoned = Instant.ofEpochMilli(nowMillis).atZone(zone)
+        val todayLogical = getLogicalDate(nowZoned.toLocalDateTime())
+        val firstLogical = todayLogical.minusDays(6)
+        val sevenDaysStartMillis =
+            firstLogical
+                .atTime(DAILY_RESET_HOUR, 0)
+                .atZone(zone)
+                .toInstant()
+                .toEpochMilli()
+
+        val secondsByDate = HashMap<LocalDate, Long>(7)
+        var weeklyCompletedSessions = 0
+        var todayCompletedSessions = 0
+
+        try {
+            withConnection { conn ->
+                conn
+                    .prepareStatement(
+                        "SELECT actualSeconds, completed, endedAtMillis FROM focus_sessions WHERE endedAtMillis >= ? AND endedAtMillis <= ?;",
+                    ).use { stmt ->
+                        stmt.setLong(1, sevenDaysStartMillis)
+                        stmt.setLong(2, nowMillis)
+                        val rs = stmt.executeQuery()
+                        while (rs.next()) {
+                            val actualSeconds = rs.getLong(1).coerceAtLeast(0L)
+                            val completed = rs.getInt(2) == 1
+                            val endedAtMillis = rs.getLong(3)
+                            val bucketDate = getLogicalDate(Instant.ofEpochMilli(endedAtMillis).atZone(zone).toLocalDateTime())
+                            if (!bucketDate.isBefore(firstLogical) && !bucketDate.isAfter(todayLogical)) {
+                                secondsByDate[bucketDate] = (secondsByDate[bucketDate] ?: 0L) + actualSeconds
+                                if (completed) {
+                                    weeklyCompletedSessions++
+                                    if (bucketDate == todayLogical) {
+                                        todayCompletedSessions++
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        } catch (_: Exception) {
+        }
+
+        val days =
+            (0L..6L).map { offset ->
+                val logicalDate = firstLogical.plusDays(offset)
+                val minutes = ((secondsByDate[logicalDate] ?: 0L) / 60L).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+                WeeklyTideDay(
+                    shortLabel = dayOfWeekShortLabel(logicalDate.dayOfWeek),
+                    minutes = minutes,
+                    isToday = logicalDate == todayLogical,
+                )
+            }
+
+        return WeeklyFocusSnapshot(
+            days = days,
+            weeklyCompletedSessions = weeklyCompletedSessions,
+            todayCompletedSessions = todayCompletedSessions,
+        )
+    }
+
     suspend fun makeTaskNow(id: Long) =
         setNextActionTask(id)
 
@@ -1064,6 +1174,7 @@ class AnchorDesktopDatabase(
                 }
         }
         refreshHarborState()
+        refreshWeeklyFocusDaysSync()
     }
 
     private fun refreshBlockRules() {
@@ -1601,6 +1712,7 @@ class AnchorDesktopDatabase(
                     }
                 }
                 refreshHarborState()
+                refreshWeeklyFocusDaysSync()
             }
         }
 
@@ -2198,6 +2310,33 @@ class AnchorDesktopDatabase(
 
         fun getLogicalDateString(now: java.time.LocalDateTime = java.time.LocalDateTime.now()): String {
             return getLogicalDate(now).toString()
+        }
+
+        private fun dayOfWeekShortLabel(dayOfWeek: DayOfWeek): String =
+            when (dayOfWeek) {
+                DayOfWeek.MONDAY -> "M"
+                DayOfWeek.TUESDAY -> "T"
+                DayOfWeek.WEDNESDAY -> "W"
+                DayOfWeek.THURSDAY -> "T"
+                DayOfWeek.FRIDAY -> "F"
+                DayOfWeek.SATURDAY -> "S"
+                DayOfWeek.SUNDAY -> "S"
+            }
+
+        private fun buildEmptyWeeklyTideDays(
+            nowMillis: Long,
+            zone: ZoneId,
+        ): List<WeeklyTideDay> {
+            val todayLogical = getLogicalDate(Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDateTime())
+            val firstLogical = todayLogical.minusDays(6)
+            return (0L..6L).map { offset ->
+                val logicalDate = firstLogical.plusDays(offset)
+                WeeklyTideDay(
+                    shortLabel = dayOfWeekShortLabel(logicalDate.dayOfWeek),
+                    minutes = 0,
+                    isToday = logicalDate == todayLogical,
+                )
+            }
         }
 
         fun sanitizeTarget(target: String, ruleType: String): String {

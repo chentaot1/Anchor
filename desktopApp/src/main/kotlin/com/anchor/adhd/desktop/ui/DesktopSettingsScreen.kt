@@ -7,8 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,12 +80,13 @@ import com.anchor.adhd.desktop.db.DesktopBackupSummary
 import com.anchor.adhd.desktop.db.DesktopDataOperations
 import com.anchor.adhd.desktop.platform.DesktopAutostartManager
 import com.anchor.adhd.desktop.prefs.DesktopUserPreferences
-import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
 import com.anchor.adhd.desktop.update.DesktopUpdateManager
 import com.anchor.adhd.desktop.update.UpdateState
 import com.anchor.adhd.domain.AppearanceMode
 import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.components.AnchorListRow
 import com.anchor.adhd.ui.components.AnchorSectionHeader
 import com.anchor.adhd.ui.components.AnchorWell
 import com.anchor.adhd.ui.theme.LocalAnchorTokens
@@ -97,6 +100,62 @@ import java.awt.Desktop
 import java.io.File
 
 private data class PendingDesktopRestore(val file: File, val json: String, val summary: DesktopBackupSummary)
+
+@Composable
+private fun DesktopSettingsSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AnchorSectionHeader(title)
+        AnchorWell(contentPadding = PaddingValues(0.dp), content = content)
+    }
+}
+
+@Composable
+private fun DesktopSettingsInset(
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun DesktopSettingsSwitchRow(
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    showDivider: Boolean = true,
+) {
+    val tokens = LocalAnchorTokens.current
+    AnchorListRow(
+        title = title,
+        subtitle = subtitle,
+        showDivider = showDivider,
+        minHeight = 48.dp,
+        trailing = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = tokens.captain,
+                    checkedTrackColor = tokens.captain.copy(alpha = 0.3f),
+                    uncheckedThumbColor = tokens.muted,
+                    uncheckedTrackColor = tokens.rule,
+                ),
+            )
+        },
+    )
+}
 
 /**
  * Windows 11 Settings & Storage Management Screen.
@@ -207,8 +266,7 @@ internal fun DesktopSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
 
-        AnchorWell {
-            AnchorSectionHeader("Appearance")
+        DesktopSettingsSection("Appearance") {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -235,20 +293,12 @@ internal fun DesktopSettingsScreen(
             Text(
                 text = "Manage focus durations, on-device AI inference, and local persistence",
                 style = MaterialTheme.typography.bodySmall,
-                color = AnchorColors.HarborPrimary.copy(alpha = 0.8f),
+                color = tokens.primary.copy(alpha = 0.8f),
             )
         }
 
-        TextButton(onClick = { showLicenses = true }) { Text("License and third-party notices") }
-
-        // On-Device AI Engine Card
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, AnchorColors.HarborAi.copy(alpha = 0.35f)),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+        DesktopSettingsSection("Local AI") {
+            DesktopSettingsInset {
                 // Header Row with Toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -261,13 +311,13 @@ internal fun DesktopSettingsScreen(
                                 Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(AnchorColors.HarborAi.copy(alpha = 0.15f)),
+                                    .background(tokens.captain.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                tint = AnchorColors.HarborAi,
+                                tint = tokens.captain,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -282,7 +332,7 @@ internal fun DesktopSettingsScreen(
                             Text(
                                 text = if (modelExists) modelFile.nameWithoutExtension else "On-Device GGUF Engine",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = AnchorColors.HarborAi,
+                                color = tokens.captain,
                             )
                         }
                     }
@@ -307,8 +357,8 @@ internal fun DesktopSettingsScreen(
                             },
                             colors =
                                 SwitchDefaults.colors(
-                                    checkedThumbColor = AnchorColors.HarborAi,
-                                    checkedTrackColor = AnchorColors.HarborAi.copy(alpha = 0.3f),
+                                    checkedThumbColor = tokens.captain,
+                                    checkedTrackColor = tokens.captain.copy(alpha = 0.3f),
                                     uncheckedThumbColor = tokens.muted,
                                     uncheckedTrackColor = tokens.rule,
                                 ),
@@ -335,7 +385,7 @@ internal fun DesktopSettingsScreen(
                     val statusColor =
                         when (engineStatus) {
                             is LlamaServerStatus.Ready -> tokens.sage
-                            is LlamaServerStatus.Starting -> AnchorColors.HarborBeaconAmber
+                            is LlamaServerStatus.Starting -> tokens.beacon
                             is LlamaServerStatus.Error -> tokens.clayRose
                             else -> tokens.muted
                         }
@@ -407,7 +457,7 @@ internal fun DesktopSettingsScreen(
                 // File path display + Browse GGUF button
                 Surface(
                     shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                    color = AnchorColors.HarborBackground.copy(alpha = 0.6f),
+                    color = tokens.paper2.copy(alpha = 0.6f),
                     border = BorderStroke(1.dp, tokens.rule),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -465,16 +515,16 @@ internal fun DesktopSettingsScreen(
                                 }
                             },
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            border = BorderStroke(1.dp, AnchorColors.HarborAi.copy(alpha = 0.5f)),
+                            border = BorderStroke(1.dp, tokens.captain.copy(alpha = 0.5f)),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Folder,
                                 contentDescription = null,
-                                tint = AnchorColors.HarborAi,
+                                tint = tokens.captain,
                                 modifier = Modifier.size(14.dp),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Browse GGUF...", color = AnchorColors.HarborAi, style = MaterialTheme.typography.labelSmall)
+                            Text("Browse GGUF...", color = tokens.captain, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -498,8 +548,8 @@ internal fun DesktopSettingsScreen(
 
                             Surface(
                                 shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                                color = if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.18f) else AnchorColors.HarborBackground.copy(alpha = 0.5f),
-                                border = BorderStroke(1.dp, if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.7f) else tokens.rule),
+                                color = if (isSelected) tokens.captain.copy(alpha = 0.18f) else tokens.paper2.copy(alpha = 0.5f),
+                                border = BorderStroke(1.dp, if (isSelected) tokens.captain.copy(alpha = 0.7f) else tokens.rule),
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     if (!isSelected) {
                                         scope.launch {
@@ -523,7 +573,7 @@ internal fun DesktopSettingsScreen(
                                         Icon(
                                             imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Storage,
                                             contentDescription = null,
-                                            tint = if (isSelected) AnchorColors.HarborAi else tokens.muted,
+                                            tint = if (isSelected) tokens.captain else tokens.muted,
                                             modifier = Modifier.size(18.dp),
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -545,7 +595,7 @@ internal fun DesktopSettingsScreen(
                                                         "Local On-Device GGUF Weights"
                                                     },
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = if (isSelected) AnchorColors.HarborAi else tokens.muted,
+                                                color = if (isSelected) tokens.captain else tokens.muted,
                                                 fontSize = 10.sp,
                                             )
                                         }
@@ -553,7 +603,7 @@ internal fun DesktopSettingsScreen(
 
                                     Surface(
                                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                        color = if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.3f) else tokens.rule,
+                                        color = if (isSelected) tokens.captain.copy(alpha = 0.3f) else tokens.rule,
                                     ) {
                                         Text(
                                             text = if (isSelected) "ACTIVE • $sizeStr" else sizeStr,
@@ -561,7 +611,7 @@ internal fun DesktopSettingsScreen(
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 10.sp,
-                                            color = if (isSelected) AnchorColors.HarborAi else tokens.muted,
+                                            color = if (isSelected) tokens.captain else tokens.muted,
                                         )
                                     }
                                 }
@@ -601,7 +651,7 @@ internal fun DesktopSettingsScreen(
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                         colors =
                             ButtonDefaults.buttonColors(
-                                containerColor = AnchorColors.HarborAi,
+                                containerColor = tokens.captain,
                                 contentColor = tokens.ink,
                             ),
                     ) {
@@ -654,7 +704,7 @@ internal fun DesktopSettingsScreen(
                                         text = "${"%.1f".format(res.tokensPerSecond)} tok/s • ${res.durationMillis}ms",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = AnchorColors.HarborAction,
+                                        color = tokens.beacon,
                                     )
                                 }
                             }
@@ -672,19 +722,10 @@ internal fun DesktopSettingsScreen(
             }
         }
 
-        // Exact default duration, using the same range as the Windows timer.
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, tokens.rule),
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
+        DesktopSettingsSection("Focus") {
+            DesktopSettingsInset {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Timer, contentDescription = null, tint = AnchorColors.HarborPrimary)
+                    Icon(imageVector = Icons.Default.Timer, contentDescription = null, tint = tokens.primary)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "Default Focus Duration",
@@ -698,7 +739,7 @@ internal fun DesktopSettingsScreen(
                     text = "$durationMinutes ${if (durationMinutes == 1) "minute" else "minutes"}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = AnchorColors.HarborAction,
+                    color = tokens.beacon,
                 )
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -709,7 +750,7 @@ internal fun DesktopSettingsScreen(
                             onClick = { onDurationChanged(minutes) },
                             enabled = !isBackupBusy,
                             modifier = Modifier.heightIn(min = 44.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AnchorColors.HarborAction),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
                         ) {
                             Text("${minutes}m")
                         }
@@ -718,7 +759,7 @@ internal fun DesktopSettingsScreen(
                         onClick = { showDefaultDurationPicker = true },
                         enabled = !isBackupBusy,
                         modifier = Modifier.heightIn(min = 44.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = AnchorColors.HarborAction),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
                     ) {
                         Text("Custom duration")
                     }
@@ -728,90 +769,19 @@ internal fun DesktopSettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = tokens.muted,
                 )
-            }
-        }
-
-        // Standing Shield (Continuous Protection) Setting Card
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border =
-                BorderStroke(
-                    1.dp,
-                    if (standingShieldEnabled) AnchorColors.HarborGrowth.copy(alpha = 0.5f) else tokens.rule,
-                ),
-        ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (standingShieldEnabled) {
-                                        AnchorColors.HarborGrowth.copy(alpha = 0.25f)
-                                    } else {
-                                        tokens.rule
-                                    },
-                                ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = if (standingShieldEnabled) AnchorColors.HarborFoliage else AnchorColors.HarborPrimary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            text = "Standing Shield (Continuous Protection)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.ink,
-                        )
-                        Text(
-                            text = "Block distracting apps and websites 24/7 without requiring an active Pomodoro countdown.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = tokens.ink2,
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Switch(
+                AnchorHairline()
+                DesktopSettingsSwitchRow(
+                    title = "Standing shield",
+                    subtitle = "Block distracting apps and websites without an active focus timer.",
                     checked = standingShieldEnabled,
-                    onCheckedChange = { checked ->
-                        scope.launch { prefs.setStandingShieldEnabled(checked) }
-                    },
-                    colors =
-                        SwitchDefaults.colors(
-                            checkedThumbColor = AnchorColors.HarborFoliage,
-                            checkedTrackColor = AnchorColors.HarborGrowth,
-                            uncheckedThumbColor = tokens.muted,
-                            uncheckedTrackColor = tokens.rule,
-                        ),
+                    onCheckedChange = { checked -> scope.launch { prefs.setStandingShieldEnabled(checked) } },
+                    showDivider = false,
                 )
             }
         }
 
-        // Windows 11 Autostart & Launch Mode Card
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, tokens.rule),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+        DesktopSettingsSection("Startup") {
+            DesktopSettingsInset {
                 // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -824,13 +794,13 @@ internal fun DesktopSettingsScreen(
                                 Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(AnchorColors.HarborPrimary.copy(alpha = 0.15f)),
+                                    .background(tokens.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Computer,
                                 contentDescription = null,
-                                tint = AnchorColors.HarborPrimary,
+                                tint = tokens.primary,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -846,7 +816,7 @@ internal fun DesktopSettingsScreen(
                                 val isReg = startupRegistered == true
                                 Surface(
                                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                    color = if (isReg) AnchorColors.HarborGrowth.copy(alpha = 0.2f) else tokens.rule,
+                                    color = if (isReg) tokens.sage.copy(alpha = 0.2f) else tokens.rule,
                                 ) {
                                     Text(
                                         text = when {
@@ -857,7 +827,7 @@ internal fun DesktopSettingsScreen(
                                         },
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 10.sp,
-                                        color = if (isReg) AnchorColors.HarborFoliage else tokens.muted,
+                                        color = if (isReg) tokens.sage else tokens.muted,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                     )
                                 }
@@ -900,8 +870,8 @@ internal fun DesktopSettingsScreen(
                         },
                         colors =
                             SwitchDefaults.colors(
-                                checkedThumbColor = AnchorColors.HarborPrimary,
-                                checkedTrackColor = AnchorColors.HarborAction,
+                                checkedThumbColor = tokens.primary,
+                                checkedTrackColor = tokens.beacon,
                                 uncheckedThumbColor = tokens.muted,
                                 uncheckedTrackColor = tokens.rule,
                             ),
@@ -937,8 +907,8 @@ internal fun DesktopSettingsScreen(
                         },
                         colors =
                             SwitchDefaults.colors(
-                                checkedThumbColor = AnchorColors.HarborPrimary,
-                                checkedTrackColor = AnchorColors.HarborAction,
+                                checkedThumbColor = tokens.primary,
+                                checkedTrackColor = tokens.beacon,
                                 uncheckedThumbColor = tokens.muted,
                                 uncheckedTrackColor = tokens.rule,
                             ),
@@ -984,19 +954,14 @@ internal fun DesktopSettingsScreen(
             )
         }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, tokens.rule),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+        DesktopSettingsSection("Backup & data") {
+            DesktopSettingsInset {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Storage, contentDescription = null, tint = AnchorColors.HarborPrimary)
+                        Icon(imageVector = Icons.Default.Storage, contentDescription = null, tint = tokens.primary)
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
@@ -1040,11 +1005,11 @@ internal fun DesktopSettingsScreen(
                                     }
                                 }
                             },
-                            border = BorderStroke(1.dp, AnchorColors.HarborAction),
+                            border = BorderStroke(1.dp, tokens.beacon),
                         ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp), tint = AnchorColors.HarborAction)
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp), tint = tokens.beacon)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Export Backup (.json)", color = AnchorColors.HarborAction)
+                            Text("Export Backup (.json)", color = tokens.beacon)
                         }
 
                         OutlinedButton(
@@ -1073,11 +1038,11 @@ internal fun DesktopSettingsScreen(
                                     }
                                 }
                             },
-                            border = BorderStroke(1.dp, AnchorColors.HarborPrimary),
+                            border = BorderStroke(1.dp, tokens.primary),
                         ) {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = AnchorColors.HarborPrimary)
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = tokens.primary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Restore Backup (.json)", color = AnchorColors.HarborPrimary)
+                            Text("Restore Backup (.json)", color = tokens.primary)
                         }
 
                         OutlinedButton(
@@ -1088,11 +1053,11 @@ internal fun DesktopSettingsScreen(
                                     }
                                 }
                             },
-                            border = BorderStroke(1.dp, AnchorColors.HarborPrimary),
+                            border = BorderStroke(1.dp, tokens.primary),
                         ) {
                             Icon(imageVector = Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Open Folder", color = AnchorColors.HarborPrimary)
+                            Text("Open Folder", color = tokens.primary)
                         }
                     }
                 }
@@ -1101,7 +1066,7 @@ internal fun DesktopSettingsScreen(
                     Text(
                         text = dataReplacementBlockReason,
                         style = MaterialTheme.typography.bodySmall,
-                        color = AnchorColors.HarborPrimary,
+                        color = tokens.primary,
                         modifier = Modifier.padding(top = 10.dp),
                     )
                 }
@@ -1121,61 +1086,17 @@ internal fun DesktopSettingsScreen(
                     StatPill("Current Streak", "$currentStreakDays days")
                     StatPill("Milestones Done", "${tasks.count { it.isCompleted }}/${tasks.size}")
                 }
-            }
-        }
-
-        // Fresh Start & Clean Slate (ADHD Data Reset) Card
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.35f)),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                // Header Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(tokens.beacon.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.RestartAlt,
-                                contentDescription = null,
-                                tint = tokens.beacon,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Fresh Start & Clean Slate",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.ink,
-                            )
-                            Text(
-                                text = "Start fresh with a recovery backup of your current data.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = tokens.beacon,
-                            )
-                        }
-                    }
-                }
-
-                // Success feedback banner if recently reset
-
-
-                Spacer(modifier = Modifier.height(16.dp))
-
+                AnchorHairline()
+                Text(
+                    text = "Fresh start",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tokens.ink,
+                )
+                Text(
+                    text = "Start fresh with a recovery backup of your current data.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.muted,
+                )
                 // Option 1: Clear Task Backlog
                 ResetOptionRow(
                     title = "Clear Task Backlog (Inbox Zero)",
@@ -1217,65 +1138,30 @@ internal fun DesktopSettingsScreen(
         val updateState by DesktopUpdateManager.updateState.collectAsState()
         var updateLogs by remember { mutableStateOf<List<String>>(emptyList()) }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = AnchorColors.HarborDock,
-            border =
-                BorderStroke(
-                    width = 1.dp,
-                    color =
-                        when (updateState) {
-                            is UpdateState.UpdateAvailable -> AnchorColors.HarborAction
-                            is UpdateState.UpdateSuccess -> tokens.sage
-                            is UpdateState.Error -> tokens.clayRose
-                            else -> tokens.rule
-                        },
-                ),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                // Header Row
+        DesktopSettingsSection("Updates") {
+            DesktopSettingsInset {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(AnchorColors.HarborAction.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudSync,
-                                contentDescription = null,
-                                tint = AnchorColors.HarborAction,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Anchor Updates & Safe In-App Sync",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.ink,
-                            )
-                            val envLabel =
-                                if (DesktopUpdateManager.isGitEnvironment) {
-                                    "Git-Managed (${DesktopUpdateManager.currentBranch})"
-                                } else {
-                                    "Standalone"
-                                }
-                            Text(
-                                text = "${DesktopUpdateManager.currentVersionTag} • Commit ${DesktopUpdateManager.currentCommit} • $envLabel",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = AnchorColors.HarborAction,
-                            )
-                        }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Anchor updates",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = tokens.ink,
+                        )
+                        val envLabel =
+                            if (DesktopUpdateManager.isGitEnvironment) {
+                                "Git-managed (${DesktopUpdateManager.currentBranch})"
+                            } else {
+                                "Standalone"
+                            }
+                        Text(
+                            text = "${DesktopUpdateManager.currentVersionTag} · ${DesktopUpdateManager.currentCommit} · $envLabel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = tokens.muted,
+                        )
                     }
 
                     // Check for updates button
@@ -1288,25 +1174,25 @@ internal fun DesktopSettingsScreen(
                             }
                         },
                         enabled = !isChecking && !isUpdating,
-                        border = BorderStroke(1.dp, AnchorColors.HarborPrimary),
+                        border = BorderStroke(1.dp, tokens.primary),
                     ) {
                         if (isChecking) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp,
-                                color = AnchorColors.HarborPrimary,
+                                color = tokens.primary,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Checking...", color = AnchorColors.HarborPrimary)
+                            Text("Checking...", color = tokens.primary)
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = AnchorColors.HarborPrimary,
+                                tint = tokens.primary,
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Check for Updates", color = AnchorColors.HarborPrimary)
+                            Text("Check for Updates", color = tokens.primary)
                         }
                     }
                 }
@@ -1328,7 +1214,7 @@ internal fun DesktopSettingsScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = AnchorColors.HarborAction,
+                                color = tokens.beacon,
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
@@ -1387,8 +1273,8 @@ internal fun DesktopSettingsScreen(
                     is UpdateState.UpdateAvailable -> {
                         Surface(
                             shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                            color = AnchorColors.HarborAction.copy(alpha = 0.1f),
-                            border = BorderStroke(1.dp, AnchorColors.HarborAction.copy(alpha = 0.5f)),
+                            color = tokens.beacon.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.5f)),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -1401,7 +1287,7 @@ internal fun DesktopSettingsScreen(
                                         Icon(
                                             imageVector = Icons.Default.Download,
                                             contentDescription = null,
-                                            tint = AnchorColors.HarborAction,
+                                            tint = tokens.beacon,
                                             modifier = Modifier.size(22.dp),
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -1415,7 +1301,7 @@ internal fun DesktopSettingsScreen(
                                             Text(
                                                 text = "Latest: ${state.latestCommit}${if (state.latestTag != null) " (${state.latestTag})" else ""}",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = AnchorColors.HarborAction,
+                                                color = tokens.beacon,
                                             )
                                         }
                                     }
@@ -1430,8 +1316,8 @@ internal fun DesktopSettingsScreen(
                                         },
                                         colors =
                                             ButtonDefaults.buttonColors(
-                                                containerColor = AnchorColors.HarborAction,
-                                                contentColor = AnchorColors.HarborDock,
+                                                containerColor = tokens.beacon,
+                                                contentColor = tokens.paper2,
                                             ),
                                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                                     ) {
@@ -1455,7 +1341,7 @@ internal fun DesktopSettingsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Surface(
-                                        color = AnchorColors.HarborBackground.copy(alpha = 0.8f),
+                                        color = tokens.paper2.copy(alpha = 0.8f),
                                         shape = RoundedCornerShape(6.dp),
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
@@ -1487,8 +1373,8 @@ internal fun DesktopSettingsScreen(
                     is UpdateState.Updating -> {
                         Surface(
                             shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                            color = AnchorColors.HarborPrimary.copy(alpha = 0.1f),
-                            border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.4f)),
+                            color = tokens.primary.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, tokens.primary.copy(alpha = 0.4f)),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -1496,7 +1382,7 @@ internal fun DesktopSettingsScreen(
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.5.dp,
-                                        color = AnchorColors.HarborPrimary,
+                                        color = tokens.primary,
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Text(
@@ -1520,7 +1406,7 @@ internal fun DesktopSettingsScreen(
                                                     style = MaterialTheme.typography.bodySmall,
                                                     fontFamily = FontFamily.Monospace,
                                                     fontSize = 10.sp,
-                                                    color = AnchorColors.HarborPrimary.copy(alpha = 0.9f),
+                                                    color = tokens.primary.copy(alpha = 0.9f),
                                                 )
                                             }
                                         }
@@ -1651,7 +1537,7 @@ internal fun DesktopSettingsScreen(
                     Icon(
                         imageVector = Icons.Default.Shield,
                         contentDescription = null,
-                        tint = AnchorColors.HarborPrimary.copy(alpha = 0.8f),
+                        tint = tokens.primary.copy(alpha = 0.8f),
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -1662,6 +1548,14 @@ internal fun DesktopSettingsScreen(
                         style = MaterialTheme.typography.labelSmall,
                         color = tokens.muted,
                     )
+                }
+            }
+        }
+
+        DesktopSettingsSection("Licenses & about") {
+            DesktopSettingsInset {
+                TextButton(onClick = { showLicenses = true }) {
+                    Text("License and third-party notices", color = tokens.primary)
                 }
             }
         }
@@ -1698,7 +1592,7 @@ internal fun DesktopSettingsScreen(
                             RoundedCornerShape(AnchorSpacing.radiusScene),
                         ),
                 shape = RoundedCornerShape(AnchorSpacing.radiusScene),
-                color = AnchorColors.HarborDock,
+                color = tokens.paper2,
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1842,21 +1736,20 @@ private fun StatPill(
     value: String,
 ) {
     val tokens = LocalAnchorTokens.current
-    Surface(
-        shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-        color = AnchorColors.HarborBackground.copy(alpha = 0.7f),
-        border = BorderStroke(1.dp, tokens.rule),
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
+            .background(tokens.paper3)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = tokens.muted)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = AnchorColors.HarborPrimary,
-            )
-        }
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = tokens.muted)
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = tokens.primary,
+        )
     }
 }
 
@@ -1870,14 +1763,9 @@ private fun ResetOptionRow(
     enabled: Boolean = true,
 ) {
     val tokens = LocalAnchorTokens.current
-    Surface(
-        shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-        color = AnchorColors.HarborBackground.copy(alpha = 0.6f),
-        border = BorderStroke(1.dp, tokens.rule),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {

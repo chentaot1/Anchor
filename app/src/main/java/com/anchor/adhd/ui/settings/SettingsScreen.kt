@@ -10,10 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.FilterChip
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -66,7 +65,10 @@ import com.anchor.adhd.ui.components.LicenseDialog
 import com.anchor.adhd.ui.components.HealthConnectButton
 import com.anchor.adhd.ui.copy.AppCopy
 import com.anchor.adhd.domain.AppearanceMode
+import androidx.compose.foundation.layout.heightIn
 import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.components.AnchorListRow
 import com.anchor.adhd.ui.components.AnchorSectionHeader
 import com.anchor.adhd.ui.components.AnchorWell
 import com.anchor.adhd.ui.vm.AnchorViewModel
@@ -85,9 +87,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     var showLicenses by remember { mutableStateOf(false) }
-    var section by rememberSaveable { mutableStateOf("Focus") }
     val settingsList = rememberLazyListState()
-    LaunchedEffect(section) { settingsList.scrollToItem(0) }
     val blockRules by vm.blockRules.collectAsState()
     val bundles by vm.temptationBundles.collectAsState()
     val shieldActive by vm.scheduledShieldActive.collectAsState()
@@ -220,8 +220,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(key = "appearance") {
-                AnchorWell {
-                    AnchorSectionHeader("Appearance")
+                SettingsGroupedSection("Appearance") {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -237,27 +236,26 @@ fun SettingsScreen(
                     }
                 }
             }
-            item(key = "categories") {
-                Text("Choose a category", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Focus", "AI", "Planning", "Reminders", "Connections", "Data", "Advanced").forEach { category ->
-                        FilterChip(selected = section == category, onClick = { section = category }, label = { Text(category) })
-                    }
+            item(key = "section-focus") {
+                AnchorSectionHeader("Focus")
+            }
+            item(key = "app-protection") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    AnchorListRow(
+                        title = "App protection",
+                        subtitle = "Allowances, shields, and earned leisure",
+                        onClick = { vm.openAppBlocker() },
+                        showDivider = false,
+                    )
                 }
             }
-            if (section == "Focus") item(key = "app-protection") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("App protection", style = MaterialTheme.typography.titleMedium)
-                        Text("Manage protected apps, daily allowances, curfew and earned leisure.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Button(onClick = { vm.openAppBlocker() }, modifier = Modifier.fillMaxWidth()) { Text("Open App Blocker") }
-                    }
-                }
+            item(key = "section-planning") {
+                AnchorSectionHeader("Planning & integrations")
             }
-            if (section == "Reminders") item(key = "settings-0") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Reminders", style = MaterialTheme.typography.titleMedium)
+            item(key = "settings-0") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
+                Text("Reminders", style = MaterialTheme.typography.titleSmall)
                 val reminderSettings by vm.reminderSettings.collectAsState()
                 val scheduleInitialized = remember { mutableStateOf(false) }
                 LaunchedEffect(Unit) {
@@ -332,9 +330,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Planning") item(key = "settings-1") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-1") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Planning", style = MaterialTheme.typography.titleMedium)
                 val capacityHours = planningSettings.dailyCapacityMinutes / 60f
                 Text(
@@ -379,9 +377,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") item(key = "settings-2") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-2") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Block mode", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "Whitelist mode blocks everything except listed apps during focus.",
@@ -399,10 +397,13 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") item(key = "settings-3") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Automations (ADB)", style = MaterialTheme.typography.titleMedium)
+            item(key = "section-licenses-about") {
+                AnchorSectionHeader("Licenses & about")
+            }
+            item(key = "settings-3") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
+                Text("Automations (ADB)", style = MaterialTheme.typography.titleSmall)
                 Text(
                     "Trigger Anchor from Tasker, MacroDroid, or shell:",
                     style = MaterialTheme.typography.bodySmall,
@@ -416,9 +417,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Focus") item(key = "settings-4") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-4") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Focus durations", style = MaterialTheme.typography.titleMedium)
                 val (work, brk) = focusDurations
                 LaunchedEffect(work, brk) {
@@ -440,9 +441,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Connections") item(key = "settings-5") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-5") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                         Text("Health Connect", style = MaterialTheme.typography.titleMedium)
                         Text(
                             if (healthConnected) "Connected — step and exercise habits can sync"
@@ -457,9 +458,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Focus") item(key = "settings-6") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-6") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Samsung setup", style = MaterialTheme.typography.titleMedium)
                 Text("1. Settings → Battery → Anchor → Unrestricted")
                 Text("2. Enable Anchor in Accessibility (for app blocking)")
@@ -471,9 +472,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") item(key = "settings-7") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-7") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Blocklist", style = MaterialTheme.typography.titleMedium)
                 OutlinedTextField(
                     value = newPackage,
@@ -498,7 +499,7 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") items(blockRules, key = { it.id }) { rule ->
+            items(blockRules, key = { it.id }) { rule ->
                 val typeLabel = if (rule.ruleType == BlockRuleType.SCHEDULED) {
                     " [${rule.startHour}:${rule.startMinute ?: 0}–${rule.endHour}:${rule.endMinute ?: 0}]"
                 } else ""
@@ -509,9 +510,9 @@ fun SettingsScreen(
                 )
             }
 
-            if (section == "Advanced") item(key = "settings-9") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-9") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Scheduled shields", style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (shieldActive) "A scheduled shield is active now"
@@ -558,9 +559,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") item(key = "settings-10") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-10") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Temptation bundles", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "Reward app stays blocked until you finish focus, then unlocks for a set time.",
@@ -591,7 +592,7 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") items(bundles, key = { it.id }) { bundle ->
+            items(bundles, key = { it.id }) { bundle ->
                 RowSwitch(
                     label = "${bundle.name} · ${bundle.rewardPackageName}",
                     checked = bundle.enabled,
@@ -599,9 +600,9 @@ fun SettingsScreen(
                 )
             }
 
-            if (section == "Connections") item(key = "settings-12") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-12") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Device calendar", style = MaterialTheme.typography.titleMedium)
                 Text(
                     AppCopy.CALENDAR_OCCUPANCY + " Google calendars must be synced to this device through your calendar app.",
@@ -627,10 +628,13 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "AI") item(key = "settings-14") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("On-device AI", style = MaterialTheme.typography.titleMedium)
+            item(key = "section-ai") {
+                AnchorSectionHeader("Local AI")
+            }
+            item(key = "settings-14") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
+                Text("On-device AI", style = MaterialTheme.typography.titleSmall)
                 Text(
                     when {
                         modelReady && vm.aiNativeRuntime ->
@@ -673,9 +677,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "AI") item(key = "settings-breakdown-granularity") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-breakdown-granularity") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                         Text("Breakdown granularity", style = MaterialTheme.typography.titleMedium)
                         Text(
                             "Controls how many grounded micro-steps AI task breakdowns generate.",
@@ -684,10 +688,10 @@ fun SettingsScreen(
                         )
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BreakdownGranularity.entries.forEach { option ->
-                                FilterChip(
+                                AnchorChip(
+                                    label = option.settingsLabel(),
                                     selected = breakdownGranularity == option,
                                     onClick = { vm.setBreakdownGranularity(option) },
-                                    label = { Text(option.settingsLabel()) }
                                 )
                             }
                         }
@@ -695,7 +699,7 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "AI") items(vm.modelCatalogEntries(), key = { it.id }) { entry ->
+            items(vm.modelCatalogEntries(), key = { it.id }) { entry ->
                 ModelCatalogCard(
                     entry = entry,
                     downloaded = vm.isModelEntryDownloaded(entry),
@@ -708,9 +712,9 @@ fun SettingsScreen(
                 )
             }
 
-            if (section == "AI") item(key = "settings-16") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-16") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 if (vm.aiNativeRuntime) {
                     Text("Matches desktop: 2048-token context, 4 CPU threads, Q8 cache, reasoning off. Chat temperature 0.4; task temperature 0.2.", style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(8.dp))
@@ -738,22 +742,31 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Planning") item(key = "settings-17") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-17") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 FunLinksSettingsSection(vm = vm)
                     }
                 }
             }
 
-            if (section == "Data") item(key = "licenses") {
-                TextButton(onClick = { showLicenses = true }) { Text("License and third-party notices") }
+            item(key = "section-backup") {
+                AnchorSectionHeader("Backup & data")
+            }
+            item(key = "licenses-link") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    AnchorListRow(
+                        title = "License and third-party notices",
+                        onClick = { showLicenses = true },
+                        showDivider = false,
+                    )
+                }
             }
 
-            if (section == "Data") item(key = "settings-18") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Backup", style = MaterialTheme.typography.titleMedium)
+            item(key = "settings-18") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
+                        Text("Backup", style = MaterialTheme.typography.titleSmall)
                         Button(onClick = { vm.exportBackup() }, modifier = Modifier.fillMaxWidth()) {
                             Text("Export backup JSON")
                         }
@@ -767,9 +780,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Data") item(key = "settings-19") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-19") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("AI Memory & Privacy", style = MaterialTheme.typography.titleMedium)
                 Text(
                     "Transparent control over on-device AI memory, chat history, and focus logs.",
@@ -801,9 +814,9 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Data") item(key = "settings-20") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-20") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("Danger zone", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                 Text(
                     "Reset wipes local data and returns the app to a fresh install state.",
@@ -820,14 +833,14 @@ fun SettingsScreen(
                 }
             }
 
-            if (section == "Advanced") item(key = "settings-21") {
-                AnchorWell {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item(key = "settings-21") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
                 Text("AI debug (recent jobs)", style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
-            if (section == "Advanced") items(aiJobs.take(10), key = { it.id }) { job ->
+            items(aiJobs.take(10), key = { it.id }) { job ->
                 Text("${job.type.name}: ${job.status.name} (${job.durationMs}ms)")
             }
         }
@@ -911,9 +924,9 @@ private fun ModelCatalogCard(
     onActivate: () -> Unit
 ) {
     val needsSpace = freeDiskBytes < requiredFreeBytes
-    AnchorWell {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Desktop main model", style = MaterialTheme.typography.titleMedium)
+    AnchorWell(contentPadding = PaddingValues(0.dp)) {
+        SettingsInset {
+            Text("Desktop main model", style = MaterialTheme.typography.titleSmall)
             Text(entry.label, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("${entry.quant} · ${entry.sizeLabel()} · works offline", style = MaterialTheme.typography.bodySmall)
             if (downloaded) {
@@ -931,12 +944,38 @@ private fun ModelCatalogCard(
 }
 
 @Composable
-private fun RowSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
-    androidx.compose.foundation.layout.Row(
+private fun SettingsGroupedSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChecked)
+        AnchorSectionHeader(title)
+        AnchorWell(contentPadding = PaddingValues(0.dp), content = content)
     }
+}
+
+@Composable
+private fun SettingsInset(
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun RowSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    AnchorListRow(
+        title = label,
+        showDivider = false,
+        minHeight = 48.dp,
+        trailing = { Switch(checked = checked, onCheckedChange = onChecked) },
+    )
 }

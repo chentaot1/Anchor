@@ -54,7 +54,7 @@ compose.desktop {
             )
             packageName = "Anchor"
             // Release CI overrides this with -PanchorDesktopVersion=<tag version>.
-            packageVersion = providers.gradleProperty("anchorDesktopVersion").getOrElse("1.0.6")
+            packageVersion = providers.gradleProperty("anchorDesktopVersion").getOrElse("1.0.8")
             licenseFile.set(rootProject.file("LICENSE"))
             windows {
                 iconFile.set(project.file("src/main/resources/anchor.ico"))

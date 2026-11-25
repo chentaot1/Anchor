@@ -15,8 +15,8 @@ android {
         applicationId = if (providers.gradleProperty("anchorUiPreview").isPresent) "com.anchor.adhd.uipreview" else "com.anchor.adhd"
         minSdk = 28
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.1.0-preview.5"
+        versionCode = 7
+        versionName = "1.1.0-preview.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

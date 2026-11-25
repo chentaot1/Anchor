@@ -18,8 +18,9 @@ See [edition boundaries and development workflow](docs/editions.md).
 
 ## Latest source update
 
-**Latest releases per platform: Android 1.1.0-preview.5 · Windows 1.0.6 · October 12, 2026**
+**Latest releases per platform: Android 1.1.0-preview.6 · Windows 1.0.8 · November 25, 2026**
 
+- Windows and Android share one Harbor Paper-Soft identity: Newsreader and Atkinson Hyperlegible, Morning Harbor light and Night Harbor dark, a single next-action plate, and the assistant named Captain. The drawn harbor scene is gone; weekly focus time is shown from saved sessions.
 - These retained releases use GPLv3 with bundled third-party notices. Current branch source uses AGPLv3. Proprietary Samsung Health and Google Play Services SDKs are replaced by Health Connect and the device Calendar Provider.
 - All plant models and the forest gallery are removed. Focus rewards continue without planting entries; the harbor uses original Compose geometry.
 
@@ -31,7 +32,7 @@ See [edition boundaries and development workflow](docs/editions.md).
 - Windows offers exact one-through-240-minute durations, compact layouts, and scrollable custom entry. Use Ctrl+K for Airlock, Ctrl+1–7 for navigation, Ctrl+I for Floating Island, and Space to start/pause focus.
 - Desktop backup replacement validates data and saves a safety backup; single-instance startup, updater failure handling, native icons, and packaged Access Bridge support are improved.
 
-Download [Windows 1.0.6 installers](https://github.com/chentaot1/Anchor/releases/tag/windows-v1.0.6) or the [Android preview 5 APK](https://github.com/chentaot1/Anchor/releases/tag/android-v1.1.0-preview.5). Both are built from sanitized public source. See the [Android preview notes](docs/releases/android-1.1.0-preview.5.md), [Windows notes](docs/releases/windows-1.0.6.md), and [detailed Windows verification](docs/windows-improvements.md) for changes and verification limits.
+Download [Windows 1.0.8 installers](https://github.com/chentaot1/Anchor/releases/tag/desktop-v1.0.8) or the [Android preview 6 APK](https://github.com/chentaot1/Anchor/releases/tag/android-v1.1.0-preview.6). Both are built from sanitized public source. See the [Android preview notes](docs/releases/android-1.1.0-preview.6.md), [Windows notes](docs/releases/windows-1.0.8.md), and [detailed Windows verification](docs/windows-improvements.md) for changes and verification limits.
 
 ## From an assignment to a focus session
 

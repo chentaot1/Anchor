@@ -384,8 +384,6 @@ class AnchorDesignSystemLintTest {
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopAiScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopAirlockDialog.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopBlockerScreen.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFloatingIsland.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFocusScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFunLinks.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopPlanScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSettingsScreen.kt",

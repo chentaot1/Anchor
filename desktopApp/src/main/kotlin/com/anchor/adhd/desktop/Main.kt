@@ -102,6 +102,7 @@ import com.anchor.adhd.domain.AppearanceMode
 import com.anchor.adhd.ui.components.AnchorHairline
 import com.anchor.adhd.ui.theme.AnchorSpacing
 import com.anchor.adhd.ui.theme.LocalAnchorTokens
+import com.anchor.adhd.ui.theme.LocalReducedMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -327,6 +328,8 @@ internal fun launchDesktopApplication(
             AnchorTheme(darkTheme = darkTheme, reducedMotion = reducedMotion) {
                 DesktopAnchorApp(
                     prefs = prefs,
+                    darkTheme = darkTheme,
+                    reducedMotion = reducedMotion,
                     initialTaskDeletions = initialTaskDeletions,
                     window = this.window,
                     isFullscreen = isFullscreen,
@@ -463,6 +466,8 @@ internal fun launchDesktopApplication(
 @Composable
 internal fun DesktopAnchorApp(
     prefs: DesktopUserPreferences = remember { DesktopUserPreferences() },
+    darkTheme: Boolean = LocalAnchorTokens.current.isDark,
+    reducedMotion: Boolean = LocalReducedMotion.current,
     initialTaskDeletions: List<DesktopTaskDeletion> = emptyList(),
     window: java.awt.Window? = null,
     isFullscreen: Boolean = false,
@@ -811,9 +816,12 @@ internal fun DesktopAnchorApp(
     // Windows 11 Floating Island Micro-HUD Window
     DesktopFloatingIslandWindow(
         visible = isFloatingIslandVisible,
-        taskTitle = focusTask?.title ?: "Deep Work",
+        taskTitle = focusTask?.title ?: "Deep focus",
         isFocusActive = isFocusActive,
+        isWorkPhase = isWorkPhase,
         remainingSeconds = remainingSeconds,
+        darkTheme = darkTheme,
+        reducedMotion = reducedMotion,
         onToggleFocus = { toggleFocus() },
         onExpandMainApp = {
             processMonitor.bringAnchorToFront()
@@ -1417,6 +1425,12 @@ internal fun DesktopAnchorApp(
                                 },
                                 onDismissSessionCompleteBanner = {
                                     showSessionCompleteBanner = false
+                                },
+                                isFloatingIslandActive = isFloatingIslandVisible,
+                                onToggleFloatingIsland = { isFloatingIslandVisible = !isFloatingIslandVisible },
+                                onBreakDownWithCaptain = { taskTitle ->
+                                    prefilledAiTask = taskTitle
+                                    currentScreen = DesktopScreen.AI
                                 },
                             )
                         }

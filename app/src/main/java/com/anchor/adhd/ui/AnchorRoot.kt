@@ -375,7 +375,14 @@ fun AnchorRoot(
                 onToggleListView = { planListView = !planListView }
             )
             AnchorTabs.AI -> AiScreen(vm, Modifier.padding(padding).consumeWindowInsets(padding))
-            AnchorTabs.FOCUS -> FocusScreen(vm, Modifier.padding(bottom = padding.calculateBottomPadding()))
+            AnchorTabs.FOCUS -> FocusScreen(
+                vm = vm,
+                modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
+                onOpenAirlock = {
+                    vm.resetAirlock()
+                    showAirlockSheet = true
+                }
+            )
             AnchorTabs.MORE -> MoreScreen(
                 vm,
                 container,

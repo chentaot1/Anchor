@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.window.WindowDraggableArea
@@ -29,24 +27,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import com.anchor.adhd.desktop.theme.AnchorColors
-import com.anchor.adhd.desktop.theme.AnchorSpacing
-import com.anchor.adhd.desktop.theme.AnchorTheme
 import com.anchor.adhd.desktop.platform.DesktopAppIcon
+import com.anchor.adhd.desktop.theme.AnchorTheme
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
+
+internal fun formatCountdownClock(remainingSeconds: Int): String {
+    val safeSeconds = remainingSeconds.coerceAtLeast(0)
+    val mins = safeSeconds / 60
+    val secs = safeSeconds % 60
+    return "${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}"
+}
 
 /**
  * Windows 11 Floating Island Micro-HUD.
- * A lightweight, draggable, always-on-top ambient anchor widget that stays visible
- * while coding, reading, or researching without obscuring the desktop workspace.
+ * A lightweight, draggable, always-on-top ambient anchor widget that adapts to
+ * Morning Harbor (Light) and Night Harbor (Dark) via [darkTheme] and [reducedMotion].
  */
 @Composable
 fun DesktopFloatingIslandWindow(
@@ -57,6 +60,9 @@ fun DesktopFloatingIslandWindow(
     onToggleFocus: () -> Unit,
     onExpandMainApp: () -> Unit,
     onCloseHud: () -> Unit,
+    isWorkPhase: Boolean = true,
+    darkTheme: Boolean = false,
+    reducedMotion: Boolean = false,
 ) {
     if (!visible) return
 
@@ -76,122 +82,148 @@ fun DesktopFloatingIslandWindow(
         transparent = true,
         resizable = false,
     ) {
-        AnchorTheme {
+        AnchorTheme(darkTheme = darkTheme, reducedMotion = reducedMotion) {
             WindowDraggableArea {
-                Surface(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(AnchorSpacing.radiusPill)),
-                    color = AnchorColors.HarborDock.copy(alpha = 0.94f),
-                    border =
-                        BorderStroke(
-                            1.dp,
-                            if (isFocusActive) AnchorColors.HarborGrowth.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.15f),
-                        ),
-                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                DesktopFloatingIslandSurface(
+                    taskTitle = taskTitle,
+                    isFocusActive = isFocusActive,
+                    isWorkPhase = isWorkPhase,
+                    remainingSeconds = remainingSeconds,
+                    onToggleFocus = onToggleFocus,
+                    onExpandMainApp = onExpandMainApp,
+                    onCloseHud = onCloseHud,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DesktopFloatingIslandSurface(
+    taskTitle: String,
+    isFocusActive: Boolean,
+    remainingSeconds: Int,
+    onToggleFocus: () -> Unit,
+    onExpandMainApp: () -> Unit,
+    onCloseHud: () -> Unit,
+    isWorkPhase: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = LocalAnchorTokens.current
+    val shape = RoundedCornerShape(AnchorSpacing.radiusPill)
+    val timeFormatted = formatCountdownClock(remainingSeconds)
+    val statusText =
+        when {
+            isFocusActive && isWorkPhase -> "Focus"
+            isFocusActive -> "Break"
+            else -> "Paused"
+        }
+
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        shape = shape,
+        color = tokens.paper2,
+        contentColor = tokens.ink,
+        border = BorderStroke(1.dp, if (isFocusActive) tokens.sage else tokens.rule),
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(if (isFocusActive) tokens.sageSoft else tokens.paper3),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Anchor,
+                    contentDescription = null,
+                    tint = if (isFocusActive) tokens.sage else tokens.ink2,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                Text(
+                    text = taskTitle.ifBlank { "Deep focus" },
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tokens.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        // Left: Pulsing status indicator
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isFocusActive) {
-                                            AnchorColors.HarborGrowth.copy(alpha = 0.35f)
-                                        } else {
-                                            Color.White.copy(alpha = 0.08f)
-                                        },
-                                    ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Anchor,
-                                contentDescription = null,
-                                tint = if (isFocusActive) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        // Center: Task title + Live timer
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.Center,
-                        ) {
-                            Text(
-                                text = taskTitle.ifBlank { "Deep Focus" },
-                                style = MaterialTheme.typography.bodySmall,
+                    Text(
+                        text = timeFormatted,
+                        style =
+                            MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            val mins = remainingSeconds / 60
-                            val secs = remainingSeconds % 60
-                            val timeFormatted = String.format("%02d:%02d", mins, secs)
-                            Text(
-                                text = if (isFocusActive) "$timeFormatted remaining" else "Paused",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                color = if (isFocusActive) AnchorColors.HarborAction else Color.White.copy(alpha = 0.5f),
-                            )
-                        }
+                                fontFeatureSettings = "tnum",
+                            ),
+                        color = tokens.ink,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isFocusActive) tokens.sage else tokens.muted,
+                        maxLines = 1,
+                    )
+                }
+            }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                IconButton(
+                    onClick = onToggleFocus,
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Icon(
+                        imageVector = if (isFocusActive) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isFocusActive) "Pause focus" else "Start focus",
+                        tint = if (isFocusActive) tokens.sage else tokens.primary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
 
-                        // Right: Controls
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Play/Pause button
-                            IconButton(
-                                onClick = onToggleFocus,
-                                modifier = Modifier.size(30.dp),
-                            ) {
-                                Icon(
-                                    imageVector = if (isFocusActive) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = if (isFocusActive) "Pause" else "Play",
-                                    tint = if (isFocusActive) AnchorColors.HarborAction else AnchorColors.HarborPrimary,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                IconButton(
+                    onClick = onExpandMainApp,
+                    modifier = Modifier.size(34.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.OpenInFull,
+                        contentDescription = "Expand Anchor",
+                        tint = tokens.ink2,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
 
-                            // Maximize back to full Anchor app
-                            IconButton(
-                                onClick = onExpandMainApp,
-                                modifier = Modifier.size(30.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.OpenInFull,
-                                    contentDescription = "Expand Anchor",
-                                    tint = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(15.dp),
-                                )
-                            }
-
-                            // Close HUD button
-                            IconButton(
-                                onClick = onCloseHud,
-                                modifier = Modifier.size(26.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close HUD",
-                                    tint = Color.White.copy(alpha = 0.4f),
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            }
-                        }
-                    }
+                IconButton(
+                    onClick = onCloseHud,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close Floating Island",
+                        tint = tokens.muted,
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
             }
         }

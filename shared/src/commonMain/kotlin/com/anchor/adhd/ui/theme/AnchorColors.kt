@@ -3,53 +3,48 @@ package com.anchor.adhd.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Single source of truth for Anchor color.
+ * Single source of truth for Anchor color aliases, delegating to
+ * [MorningHarborTokens] and [NightHarborTokens].
  *
- * The trio is blue + orange + pilot teal: blue carries information, orange
- * carries the ONE next action per screen, pilot teal carries AI — the green
- * starboard light that guides you into harbor. Green carries
- * growth. Neutrals are warm paper / deep harbor night.
+ * The trio is blue + amber + starboard teal: blue carries information, amber
+ * carries the ONE next action per screen, and starboard teal carries Captain AI.
+ * Sage carries growth and completion; clay rose carries no-shame errors.
  *
  * Both Android (`com.anchor.adhd.ui.theme`) and desktop
- * (`com.anchor.adhd.desktop.theme`, which re-exports these values) build their
- * Material3 schemes from here. Do not fork hex codes per platform.
- *
- * Usage rule (60-30-10): 60% warm neutral, 30% harbor deep, 10% beacon.
- * Amber [HarborBeaconAmber] is reserved for the one next action
- * (NOW card, Start focus). Blue is information, sage is growth,
- * pilot teal is AI-only. Never show all three saturated on one screen.
+ * (`com.anchor.adhd.desktop.theme`) build their Material3 schemes from
+ * [AnchorTokens]. Do not fork hex codes per platform.
  */
 object AnchorColors {
     // Night Harbor (dark theme base). Lifted off pure black to reduce eye strain.
-    val HarborBackground = Color(0xFF0E1624)
-    val HarborSurface = Color(0xFF16202F)
-    val HarborSurfaceContainer = Color(0xFF1E2C40)
-    val HarborPrimary = Color(0xFF8AB4E8)
-    val HarborAction = Color(0xFFFFAB6B)
-    val HarborAi = Color(0xFF6FE3E0)
-    val HarborPilotInk = Color(0xFF07302B)
+    val HarborBackground: Color get() = NightHarborTokens.paper
+    val HarborSurface: Color get() = NightHarborTokens.surface
+    val HarborSurfaceContainer: Color get() = NightHarborTokens.paper3
+    val HarborPrimary: Color get() = NightHarborTokens.primary
+    val HarborAction: Color get() = NightHarborTokens.beacon
+    val HarborAi: Color get() = NightHarborTokens.captain
+    val HarborPilotInk: Color get() = NightHarborTokens.captainInk
     val HarborGrowth = Color(0xFF3E8E67)
-    val HarborFoliage = Color(0xFF7AC9A3)
+    val HarborFoliage: Color get() = NightHarborTokens.sage
     val HarborFoliageDark = Color(0xFF52B788)
-    val HarborDock = Color(0xFF1A2836)
-    val HarborMist = Color(0x336FE3E0)
-    val HarborSkyNight = Color(0xFF1B2838)
+    val HarborDock: Color get() = NightHarborTokens.paper2
+    val HarborMist: Color get() = NightHarborTokens.captain.copy(alpha = 0.20f)
+    val HarborSkyNight: Color get() = NightHarborTokens.beaconPlate
     val HarborWater = Color(0x597EB8FF)
-    val HarborBeaconAmber = Color(0xFFFFB066)
+    val HarborBeaconAmber: Color get() = NightHarborTokens.beacon
 
     // Morning Harbor (light theme base). Warm paper, never stark white.
-    val MorningCanvas = Color(0xFFF6F1E7)
-    val MorningCard = Color(0xFFFFFDF8)
-    val MorningContainer = Color(0xFFEDE7D8)
-    val MorningInk = Color(0xFF1B2A3A)
-    val MorningMuted = Color(0xFF5C6D80)
-    val MorningPrimary = Color(0xFF2E6E8E)
-    val MorningBeacon = Color(0xFFD97E2B)
-    val MorningBeaconInk = Color(0xFF1A1206)
-    val MorningSage = Color(0xFF4C7A5B)
-    val MorningAi = Color(0xFF0E7C6E)
+    val MorningCanvas: Color get() = MorningHarborTokens.paper
+    val MorningCard: Color get() = MorningHarborTokens.surface
+    val MorningContainer: Color get() = MorningHarborTokens.paper2
+    val MorningInk: Color get() = MorningHarborTokens.ink
+    val MorningMuted: Color get() = MorningHarborTokens.muted
+    val MorningPrimary: Color get() = MorningHarborTokens.primary
+    val MorningBeacon: Color get() = MorningHarborTokens.beacon
+    val MorningBeaconInk: Color get() = MorningHarborTokens.beaconInk
+    val MorningSage: Color get() = MorningHarborTokens.sage
+    val MorningAi: Color get() = MorningHarborTokens.captain
 
     // No-shame semantics. Errors are clay rose, never harsh alarm red.
-    val ClayRose = Color(0xFFC97F7F)
-    val ClayRoseContainer = Color(0xFFF3D9D9)
+    val ClayRose: Color get() = MorningHarborTokens.clayRose
+    val ClayRoseContainer: Color get() = MorningHarborTokens.clayRoseSoft
 }

@@ -6,30 +6,37 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.staticCompositionLocalOf
+
+val LocalReducedMotion = staticCompositionLocalOf { false }
 
 /**
- * Unified motion system. One breath per screen: if the beacon breathes,
- * lanterns and ripples stay still. Motion explains state (start, complete,
- * drag, send), never decorates.
+ * Unified state-only motion system. Motion explains state (press, switch,
+ * sheet open, rising focus tide), never decorates.
  *
- * All one-shot animation must honor reduced motion (see platform
- * `rememberReducedMotion`); ambient loops pause when focus is active.
+ * All transitions honor [LocalReducedMotion] provided by [SharedAnchorTheme].
  */
 object AnchorMotion {
+    const val MICRO_MS = 120
+    const val SHORT_MS = 220
+    const val SHEET_MS = 320
+    const val TIDE_MS = 10000
+    const val PRESS_SCALE = 0.985f
+
+    // Backward-compatible durations kept until legacy screens complete migration.
     const val INSTANT_MS = 100
     const val QUICK_MS = 200
     const val STANDARD_MS = 300
     const val SLOW_MS = 500
-
-    /** Single ambient breath shared by beacon, lanterns and tide. */
     const val BREATH_MS = 2400
-
-    /** Legacy harbor loops migrate here over time (10s tide, 9s star). */
-    const val TIDE_MS = 10000
 
     val EnterEasing: Easing = FastOutSlowInEasing
     val ExitEasing: Easing = LinearEasing
     val EmphasizedEasing: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+
+    fun <T> microFade() = tween<T>(MICRO_MS, easing = EnterEasing)
+    fun <T> shortState() = tween<T>(SHORT_MS, easing = EnterEasing)
+    fun <T> sheetTransition() = tween<T>(SHEET_MS, easing = EmphasizedEasing)
 
     fun <T> quickFade() = tween<T>(QUICK_MS, easing = EnterEasing)
     fun <T> standardSlide() = tween<T>(STANDARD_MS, easing = EnterEasing)

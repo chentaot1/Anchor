@@ -1,18 +1,15 @@
 package com.anchor.adhd.desktop.theme
 
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import com.anchor.adhd.ui.theme.NightHarborTokens
+import com.anchor.adhd.ui.theme.SharedAnchorTheme
 import com.anchor.adhd.ui.theme.AnchorColors as SharedColors
-import com.anchor.adhd.ui.theme.anchorDarkColorScheme
-import com.anchor.adhd.ui.theme.anchorLightColorScheme
-import com.anchor.adhd.ui.theme.anchorTypography
+import com.anchor.adhd.ui.theme.AnchorSpacing as SharedSpacing
 
 /**
  * Desktop theme delegates to shared (`com.anchor.adhd.ui.theme`) so Windows
@@ -36,15 +33,19 @@ object AnchorColors {
 }
 
 object AnchorSpacing {
-    val screenHorizontal = 24.dp
-    val screenVertical = 16.dp
-    val sectionGap = 24.dp
-    val itemGap = 12.dp
-    val radiusScene = 28.dp
-    val radiusCard = 16.dp
-    val radiusChip = 12.dp
-    val radiusPill = 999.dp
-    val elevationFloating = 6.dp
+    val screenHorizontal get() = SharedSpacing.screenHorizontalDesktop
+    val screenVertical get() = SharedSpacing.screenVertical
+    val sectionGap get() = SharedSpacing.sectionGap
+    val itemGap get() = SharedSpacing.itemGap
+    val radiusPlate get() = SharedSpacing.radiusPlate
+    val radiusWell get() = SharedSpacing.radiusWell
+    val radiusButton get() = SharedSpacing.radiusButton
+    val radiusScene get() = SharedSpacing.radiusScene
+    val radiusCard get() = SharedSpacing.radiusCard
+    val radiusChip get() = SharedSpacing.radiusChip
+    val radiusSheet get() = SharedSpacing.radiusSheet
+    val radiusPill get() = SharedSpacing.radiusPill
+    val elevationFloating get() = SharedSpacing.elevationFloating
 }
 
 @Immutable
@@ -70,7 +71,7 @@ val AnchorExtrasDark =
                 colors = listOf(Color(0xFF1A3D5C), Color(0xFF152535), Color(0xFF1A2E40)),
             ),
         accentGlow = Color(0x338AB4E8),
-        cardBorder = Color(0xFF2A3A4E),
+        cardBorder = NightHarborTokens.rule,
         focusRing =
             Brush.sweepGradient(
                 colors = listOf(AnchorColors.HarborPrimary, AnchorColors.HarborGrowth, AnchorColors.HarborPrimary),
@@ -81,7 +82,7 @@ val AnchorExtrasDark =
             ),
         focusGradient =
             Brush.verticalGradient(
-                listOf(AnchorColors.HarborBackground, Color(0xFF121820), Color(0xFF1B2838)),
+                listOf(AnchorColors.HarborBackground, Color(0xFF121820), AnchorColors.HarborSkyNight),
             ),
         planGradient =
             Brush.verticalGradient(
@@ -89,27 +90,20 @@ val AnchorExtrasDark =
             ),
     )
 
-private val AnchorShapes =
-    Shapes(
-        extraSmall = RoundedCornerShape(8.dp),
-        small = RoundedCornerShape(12.dp),
-        medium = RoundedCornerShape(16.dp),
-        large = RoundedCornerShape(20.dp),
-        extraLarge = RoundedCornerShape(28.dp),
-    )
-
 val LocalAnchorExtras = staticCompositionLocalOf { AnchorExtrasDark }
 
 @Composable
-fun AnchorTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
-    // Desktop stays dark-first: many surfaces use hardcoded white-on-dark.
-    // Light follows once those migrate to MaterialTheme tokens.
-    val scheme = if (darkTheme) anchorDarkColorScheme() else anchorLightColorScheme()
-    androidx.compose.runtime.CompositionLocalProvider(LocalAnchorExtras provides AnchorExtrasDark) {
-        MaterialTheme(
-            colorScheme = scheme,
-            typography = anchorTypography(display = NewsreaderFontFamily, body = AtkinsonFontFamily),
-            shapes = AnchorShapes,
+fun AnchorTheme(
+    darkTheme: Boolean = true,
+    reducedMotion: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(LocalAnchorExtras provides AnchorExtrasDark) {
+        SharedAnchorTheme(
+            darkTheme = darkTheme,
+            displayFont = NewsreaderFontFamily,
+            bodyFont = AtkinsonFontFamily,
+            reducedMotion = reducedMotion,
             content = content,
         )
     }

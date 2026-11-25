@@ -31,7 +31,7 @@ Source of truth: `shared/src/commonMain/kotlin/com/anchor/adhd/ui/theme/AnchorCo
 | `beacon` / `beaconInk` | `#DF8A3B` / `#1A1206` | `#F0A35E` / `#1A1206` | ONE primary next-action CTA per screen |
 | `captain` / `captainInk` / `captainSoft` | `#0D7366` / `#07302B` / `#D7EFEA` | `#67D8D4` / `#07302B` / `#113035` | Captain AI surfaces, tabs, and cues only |
 | `sage` / `sageSoft` | `#3E6E4E` / `#DCECE2` | `#72C29B` / `#163326` | Completed tasks, break tide, growth |
-| `clayRose` / `clayRoseSoft` (`error`) | `#B35252` / `#F4DDDD` | `#E89B9B` / `#3B1E22` | No-shame errors and alerts (≥4.5:1) |
+| `clayRose` / `clayRoseSoft` (`error`) | `#A34848` / `#F4DDDD` | `#E89B9B` / `#3B1E22` | No-shame errors and alerts (≥4.5:1) |
 | `beaconPlate` / `beaconPlateBorder` | `#15263B` / `#243A54` | `#182B44` / `#2D4769` | Committed Deep-Harbor NOW plate (+ `2.dp` `#F0A35E` top ridge) |
 | `beaconPlateInk` / `beaconPlateInk2` | `#F6F1E7` / `#C2D0DF` | `#F2F6FA` / `#C4D2E0` | Text on Committed Deep-Harbor NOW plate |
 | `beaconPlatePill` / `beaconPlateCta` | `#213752` / `#F0A35E` | `#243C5C` / `#F0A35E` | Duration chip & amber CTA inside NOW plate |

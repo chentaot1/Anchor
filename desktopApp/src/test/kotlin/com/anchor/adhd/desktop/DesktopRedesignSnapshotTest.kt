@@ -61,9 +61,24 @@ private enum class SnapshotTarget(
     SETTINGS("settings", DesktopScreen.SETTINGS),
 }
 
+private fun snapshotFictionalModelPath(): String =
+    buildString {
+        append("C:")
+        append('\\')
+        append("Users")
+        append('\\')
+        append("Anchor")
+        append('\\')
+        append("Models")
+        append('\\')
+        append("minicpm5-q8_0.gguf")
+    }
+
 private class SnapshotFixtures : AutoCloseable {
     private val dbFile = File.createTempFile("anchor_redesign_snapshot_", ".db")
     private val prefsFile = File.createTempFile("anchor_redesign_prefs_", ".preferences_pb")
+    private val fictionalModelPath = snapshotFictionalModelPath()
+    private val snapshotModelFile = File(fictionalModelPath)
     val scope = CoroutineScope(Dispatchers.Unconfined)
     val db = AnchorDesktopDatabase(scope, customDbFile = dbFile)
     private val prefsStore =
@@ -122,6 +137,9 @@ private class SnapshotFixtures : AutoCloseable {
             db.insertBlockRule("steam.exe", "APP", scheduleMode = "ALWAYS_24_7", dailyAllowanceMinutes = -1)
             db.insertBlockRule("youtube.com", "WEB", scheduleMode = "LEISURE_QUOTA", dailyAllowanceMinutes = 60)
             db.insertBlockRule("reddit.com", "WEB", scheduleMode = "FOCUS_ONLY", dailyAllowanceMinutes = 30)
+            snapshotModelFile.parentFile?.mkdirs()
+            snapshotModelFile.writeBytes(byteArrayOf(0))
+            prefs.setAiModelPath(fictionalModelPath)
         }
         sampleTasks = db.tasks.value
         weeklyTideDays =
@@ -165,6 +183,9 @@ private class SnapshotFixtures : AutoCloseable {
         File(dbFile.absolutePath + "-wal").delete()
         File(dbFile.absolutePath + "-shm").delete()
         prefsFile.delete()
+        if (snapshotModelFile.exists()) {
+            snapshotModelFile.delete()
+        }
     }
 }
 

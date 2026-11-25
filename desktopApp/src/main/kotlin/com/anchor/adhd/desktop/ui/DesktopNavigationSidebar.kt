@@ -404,6 +404,11 @@ private fun ActiveFocusSidebarStatus(
     val safeSeconds = remainingSeconds.coerceAtLeast(0)
     val mins = safeSeconds / 60
     val secs = safeSeconds % 60
+    val compactMinuteLabel =
+        when {
+            mins == 0 && safeSeconds > 0 -> "<1m"
+            else -> "${mins}m"
+        }
     val formattedTime = String.format("%02d:%02d", mins, secs)
     val accessibleLabel = "Focus active, $formattedTime remaining"
 
@@ -426,7 +431,7 @@ private fun ActiveFocusSidebarStatus(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "${mins}m",
+                        text = compactMinuteLabel,
                         style =
                             MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,

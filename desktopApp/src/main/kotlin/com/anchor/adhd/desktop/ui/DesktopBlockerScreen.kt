@@ -123,6 +123,8 @@ sealed class PendingCoolingOffAction {
         }
 }
 
+private fun pluralRules(count: Int): String = "$count ${if (count == 1) "rule" else "rules"}"
+
 /**
  * Windows 11 Native App & Browser Blocker Configuration Screen.
  * Allows the user to view, toggle, add, and test distraction blocking rules.
@@ -339,8 +341,8 @@ fun DesktopBlockerScreen(
             OutlinedButton(
                 onClick = onTestRescueShield,
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                border = BorderStroke(1.dp, tokens.beacon),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
+                border = BorderStroke(1.dp, tokens.primary),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.primary),
             ) {
                 Icon(
                     imageVector = Icons.Default.Visibility,
@@ -389,7 +391,7 @@ fun DesktopBlockerScreen(
                                 when {
                                     activeClass != null -> "Lecture shield active — ${activeClass?.courseCode} (${activeClass?.formatTimeRange()})"
                                     isFocusActive -> "Study mode active — guard engaged"
-                                    count247 > 0 -> "24/7 continuous protection active ($count247 rules)"
+                                    count247 > 0 -> "24/7 continuous protection active (${pluralRules(count247)})"
                                     standingShieldEnabled -> "Continuous shield active — standing guard"
                                     countQuota > 0 -> "Quota shield active — ($countQuota metered)"
                                     else -> "Shield standby — ready for focus"
@@ -397,8 +399,10 @@ fun DesktopBlockerScreen(
                             val descText =
                                 when {
                                     activeClass != null -> "In ${activeClass?.courseName}. Leisure apps, games & dev tools locked."
-                                    isFocusActive -> "Blocking $countStudy study-time and $count247 continuous rules during this session."
-                                    count247 > 0 -> "$count247 apps/sites blocked 24/7. $countStudy study rules active during focus."
+                                    isFocusActive ->
+                                        "Blocking $countStudy study-time and $count247 continuous ${if (count247 == 1) "rule" else "rules"} during this session."
+                                    count247 > 0 ->
+                                        "$count247 apps/sites blocked 24/7. $countStudy study ${if (countStudy == 1) "rule" else "rules"} active during focus."
                                     standingShieldEnabled -> "24/7 background guard enabled. Blocks distractions without active timer."
                                     countQuota > 0 -> "$countQuota apps have daily time allowances. Locked once time expires."
                                     else -> "Turn on Continuous Guard or start a focus session to engage protection."
@@ -458,8 +462,8 @@ fun DesktopBlockerScreen(
                             OutlinedButton(
                                 onClick = { showConfirmLockdownDialog = true },
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.7f)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
+                                border = BorderStroke(1.dp, tokens.clayRose.copy(alpha = 0.7f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.clayRose),
                             ) {
                                 Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -978,23 +982,11 @@ fun DesktopBlockerScreen(
                             color = tokens.ink.copy(alpha = 0.5f),
                         )
                         listOf(45 to "45m", 60 to "60m", 75 to "75m").forEach { (mins, label) ->
-                            val isSelected = baseStudyMinutes == mins
-                            Surface(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                                    .clickable { handleSetBaseStudyRatio(mins) },
-                                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                color = if (isSelected) tokens.primary else tokens.ink.copy(alpha = 0.06f),
-                            ) {
-                                Text(
-                                    text = label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontSize = 10.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) tokens.beaconInk else tokens.ink.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                )
-                            }
+                            AnchorChip(
+                                label = label,
+                                selected = baseStudyMinutes == mins,
+                                onClick = { handleSetBaseStudyRatio(mins) },
+                            )
                         }
                     }
                 }
@@ -1256,7 +1248,7 @@ fun DesktopBlockerScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Button(
+                    HarborCtaButton(
                         onClick = {
                             if (newTargetText.isNotBlank()) {
                                 val quotaMins = if (selectedSchedule == "LEISURE_QUOTA") 75 else -1
@@ -1271,9 +1263,7 @@ fun DesktopBlockerScreen(
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                        colors = ButtonDefaults.buttonColors(containerColor = tokens.beacon),
-                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+                        enabled = newTargetText.isNotBlank(),
                     ) {
                         Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))

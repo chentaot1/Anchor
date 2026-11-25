@@ -266,6 +266,20 @@ internal fun DesktopSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
 
+        Column {
+            Text(
+                text = "Anchor Settings & Windows Storage",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = tokens.ink,
+            )
+            Text(
+                text = "Manage focus durations, on-device AI inference, and local persistence",
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.primary.copy(alpha = 0.8f),
+            )
+        }
+
         DesktopSettingsSection("Appearance") {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -280,21 +294,6 @@ internal fun DesktopSettingsScreen(
                     )
                 }
             }
-        }
-
-        // Title
-        Column {
-            Text(
-                text = "Anchor Settings & Windows Storage",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = tokens.ink,
-            )
-            Text(
-                text = "Manage focus durations, on-device AI inference, and local persistence",
-                style = MaterialTheme.typography.bodySmall,
-                color = tokens.primary.copy(alpha = 0.8f),
-            )
         }
 
         DesktopSettingsSection("Local AI") {
@@ -601,19 +600,24 @@ internal fun DesktopSettingsScreen(
                                         }
                                     }
 
-                                    Surface(
-                                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                        color = if (isSelected) tokens.captain.copy(alpha = 0.3f) else tokens.rule,
-                                    ) {
-                                        Text(
-                                            text = if (isSelected) "ACTIVE • $sizeStr" else sizeStr,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp,
-                                            color = if (isSelected) tokens.captain else tokens.muted,
-                                        )
-                                    }
+                                    AnchorChip(
+                                        label = if (isSelected) "ACTIVE • $sizeStr" else sizeStr,
+                                        selected = isSelected,
+                                        captainAccent = isSelected,
+                                        onClick = {
+                                            if (!isSelected) {
+                                                scope.launch {
+                                                    prefs.setAiModelPath(file.absolutePath)
+                                                    DesktopAiEngine.initialize(
+                                                        scope = scope,
+                                                        modelPath = file.absolutePath,
+                                                        binaryPath = aiBinaryPath,
+                                                        enabled = true,
+                                                    )
+                                                }
+                                            }
+                                        },
+                                    )
                                 }
                             }
                         }
@@ -652,13 +656,13 @@ internal fun DesktopSettingsScreen(
                         colors =
                             ButtonDefaults.buttonColors(
                                 containerColor = tokens.captain,
-                                contentColor = tokens.ink,
+                                contentColor = if (tokens.isDark) tokens.captainInk else tokens.surface,
                             ),
                     ) {
                         if (isRunningTest) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = tokens.ink,
+                                color = if (tokens.isDark) tokens.captainInk else tokens.surface,
                                 strokeWidth = 2.dp,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -739,30 +743,26 @@ internal fun DesktopSettingsScreen(
                     text = "$durationMinutes ${if (durationMinutes == 1) "minute" else "minutes"}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = tokens.beacon,
+                    color = tokens.ink,
                 )
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     listOf(1, 15, 25, 50, 240).forEach { minutes ->
-                        OutlinedButton(
-                            onClick = { onDurationChanged(minutes) },
+                        AnchorChip(
+                            label = "${minutes}m",
+                            selected = durationMinutes == minutes,
+                            onClick = { if (!isBackupBusy) onDurationChanged(minutes) },
                             enabled = !isBackupBusy,
-                            modifier = Modifier.heightIn(min = 44.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
-                        ) {
-                            Text("${minutes}m")
-                        }
+                        )
                     }
-                    OutlinedButton(
-                        onClick = { showDefaultDurationPicker = true },
+                    AnchorChip(
+                        label = "Custom duration",
+                        selected = durationMinutes !in listOf(1, 15, 25, 50, 240),
+                        onClick = { if (!isBackupBusy) showDefaultDurationPicker = true },
                         enabled = !isBackupBusy,
-                        modifier = Modifier.heightIn(min = 44.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
-                    ) {
-                        Text("Custom duration")
-                    }
+                    )
                 }
                 Text(
                     text = "Choose ${DesktopDurationLimits.MIN_MINUTES}–${DesktopDurationLimits.MAX_MINUTES} minutes. Applies to your next session; current work or a break keeps its timer.",
@@ -1317,7 +1317,7 @@ internal fun DesktopSettingsScreen(
                                         colors =
                                             ButtonDefaults.buttonColors(
                                                 containerColor = tokens.beacon,
-                                                contentColor = tokens.paper2,
+                                                contentColor = tokens.beaconInk,
                                             ),
                                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                                     ) {
@@ -1709,7 +1709,12 @@ internal fun DesktopSettingsScreen(
                                             ResetType.RESET_STREAK -> tokens.primary
                                             ResetType.FACTORY_RESET -> tokens.clayRose
                                         },
-                                    contentColor = tokens.ink,
+                                    contentColor =
+                                        when (action) {
+                                            ResetType.CLEAR_TASKS -> tokens.beaconInk
+                                            ResetType.RESET_STREAK -> MaterialTheme.colorScheme.onPrimary
+                                            ResetType.FACTORY_RESET -> MaterialTheme.colorScheme.onError
+                                        },
                                 ),
                         ) {
                             Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))

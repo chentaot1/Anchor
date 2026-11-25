@@ -377,6 +377,26 @@ fun SettingsScreen(
                 }
             }
 
+            item(key = "section-automations") {
+                AnchorSectionHeader("Automations")
+            }
+            item(key = "settings-3") {
+                AnchorWell(contentPadding = PaddingValues(0.dp)) {
+                    SettingsInset {
+                Text("Automations (ADB)", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Trigger Anchor from Tasker, MacroDroid, or shell:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text("adb shell am start -a com.anchor.adhd.START_FOCUS -n com.anchor.adhd/.MainActivity")
+                Text("adb shell am start -a com.anchor.adhd.OPEN_MORNING_RITUAL -n com.anchor.adhd/.MainActivity")
+                Text("adb shell am start -a com.anchor.adhd.CHECK_IN -n com.anchor.adhd/.MainActivity")
+                Text("adb shell am start -a com.anchor.adhd.SHUTDOWN -n com.anchor.adhd/.MainActivity")
+                    }
+                }
+            }
+
             item(key = "settings-2") {
                 AnchorWell(contentPadding = PaddingValues(0.dp)) {
                     SettingsInset {
@@ -393,26 +413,6 @@ fun SettingsScreen(
                         vm.setBlockListMode(if (it) BlockListMode.WHITELIST else BlockListMode.BLOCKLIST)
                     }
                 )
-                    }
-                }
-            }
-
-            item(key = "section-licenses-about") {
-                AnchorSectionHeader("Licenses & about")
-            }
-            item(key = "settings-3") {
-                AnchorWell(contentPadding = PaddingValues(0.dp)) {
-                    SettingsInset {
-                Text("Automations (ADB)", style = MaterialTheme.typography.titleSmall)
-                Text(
-                    "Trigger Anchor from Tasker, MacroDroid, or shell:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text("adb shell am start -a com.anchor.adhd.START_FOCUS -n com.anchor.adhd/.MainActivity")
-                Text("adb shell am start -a com.anchor.adhd.OPEN_MORNING_RITUAL -n com.anchor.adhd/.MainActivity")
-                Text("adb shell am start -a com.anchor.adhd.CHECK_IN -n com.anchor.adhd/.MainActivity")
-                Text("adb shell am start -a com.anchor.adhd.SHUTDOWN -n com.anchor.adhd/.MainActivity")
                     }
                 }
             }
@@ -750,8 +750,8 @@ fun SettingsScreen(
                 }
             }
 
-            item(key = "section-backup") {
-                AnchorSectionHeader("Backup & data")
+            item(key = "section-licenses-about") {
+                AnchorSectionHeader("Licenses & about")
             }
             item(key = "licenses-link") {
                 AnchorWell(contentPadding = PaddingValues(0.dp)) {
@@ -763,6 +763,9 @@ fun SettingsScreen(
                 }
             }
 
+            item(key = "section-backup") {
+                AnchorSectionHeader("Backup & data")
+            }
             item(key = "settings-18") {
                 AnchorWell(contentPadding = PaddingValues(0.dp)) {
                     SettingsInset {

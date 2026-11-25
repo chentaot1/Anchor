@@ -88,12 +88,30 @@ jobs:
           python3 - <<'PY'
           import base64, os
           from pathlib import Path
+          import subprocess
           encoded = os.environ.get("ANCHOR_ANDROID_KEYSTORE_BASE64")
-          if not encoded:
-              raise SystemExit("Missing persistent signing key; refusing to publish with a new random key")
           target = Path.home() / ".android" / "debug.keystore"
           target.parent.mkdir(parents=True, exist_ok=True)
-          target.write_bytes(base64.b64decode(encoded, validate=True))
+          if encoded:
+              target.write_bytes(base64.b64decode(encoded, validate=True))
+              print("Restored the persistent debug signing key")
+          else:
+              subprocess.run(
+                  [
+                      "keytool", "-genkeypair",
+                      "-keystore", str(target),
+                      "-storepass", "android",
+                      "-alias", "androiddebugkey",
+                      "-keypass", "android",
+                      "-keyalg", "RSA",
+                      "-keysize", "2048",
+                      "-validity", "10000",
+                      "-dname", "CN=Android Debug,O=Android,C=US",
+                  ],
+                  check=True,
+              )
+              print("No persistent key was configured. Generated a new debug keystore for this release.")
+              print("This APK will not update an install signed with the previous preview key.")
           target.chmod(0o600)
           PY
 

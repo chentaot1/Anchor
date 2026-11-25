@@ -8,6 +8,6 @@ Windows and Android now share one Harbor identity. Morning Harbor is the warm pa
 - Focus keeps the rising-tide timer and freezes that motion when the system animator scale is off.
 - Plan, syllabus assignments, blocker rules, rescue, Airlock, and Settings use the same paper, hairline, and well surfaces.
 
-This debug-signed APK does not bundle model weights. An installed model is kept. Onboarding and Settings can download one later. versionCode 7 updates a preview 5 install that uses the same persistent signing key.
+This debug-signed APK does not bundle model weights. An installed model is kept. Onboarding and Settings can download one later. The saved signing key was not available, so this build uses a new debug key. It will not update a preview 5 install in place. Export a Settings backup, uninstall the old APK, then install this one.
 
 241 Android unit tests, 345 desktop tests (9 Windows-only checks skipped on Linux), and 24 shared tests passed. Android lint is clean. Physical-device Accessibility blocking, Health Connect, inference, and screen-reader passes were not repeated for this build.

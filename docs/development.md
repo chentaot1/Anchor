@@ -177,7 +177,7 @@ The [Android CI workflow](../.github/workflows/android-build.yml) runs unit test
 
 ## Android signing and updates
 
-Android tags are independent of desktop releases. Automated Android publication is opt-in and requires the persistent `ANCHOR_ANDROID_KEYSTORE_BASE64` signing secret. The workflow refuses to publish without that key. Locally signed APKs can be published without exporting the key.
+Android tags are independent of desktop releases. When `ANCHOR_ANDROID_KEYSTORE_BASE64` is set, the workflow signs with that key so updates install in place. When it is unset, the workflow generates a new debug key for that release. A new key will not update an older install.
 
 The 1.1.0 preview established a persistent signing identity. Older GitHub APKs used different debug keys, so Android cannot update those installations in place with this preview. Check the relevant [release notes](releases) before replacing an installation.
 

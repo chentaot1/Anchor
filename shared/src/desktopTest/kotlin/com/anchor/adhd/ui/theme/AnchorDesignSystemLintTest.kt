@@ -373,7 +373,6 @@ class AnchorDesignSystemLintTest {
             // Android legacy UI files
             "app/src/main/java/com/anchor/adhd/ui/components/AirlockSheet.kt",
             "app/src/main/java/com/anchor/adhd/ui/components/AnchorComponents.kt",
-            "app/src/main/java/com/anchor/adhd/ui/components/DayTimeline.kt",
             "app/src/main/java/com/anchor/adhd/ui/components/VitalityBar.kt",
             "app/src/main/java/com/anchor/adhd/ui/focus/ShieldRescueOverlay.kt",
             "app/src/main/java/com/anchor/adhd/ui/grove/FunLinksStrip.kt",
@@ -385,10 +384,8 @@ class AnchorDesignSystemLintTest {
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopAirlockDialog.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopBlockerScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFunLinks.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopPlanScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSettingsScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSmartOmniBar.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSyllabusScreen.kt",
         )
     }
 }

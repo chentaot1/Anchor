@@ -45,6 +45,11 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.anchor.adhd.desktop.MainKt"
+        // Release packaging hits ProGuard unresolved references in optional
+        // PDFBox, Okio, and Commons Logging classes. Ship the full jars.
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
         nativeDistributions {
             // Windows screen readers need Java Access Bridge in the bundled runtime.
             modules("java.instrument", "java.sql", "jdk.unsupported", "java.naming", "java.net.http", "jdk.accessibility")

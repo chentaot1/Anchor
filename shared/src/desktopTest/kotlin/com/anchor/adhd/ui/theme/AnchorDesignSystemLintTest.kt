@@ -7,13 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-/**
- * Automated Compose Hallmark Floor-ban lint gate shared across `:shared`, `:app`, and `:desktopApp`.
- *
- * Enforces all five Floor bans locked in `DESIGN.md`. Legacy files awaiting migration in Tasks 5-12
- * live in [UNMIGRATED_ALLOWLIST], which is strictly verified to contain only currently-violating
- * legacy files (never any Task 3 shared primitive) and is emptied as each screen migrates.
- */
+/** Automated Compose Hallmark Floor-ban lint gate shared across `:shared`, `:app`, and `:desktopApp`. */
 class AnchorDesignSystemLintTest {
     private enum class LintRule(val id: String) {
         COLOR_LITERAL("color-literal"),
@@ -36,12 +30,6 @@ class AnchorDesignSystemLintTest {
     fun allUiSourcesComplyWithDesignSystemFloorBans() {
         val repoRoot = resolveRepoRoot()
 
-        val protectedInAllowlist = UNMIGRATED_ALLOWLIST.intersect(TASK_3_PROTECTED_FILES)
-        assertTrue(
-            protectedInAllowlist.isEmpty(),
-            "Newly created Task 3 primitives must never be allowlisted: $protectedInAllowlist",
-        )
-
         val scannedFiles = collectScannedFiles(repoRoot)
         assertTrue(scannedFiles.isNotEmpty(), "Expected UI Kotlin files to scan under $repoRoot")
 
@@ -61,27 +49,11 @@ class AnchorDesignSystemLintTest {
             }
         }
 
-        val unexpectedViolations = violationsByPath
-            .filterKeys { it !in UNMIGRATED_ALLOWLIST }
-            .values
-            .flatten()
-
-        val staleAllowlistEntries = UNMIGRATED_ALLOWLIST
-            .filter { it !in violationsByPath }
-            .sorted()
-
-        if (unexpectedViolations.isNotEmpty() || staleAllowlistEntries.isNotEmpty()) {
+        val violations = violationsByPath.values.flatten()
+        if (violations.isNotEmpty()) {
             val message = buildString {
-                if (unexpectedViolations.isNotEmpty()) {
-                    appendLine("Design system Floor-ban violations in guarded files (${unexpectedViolations.size}):")
-                    unexpectedViolations.forEach { appendLine("  - ${it.format()}") }
-                }
-                if (staleAllowlistEntries.isNotEmpty()) {
-                    appendLine(
-                        "Stale entries in UNMIGRATED_ALLOWLIST (migrated or removed; delete so they stay guarded):",
-                    )
-                    staleAllowlistEntries.forEach { appendLine("  - $it") }
-                }
+                appendLine("Design system Floor-ban violations in guarded files (${violations.size}):")
+                violations.forEach { appendLine("  - ${it.format()}") }
             }
             fail(message.trimEnd())
         }
@@ -103,6 +75,8 @@ class AnchorDesignSystemLintTest {
             """.trimIndent(),
         )
         assertEquals(3, colorViolations.count { it.rule == LintRule.COLOR_LITERAL })
+        val namedHexViolations = lintSource(samplePath, "val edge = Color(color = 0xFF15263B)")
+        assertEquals(1, namedHexViolations.count { it.rule == LintRule.COLOR_LITERAL })
         assertTrue(
             lintSource(themePath, "val a = Color(0xFF15263B)\nval b = Color.White\nval c = Color.Black").isEmpty(),
             "ui/theme/ must be exempt from color-literal rule",
@@ -224,7 +198,7 @@ class AnchorDesignSystemLintTest {
     private fun lintSource(relativePath: String, content: String): List<LintViolation> {
         val normalizedPath = relativePath.replace('\\', '/')
         val isThemeFile = normalizedPath.contains("/ui/theme/")
-        val isFocusCanvas = normalizedPath == FOCUS_CANVAS_PATH || normalizedPath.endsWith("/FocusCanvas.kt")
+        val isFocusCanvas = normalizedPath == FOCUS_CANVAS_PATH
         val isFunLinksSettings = normalizedPath.endsWith("/FunLinksSettingsSection.kt")
         val violations = mutableListOf<LintViolation>()
 
@@ -329,17 +303,25 @@ class AnchorDesignSystemLintTest {
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/Main.kt",
         )
 
-        private val TASK_3_PROTECTED_FILES = setOf(
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/AnchorSurfaces.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/AnchorControls.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/AnchorTideVisuals.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/HarborCtaButton.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/HarborEmptyState.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/HarborModalSheet.kt",
-            FOCUS_CANVAS_PATH,
-        )
-
-        private val BANNED_EMOJIS = listOf("⚓", "🌱", "🛡", "🔥", "⚡", "✨", "💡", "🎯", "✎")
+        private val BANNED_EMOJIS =
+            listOf(
+                "⚓",
+                "🌱",
+                "🛡",
+                "🔥",
+                "⚡",
+                "✨",
+                "💡",
+                "🎯",
+                "✎",
+                "📅",
+                "🔒",
+                "🔓",
+                "⏱",
+                "⚠",
+                "✅",
+                "❌",
+            )
         private val LEGACY_HELPERS = listOf(
             "AnchorGradients",
             "beaconGlow",
@@ -350,7 +332,7 @@ class AnchorDesignSystemLintTest {
             "DesktopHarborScene",
         )
 
-        private val COLOR_HEX_REGEX = Regex("""\bColor\s*\(\s*0[xX][0-9a-fA-F_]+""")
+        private val COLOR_HEX_REGEX = Regex("""\bColor\s*\(\s*(?:color\s*=\s*)?0[xX][0-9a-fA-F_]+""")
         private val COLOR_NAMED_REGEX = Regex("""\bColor\.(White|Black)\b""")
         private val LETTER_SPACING_REGEX = Regex("""\bletterSpacing\s*=""")
         private val BANNED_EMOJI_REGEX = Regex(BANNED_EMOJIS.joinToString("|") { Regex.escape(it) })
@@ -360,11 +342,5 @@ class AnchorDesignSystemLintTest {
             Regex("""\b(${LEGACY_HELPERS.joinToString("|") { Regex.escape(it) }})\b""")
         private val INFINITE_TRANSITION_REGEX = Regex("""\brememberInfiniteTransition\b""")
         private val REDUCED_MOTION_REGEX = Regex("""\bLocalReducedMotion\b""")
-
-        /**
-         * Explicit temporary allowlist of legacy unmigrated files currently violating Floor bans.
-         * Remove each path as its screen or helper is migrated/deleted across Tasks 5-12 until empty.
-         */
-        private val UNMIGRATED_ALLOWLIST = setOf<String>()
     }
 }

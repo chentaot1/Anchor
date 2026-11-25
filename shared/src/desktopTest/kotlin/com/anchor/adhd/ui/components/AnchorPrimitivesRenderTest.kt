@@ -88,9 +88,9 @@ class AnchorPrimitivesRenderTest {
         val frame0: ByteArray
         val frameQuarter: ByteArray
         try {
-            // Frame 0 starts InfiniteTransition's LaunchedEffect; frame 1 anchors startTimeNanos.
-            animatedScene.render(0L)
-            frame0 = animatedScene.render(16_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes
+            val t = 0L
+            animatedScene.render(t)
+            frame0 = animatedScene.render(t + 16_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes
             frameQuarter = animatedScene.render(2_516_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes
         } finally {
             animatedScene.close()
@@ -129,8 +129,9 @@ class AnchorPrimitivesRenderTest {
         val reducedFrame0: ByteArray
         val reducedFrameQuarter: ByteArray
         try {
-            reducedScene.render(0L)
-            reducedFrame0 = reducedScene.render(16_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes
+            val t = 0L
+            reducedScene.render(t)
+            reducedFrame0 = reducedScene.render(t + 16_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes
             reducedFrameQuarter = reducedScene.render(2_516_000_000L).encodeToData(EncodedImageFormat.PNG)!!.bytes
         } finally {
             reducedScene.close()

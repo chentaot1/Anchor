@@ -6,11 +6,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.anchor.adhd.data.model.EnergyLevel
+import com.anchor.adhd.domain.AppearanceMode
 import com.anchor.adhd.ui.AnchorRoot
 import com.anchor.adhd.ui.onboarding.ModelOnboarding
 import com.anchor.adhd.ui.theme.AnchorTheme
@@ -22,8 +26,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            statusBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT,
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT,
+            ),
         )
         launchParams = readIntent(intent)
         intentVersion = 0
@@ -32,7 +42,28 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val params = launchParams
-            AnchorTheme {
+            val appearanceMode by container.preferences.appearanceMode.collectAsState(
+                initial = AppearanceMode.SYSTEM,
+            )
+            val darkTheme = appearanceMode.resolveDarkTheme(isSystemInDarkTheme())
+
+            DisposableEffect(darkTheme) {
+                val barStyle = if (darkTheme) {
+                    SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    )
+                }
+                this@MainActivity.enableEdgeToEdge(
+                    statusBarStyle = barStyle,
+                    navigationBarStyle = barStyle,
+                )
+                onDispose {}
+            }
+
+            AnchorTheme(darkTheme = darkTheme) {
                 ModelOnboarding(container) {
                     AnchorRoot(
                         container = container,

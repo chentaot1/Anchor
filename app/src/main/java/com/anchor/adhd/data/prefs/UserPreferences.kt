@@ -15,6 +15,7 @@ import com.anchor.adhd.data.model.BreakdownGranularity
 import com.anchor.adhd.data.model.BlockListMode
 import com.anchor.adhd.data.model.EnergyLevel
 import com.anchor.adhd.data.model.PostFocusSummary
+import com.anchor.adhd.domain.AppearanceMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -28,6 +29,18 @@ class UserPreferences(
     private val context: Context,
     private val store: DataStore<Preferences> = context.dataStore,
 ) {
+    companion object {
+        val APPEARANCE_MODE = stringPreferencesKey("appearance_mode")
+    }
+
+    val appearanceMode: Flow<AppearanceMode> = store.data.map { prefs ->
+        AppearanceMode.fromStorage(prefs[APPEARANCE_MODE])
+    }
+
+    suspend fun setAppearanceMode(mode: AppearanceMode) {
+        store.edit { it[APPEARANCE_MODE] = mode.name }
+    }
+
     private val modelOnboardingCompleteKey = booleanPreferencesKey("model_onboarding_complete")
     val modelOnboardingComplete: Flow<Boolean?> = store.data.map { it[modelOnboardingCompleteKey] }
 

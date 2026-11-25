@@ -43,6 +43,7 @@ import com.anchor.adhd.data.model.FunLinkEntity
 import com.anchor.adhd.data.model.BreakdownGranularity
 import com.anchor.adhd.data.repository.HabitLimitException
 import com.anchor.adhd.domain.AcademicContext
+import com.anchor.adhd.domain.AppearanceMode
 import com.anchor.adhd.domain.CheckInCodec
 import com.anchor.adhd.domain.BreakdownClamp
 import com.anchor.adhd.domain.SyllabusParser
@@ -274,6 +275,15 @@ class AnchorViewModel(
     fun setBreakdownGranularity(g: BreakdownGranularity) {
         viewModelScope.launch {
             container.preferences.setBreakdownGranularity(g)
+        }
+    }
+
+    val appearanceMode: StateFlow<AppearanceMode> = container.preferences.appearanceMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppearanceMode.SYSTEM)
+
+    fun setAppearanceMode(mode: AppearanceMode) {
+        viewModelScope.launch {
+            container.preferences.setAppearanceMode(mode)
         }
     }
 

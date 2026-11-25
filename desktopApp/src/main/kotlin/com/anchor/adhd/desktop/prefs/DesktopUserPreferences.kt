@@ -1,6 +1,5 @@
 package com.anchor.adhd.desktop.prefs
 
-import com.anchor.adhd.desktop.DesktopDurationLimits
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -9,6 +8,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.anchor.adhd.desktop.DesktopDurationLimits
+import com.anchor.adhd.domain.AppearanceMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -61,6 +62,7 @@ class DesktopUserPreferences internal constructor(private val dataStoreOverride:
         val SCOPE_TAX_MINUTES_TODAY = intPreferencesKey("scope_tax_minutes_today")
         val AUTOSTART_ON_BOOT = booleanPreferencesKey("autostart_on_boot")
         val START_MINIMIZED = booleanPreferencesKey("start_minimized")
+        val APPEARANCE_MODE = stringPreferencesKey("appearance_mode")
 
         fun calculateNext4AmEpoch(nowMillis: Long = System.currentTimeMillis()): Long {
             val zone = java.time.ZoneId.systemDefault()
@@ -130,6 +132,8 @@ class DesktopUserPreferences internal constructor(private val dataStoreOverride:
     val scopeTaxMinutesToday: Flow<Int> = dataStore.data.map { it[SCOPE_TAX_MINUTES_TODAY] ?: 0 }
     val autostartOnBoot: Flow<Boolean> = dataStore.data.map { it[AUTOSTART_ON_BOOT] ?: true }
     val startMinimized: Flow<Boolean> = dataStore.data.map { it[START_MINIMIZED] ?: true }
+    val appearanceModeFlow: Flow<AppearanceMode> =
+        dataStore.data.map { AppearanceMode.fromStorage(it[APPEARANCE_MODE]) }
 
     suspend fun setFocusWorkMinutes(minutes: Int) {
         requireFocusMinutes(minutes)
@@ -232,6 +236,12 @@ class DesktopUserPreferences internal constructor(private val dataStoreOverride:
     suspend fun getAutostartOnBootSnapshot(): Boolean = dataStore.data.first()[AUTOSTART_ON_BOOT] ?: true
 
     suspend fun getStartMinimizedSnapshot(): Boolean = dataStore.data.first()[START_MINIMIZED] ?: true
+
+    suspend fun setAppearanceMode(mode: AppearanceMode) {
+        dataStore.edit { it[APPEARANCE_MODE] = mode.name }
+    }
+
+    suspend fun getAppearanceModeSnapshot(): AppearanceMode = appearanceModeFlow.first()
 
     fun getDiscoveredModels(): List<File> {
         val candidates = mutableListOf<File>()

@@ -365,20 +365,6 @@ class AnchorDesignSystemLintTest {
          * Explicit temporary allowlist of legacy unmigrated files currently violating Floor bans.
          * Remove each path as its screen or helper is migrated/deleted across Tasks 5-12 until empty.
          */
-        private val UNMIGRATED_ALLOWLIST = setOf(
-            // Shared legacy files
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/components/CustomDurationDialog.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/theme/AnchorDepth.kt",
-            "shared/src/commonMain/kotlin/com/anchor/adhd/ui/theme/AnchorGradients.kt",
-            // Android legacy UI files
-            "app/src/main/java/com/anchor/adhd/ui/components/AnchorComponents.kt",
-            "app/src/main/java/com/anchor/adhd/ui/components/VitalityBar.kt",
-            "app/src/main/java/com/anchor/adhd/ui/grove/FunLinksStrip.kt",
-            "app/src/main/java/com/anchor/adhd/ui/grow/HabitHeatmap.kt",
-            "app/src/main/java/com/anchor/adhd/ui/more/MoreScreen.kt",
-            // Desktop legacy UI files
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFunLinks.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSettingsScreen.kt",
-        )
+        private val UNMIGRATED_ALLOWLIST = setOf<String>()
     }
 }

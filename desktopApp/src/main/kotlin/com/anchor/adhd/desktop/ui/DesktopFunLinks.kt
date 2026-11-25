@@ -1,10 +1,8 @@
 package com.anchor.adhd.desktop.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -25,22 +23,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.anchor.adhd.desktop.db.DesktopFunLink
-import com.anchor.adhd.desktop.theme.AnchorColors
-import com.anchor.adhd.desktop.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 import java.awt.Desktop
 import java.net.URI
 
 /**
  * Trojan Fun Links strip on Windows 11.
- * Sea-glass rounded tiles with colored icon aura back-glows.
- * Launches default desktop browser (Chrome/Edge/Brave/Firefox).
+ * Quiet token-backed tiles; launches default desktop browser.
  */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -49,6 +44,7 @@ fun DesktopFunLinks(
     modifier: Modifier = Modifier,
 ) {
     if (links.isEmpty()) return
+    val tokens = LocalAnchorTokens.current
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -57,16 +53,14 @@ fun DesktopFunLinks(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "BRAIN BREAKS",
+                text = "Brain breaks",
                 style = MaterialTheme.typography.labelSmall,
-                letterSpacing = 1.5.sp,
-                fontWeight = FontWeight.Bold,
-                color = AnchorColors.HarborAction,
+                color = tokens.beacon,
             )
             Text(
                 text = "Healthy dopamine reset",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.45f),
+                color = tokens.muted,
             )
         }
 
@@ -91,32 +85,34 @@ fun DesktopFunLinks(
                                 }
                             },
                     shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                    color = AnchorColors.HarborDock.copy(alpha = 0.85f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    color = tokens.paper2,
+                    border = BorderStroke(1.dp, tokens.rule),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.08f)),
-                            contentAlignment = Alignment.Center,
+                        Surface(
+                            modifier = Modifier.size(32.dp),
+                            shape = CircleShape,
+                            color = tokens.paper3,
                         ) {
-                            Text(
-                                text = link.emoji,
-                                fontSize = 16.sp,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = link.emoji,
+                                    fontSize = 16.sp,
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = link.name,
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = tokens.ink,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )

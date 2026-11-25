@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Column
@@ -66,6 +65,10 @@ import com.anchor.adhd.ai.ModelCatalogEntry
 import com.anchor.adhd.ui.components.LicenseDialog
 import com.anchor.adhd.ui.components.HealthConnectButton
 import com.anchor.adhd.ui.copy.AppCopy
+import com.anchor.adhd.domain.AppearanceMode
+import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorSectionHeader
+import com.anchor.adhd.ui.components.AnchorWell
 import com.anchor.adhd.ui.vm.AnchorViewModel
 
 private fun BreakdownGranularity.settingsLabel(): String = when (this) {
@@ -118,6 +121,7 @@ fun SettingsScreen(
     val focusDurations by vm.focusDurations.collectAsState()
     val planningSettings by vm.planningSettings.collectAsState()
     val blockListMode by vm.blockListMode.collectAsState()
+    val appearanceMode by vm.appearanceMode.collectAsState()
 
     if (showLicenses) LicenseDialog(
         readNotice = { name -> context.assets.open(name).bufferedReader().use { it.readText() } },
@@ -215,6 +219,24 @@ fun SettingsScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item(key = "appearance") {
+                AnchorWell {
+                    AnchorSectionHeader("Appearance")
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AppearanceMode.entries.forEach { mode ->
+                            AnchorChip(
+                                label = mode.label,
+                                selected = appearanceMode == mode,
+                                onClick = { vm.setAppearanceMode(mode) },
+                            )
+                        }
+                    }
+                }
+            }
             item(key = "categories") {
                 Text("Choose a category", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -224,7 +246,7 @@ fun SettingsScreen(
                 }
             }
             if (section == "Focus") item(key = "app-protection") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("App protection", style = MaterialTheme.typography.titleMedium)
                         Text("Manage protected apps, daily allowances, curfew and earned leisure.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -233,7 +255,7 @@ fun SettingsScreen(
                 }
             }
             if (section == "Reminders") item(key = "settings-0") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Reminders", style = MaterialTheme.typography.titleMedium)
                 val reminderSettings by vm.reminderSettings.collectAsState()
@@ -311,7 +333,7 @@ fun SettingsScreen(
             }
 
             if (section == "Planning") item(key = "settings-1") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Planning", style = MaterialTheme.typography.titleMedium)
                 val capacityHours = planningSettings.dailyCapacityMinutes / 60f
@@ -358,7 +380,7 @@ fun SettingsScreen(
             }
 
             if (section == "Advanced") item(key = "settings-2") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Block mode", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -378,7 +400,7 @@ fun SettingsScreen(
             }
 
             if (section == "Advanced") item(key = "settings-3") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Automations (ADB)", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -395,7 +417,7 @@ fun SettingsScreen(
             }
 
             if (section == "Focus") item(key = "settings-4") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Focus durations", style = MaterialTheme.typography.titleMedium)
                 val (work, brk) = focusDurations
@@ -419,7 +441,7 @@ fun SettingsScreen(
             }
 
             if (section == "Connections") item(key = "settings-5") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Health Connect", style = MaterialTheme.typography.titleMedium)
                         Text(
@@ -436,7 +458,7 @@ fun SettingsScreen(
             }
 
             if (section == "Focus") item(key = "settings-6") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Samsung setup", style = MaterialTheme.typography.titleMedium)
                 Text("1. Settings → Battery → Anchor → Unrestricted")
@@ -450,7 +472,7 @@ fun SettingsScreen(
             }
 
             if (section == "Advanced") item(key = "settings-7") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Blocklist", style = MaterialTheme.typography.titleMedium)
                 OutlinedTextField(
@@ -488,7 +510,7 @@ fun SettingsScreen(
             }
 
             if (section == "Advanced") item(key = "settings-9") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Scheduled shields", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -537,7 +559,7 @@ fun SettingsScreen(
             }
 
             if (section == "Advanced") item(key = "settings-10") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Temptation bundles", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -578,7 +600,7 @@ fun SettingsScreen(
             }
 
             if (section == "Connections") item(key = "settings-12") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Device calendar", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -606,7 +628,7 @@ fun SettingsScreen(
             }
 
             if (section == "AI") item(key = "settings-14") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("On-device AI", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -652,7 +674,7 @@ fun SettingsScreen(
             }
 
             if (section == "AI") item(key = "settings-breakdown-granularity") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Breakdown granularity", style = MaterialTheme.typography.titleMedium)
                         Text(
@@ -687,7 +709,7 @@ fun SettingsScreen(
             }
 
             if (section == "AI") item(key = "settings-16") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (vm.aiNativeRuntime) {
                     Text("Matches desktop: 2048-token context, 4 CPU threads, Q8 cache, reasoning off. Chat temperature 0.4; task temperature 0.2.", style = MaterialTheme.typography.bodySmall)
@@ -717,7 +739,7 @@ fun SettingsScreen(
             }
 
             if (section == "Planning") item(key = "settings-17") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 FunLinksSettingsSection(vm = vm)
                     }
@@ -729,7 +751,7 @@ fun SettingsScreen(
             }
 
             if (section == "Data") item(key = "settings-18") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Backup", style = MaterialTheme.typography.titleMedium)
                         Button(onClick = { vm.exportBackup() }, modifier = Modifier.fillMaxWidth()) {
@@ -746,7 +768,7 @@ fun SettingsScreen(
             }
 
             if (section == "Data") item(key = "settings-19") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("AI Memory & Privacy", style = MaterialTheme.typography.titleMedium)
                 Text(
@@ -780,7 +802,7 @@ fun SettingsScreen(
             }
 
             if (section == "Data") item(key = "settings-20") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Danger zone", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.error)
                 Text(
@@ -799,7 +821,7 @@ fun SettingsScreen(
             }
 
             if (section == "Advanced") item(key = "settings-21") {
-                OutlinedCard(Modifier.fillMaxWidth()) {
+                AnchorWell {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("AI debug (recent jobs)", style = MaterialTheme.typography.titleMedium)
                     }
@@ -889,7 +911,7 @@ private fun ModelCatalogCard(
     onActivate: () -> Unit
 ) {
     val needsSpace = freeDiskBytes < requiredFreeBytes
-    OutlinedCard(Modifier.fillMaxWidth()) {
+    AnchorWell {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Desktop main model", style = MaterialTheme.typography.titleMedium)
             Text(entry.label, color = MaterialTheme.colorScheme.onSurfaceVariant)

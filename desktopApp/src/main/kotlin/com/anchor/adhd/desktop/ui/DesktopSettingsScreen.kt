@@ -82,6 +82,12 @@ import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
 import com.anchor.adhd.desktop.update.DesktopUpdateManager
 import com.anchor.adhd.desktop.update.UpdateState
+import com.anchor.adhd.domain.AppearanceMode
+import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorSectionHeader
+import com.anchor.adhd.ui.components.AnchorWell
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
+
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -123,6 +129,8 @@ internal fun DesktopSettingsScreen(
     )
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val tokens = LocalAnchorTokens.current
+    val appearanceMode by prefs.appearanceModeFlow.collectAsState(initial = AppearanceMode.SYSTEM)
     val harborState by db.harborState.collectAsState()
     val tasks by db.tasks.collectAsState()
     var showDefaultDurationPicker by remember { mutableStateOf(false) }
@@ -198,13 +206,31 @@ internal fun DesktopSettingsScreen(
                 .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+
+        AnchorWell {
+            AnchorSectionHeader("Appearance")
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AppearanceMode.entries.forEach { mode ->
+                    AnchorChip(
+                        label = mode.label,
+                        selected = appearanceMode == mode,
+                        onClick = { scope.launch { prefs.setAppearanceMode(mode) } },
+                    )
+                }
+            }
+        }
+
         // Title
         Column {
             Text(
                 text = "Anchor Settings & Windows Storage",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = tokens.ink,
             )
             Text(
                 text = "Manage focus durations, on-device AI inference, and local persistence",
@@ -251,7 +277,7 @@ internal fun DesktopSettingsScreen(
                                 text = "On-Device AI Engine",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = tokens.ink,
                             )
                             Text(
                                 text = if (modelExists) modelFile.nameWithoutExtension else "On-Device GGUF Engine",
@@ -283,8 +309,8 @@ internal fun DesktopSettingsScreen(
                                 SwitchDefaults.colors(
                                     checkedThumbColor = AnchorColors.HarborAi,
                                     checkedTrackColor = AnchorColors.HarborAi.copy(alpha = 0.3f),
-                                    uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
-                                    uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                    uncheckedThumbColor = tokens.muted,
+                                    uncheckedTrackColor = tokens.rule,
                                 ),
                         )
                     }
@@ -300,18 +326,18 @@ internal fun DesktopSettingsScreen(
                     // Status Badge
                     val statusText =
                         when (engineStatus) {
-                            is LlamaServerStatus.Ready -> "ACTIVE & READY (Port ${(engineStatus as LlamaServerStatus.Ready).port})"
-                            is LlamaServerStatus.Starting -> "STARTING / LOADING WEIGHTS..."
+                            is LlamaServerStatus.Ready -> "Active and ready (Port ${(engineStatus as LlamaServerStatus.Ready).port})"
+                            is LlamaServerStatus.Starting -> "Starting / loading weights…"
                             is LlamaServerStatus.Error -> "ERROR: ${(engineStatus as LlamaServerStatus.Error).message}"
-                            is LlamaServerStatus.Disabled -> "DISABLED (Instant 2ms Heuristic)"
-                            LlamaServerStatus.Idle -> "IDLE (Instant 2ms Heuristic)"
+                            is LlamaServerStatus.Disabled -> "Disabled (instant heuristic)"
+                            LlamaServerStatus.Idle -> "Idle (instant heuristic)"
                         }
                     val statusColor =
                         when (engineStatus) {
-                            is LlamaServerStatus.Ready -> Color(0xFF4CAF50)
+                            is LlamaServerStatus.Ready -> tokens.sage
                             is LlamaServerStatus.Starting -> AnchorColors.HarborBeaconAmber
-                            is LlamaServerStatus.Error -> Color(0xFFE57373)
-                            else -> Color.White.copy(alpha = 0.6f)
+                            is LlamaServerStatus.Error -> tokens.clayRose
+                            else -> tokens.muted
                         }
 
                     Surface(
@@ -349,7 +375,7 @@ internal fun DesktopSettingsScreen(
                         } else {
                             "File Missing"
                         }
-                    val modelColor = if (modelExists) Color(0xFF4CAF50) else Color(0xFFFFA726)
+                    val modelColor = if (modelExists) tokens.sage else tokens.beacon
                     Surface(
                         shape = RoundedCornerShape(AnchorSpacing.radiusChip),
                         color = modelColor.copy(alpha = 0.12f),
@@ -382,7 +408,7 @@ internal fun DesktopSettingsScreen(
                 Surface(
                     shape = RoundedCornerShape(AnchorSpacing.radiusCard),
                     color = AnchorColors.HarborBackground.copy(alpha = 0.6f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    border = BorderStroke(1.dp, tokens.rule),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
@@ -395,11 +421,10 @@ internal fun DesktopSettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "MODEL PATH",
+                                text = "Model path",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontSize = 10.sp,
-                                letterSpacing = 1.sp,
-                                color = Color.White.copy(alpha = 0.4f),
+                                color = tokens.muted,
                                 fontWeight = FontWeight.Bold,
                             )
                             Spacer(modifier = Modifier.height(2.dp))
@@ -407,7 +432,7 @@ internal fun DesktopSettingsScreen(
                                 text = aiModelPath,
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = tokens.ink2,
                                 fontSize = 11.sp,
                             )
                         }
@@ -457,11 +482,10 @@ internal fun DesktopSettingsScreen(
                 if (discoveredModels.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        text = "DETECTED LOCAL MODELS (1-CLICK SWITCH)",
+                        text = "Detected local models",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 10.sp,
-                        letterSpacing = 1.sp,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = tokens.muted,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -475,7 +499,7 @@ internal fun DesktopSettingsScreen(
                             Surface(
                                 shape = RoundedCornerShape(AnchorSpacing.radiusCard),
                                 color = if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.18f) else AnchorColors.HarborBackground.copy(alpha = 0.5f),
-                                border = BorderStroke(1.dp, if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.08f)),
+                                border = BorderStroke(1.dp, if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.7f) else tokens.rule),
                                 modifier = Modifier.fillMaxWidth().clickable {
                                     if (!isSelected) {
                                         scope.launch {
@@ -499,7 +523,7 @@ internal fun DesktopSettingsScreen(
                                         Icon(
                                             imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Storage,
                                             contentDescription = null,
-                                            tint = if (isSelected) AnchorColors.HarborAi else Color.White.copy(alpha = 0.4f),
+                                            tint = if (isSelected) AnchorColors.HarborAi else tokens.muted,
                                             modifier = Modifier.size(18.dp),
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -508,7 +532,7 @@ internal fun DesktopSettingsScreen(
                                                 text = file.name,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.85f),
+                                                color = if (isSelected) tokens.ink else tokens.ink2,
                                                 fontSize = 12.sp,
                                             )
                                             Text(
@@ -521,7 +545,7 @@ internal fun DesktopSettingsScreen(
                                                         "Local On-Device GGUF Weights"
                                                     },
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = if (isSelected) AnchorColors.HarborAi else Color.White.copy(alpha = 0.4f),
+                                                color = if (isSelected) AnchorColors.HarborAi else tokens.muted,
                                                 fontSize = 10.sp,
                                             )
                                         }
@@ -529,7 +553,7 @@ internal fun DesktopSettingsScreen(
 
                                     Surface(
                                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                        color = if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.08f),
+                                        color = if (isSelected) AnchorColors.HarborAi.copy(alpha = 0.3f) else tokens.rule,
                                     ) {
                                         Text(
                                             text = if (isSelected) "ACTIVE • $sizeStr" else sizeStr,
@@ -537,7 +561,7 @@ internal fun DesktopSettingsScreen(
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 10.sp,
-                                            color = if (isSelected) AnchorColors.HarborAi else Color.White.copy(alpha = 0.65f),
+                                            color = if (isSelected) AnchorColors.HarborAi else tokens.muted,
                                         )
                                     }
                                 }
@@ -557,7 +581,7 @@ internal fun DesktopSettingsScreen(
                     Text(
                         text = "Zero cloud dependency: 100% private, offline, on-device inference.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.45f),
+                        color = tokens.muted,
                         modifier = Modifier.weight(1f),
                     )
 
@@ -578,13 +602,13 @@ internal fun DesktopSettingsScreen(
                         colors =
                             ButtonDefaults.buttonColors(
                                 containerColor = AnchorColors.HarborAi,
-                                contentColor = Color.White,
+                                contentColor = tokens.ink,
                             ),
                     ) {
                         if (isRunningTest) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = Color.White,
+                                color = tokens.ink,
                                 strokeWidth = 2.dp,
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -606,11 +630,11 @@ internal fun DesktopSettingsScreen(
                     Spacer(modifier = Modifier.height(14.dp))
                     Surface(
                         shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                        color = if (res.success) Color(0xFF003829).copy(alpha = 0.6f) else Color(0xFF380000).copy(alpha = 0.6f),
+                        color = if (res.success) tokens.sageSoft.copy(alpha = 0.6f) else tokens.clayRoseSoft.copy(alpha = 0.6f),
                         border =
                             BorderStroke(
                                 1.dp,
-                                if (res.success) Color(0xFF4CAF50).copy(alpha = 0.4f) else Color(0xFFE57373).copy(alpha = 0.4f),
+                                if (res.success) tokens.sage.copy(alpha = 0.4f) else tokens.clayRose.copy(alpha = 0.4f),
                             ),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -623,7 +647,7 @@ internal fun DesktopSettingsScreen(
                                     text = if (res.success) "BENCHMARK PASSED" else "TEST FAILED",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (res.success) Color(0xFF81C784) else Color(0xFFE57373),
+                                    color = if (res.success) tokens.sage else tokens.clayRose,
                                 )
                                 if (res.success) {
                                     Text(
@@ -640,7 +664,7 @@ internal fun DesktopSettingsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = tokens.ink2,
                             )
                         }
                     }
@@ -653,7 +677,7 @@ internal fun DesktopSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
             color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            border = BorderStroke(1.dp, tokens.rule),
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -666,7 +690,7 @@ internal fun DesktopSettingsScreen(
                         text = "Default Focus Duration",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = tokens.ink,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -702,7 +726,7 @@ internal fun DesktopSettingsScreen(
                 Text(
                     text = "Choose ${DesktopDurationLimits.MIN_MINUTES}–${DesktopDurationLimits.MAX_MINUTES} minutes. Applies to your next session; current work or a break keeps its timer.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = tokens.muted,
                 )
             }
         }
@@ -715,7 +739,7 @@ internal fun DesktopSettingsScreen(
             border =
                 BorderStroke(
                     1.dp,
-                    if (standingShieldEnabled) AnchorColors.HarborGrowth.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f),
+                    if (standingShieldEnabled) AnchorColors.HarborGrowth.copy(alpha = 0.5f) else tokens.rule,
                 ),
         ) {
             Row(
@@ -736,7 +760,7 @@ internal fun DesktopSettingsScreen(
                                     if (standingShieldEnabled) {
                                         AnchorColors.HarborGrowth.copy(alpha = 0.25f)
                                     } else {
-                                        Color.White.copy(alpha = 0.08f)
+                                        tokens.rule
                                     },
                                 ),
                         contentAlignment = Alignment.Center,
@@ -754,12 +778,12 @@ internal fun DesktopSettingsScreen(
                             text = "Standing Shield (Continuous Protection)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = tokens.ink,
                         )
                         Text(
                             text = "Block distracting apps and websites 24/7 without requiring an active Pomodoro countdown.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = tokens.ink2,
                         )
                     }
                 }
@@ -773,8 +797,8 @@ internal fun DesktopSettingsScreen(
                         SwitchDefaults.colors(
                             checkedThumbColor = AnchorColors.HarborFoliage,
                             checkedTrackColor = AnchorColors.HarborGrowth,
-                            uncheckedThumbColor = Color.White.copy(alpha = 0.6f),
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.15f),
+                            uncheckedThumbColor = tokens.muted,
+                            uncheckedTrackColor = tokens.rule,
                         ),
                 )
             }
@@ -785,7 +809,7 @@ internal fun DesktopSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
             color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            border = BorderStroke(1.dp, tokens.rule),
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 // Header
@@ -817,12 +841,12 @@ internal fun DesktopSettingsScreen(
                                     text = "Windows Startup & Background Shield",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = tokens.ink,
                                 )
                                 val isReg = startupRegistered == true
                                 Surface(
                                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                    color = if (isReg) AnchorColors.HarborGrowth.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f),
+                                    color = if (isReg) AnchorColors.HarborGrowth.copy(alpha = 0.2f) else tokens.rule,
                                 ) {
                                     Text(
                                         text = when {
@@ -833,7 +857,7 @@ internal fun DesktopSettingsScreen(
                                         },
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 10.sp,
-                                        color = if (isReg) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.5f),
+                                        color = if (isReg) AnchorColors.HarborFoliage else tokens.muted,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                     )
                                 }
@@ -841,7 +865,7 @@ internal fun DesktopSettingsScreen(
                             Text(
                                 text = "Choose how Anchor opens when you sign in to Windows.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.65f),
+                                color = tokens.muted,
                             )
                         }
                     }
@@ -860,12 +884,12 @@ internal fun DesktopSettingsScreen(
                             text = "Launch at Windows Startup",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = tokens.ink,
                         )
                         Text(
                             text = "Automatically starts Anchor in Windows Task Manager Startup Apps on login.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = tokens.muted,
                         )
                     }
                     Switch(
@@ -878,8 +902,8 @@ internal fun DesktopSettingsScreen(
                             SwitchDefaults.colors(
                                 checkedThumbColor = AnchorColors.HarborPrimary,
                                 checkedTrackColor = AnchorColors.HarborAction,
-                                uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                uncheckedThumbColor = tokens.muted,
+                                uncheckedTrackColor = tokens.rule,
                             ),
                     )
                 }
@@ -897,12 +921,12 @@ internal fun DesktopSettingsScreen(
                             text = "Start Minimized (Background Shield)",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = tokens.ink,
                         )
                         Text(
                             text = "Starts quietly in the Windows taskbar instead of taking over the screen in fullscreen.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = tokens.muted,
                         )
                     }
                     Switch(
@@ -915,14 +939,14 @@ internal fun DesktopSettingsScreen(
                             SwitchDefaults.colors(
                                 checkedThumbColor = AnchorColors.HarborPrimary,
                                 checkedTrackColor = AnchorColors.HarborAction,
-                                uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                uncheckedThumbColor = tokens.muted,
+                                uncheckedTrackColor = tokens.rule,
                             ),
                     )
                 }
                 startupError?.let { message ->
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(message, style = MaterialTheme.typography.bodySmall, color = Color(0xFFFFB4AB))
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = tokens.clayRose)
                 }
             }
         }
@@ -964,7 +988,7 @@ internal fun DesktopSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
             color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            border = BorderStroke(1.dp, tokens.rule),
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Column(
@@ -979,12 +1003,12 @@ internal fun DesktopSettingsScreen(
                                 text = "Local Windows 11 Database",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = tokens.ink,
                             )
                             Text(
                                 text = appDataDir.absolutePath,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = tokens.muted,
                             )
                         }
                     }
@@ -1105,7 +1129,7 @@ internal fun DesktopSettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
             color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, Color(0xFFFFA000).copy(alpha = 0.35f)),
+            border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.35f)),
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 // Header Row
@@ -1120,13 +1144,13 @@ internal fun DesktopSettingsScreen(
                                 Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFFFA000).copy(alpha = 0.15f)),
+                                    .background(tokens.beacon.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.RestartAlt,
                                 contentDescription = null,
-                                tint = Color(0xFFFFA000),
+                                tint = tokens.beacon,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -1136,12 +1160,12 @@ internal fun DesktopSettingsScreen(
                                 text = "Fresh Start & Clean Slate",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = tokens.ink,
                             )
                             Text(
                                 text = "Start fresh with a recovery backup of your current data.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFFFA000),
+                                color = tokens.beacon,
                             )
                         }
                     }
@@ -1157,7 +1181,7 @@ internal fun DesktopSettingsScreen(
                     title = "Clear Task Backlog (Inbox Zero)",
                     description = "Wipes lingering completed & overdue tasks and creates a clean 1-task anchor. Prevents avoidance when tasks pile up.",
                     buttonText = "Clear Backlog",
-                    buttonColor = Color(0xFFFFA000),
+                    buttonColor = tokens.beacon,
                     onClick = { pendingResetAction = ResetType.CLEAR_TASKS },
                     enabled = !isBackupBusy && canRestoreBackup,
                 )
@@ -1170,7 +1194,7 @@ internal fun DesktopSettingsScreen(
                     description =
                         "Clears recorded sessions and resets progress to zero. Your next completed session starts Day 1. A recovery backup preserves your previous history.",
                     buttonText = "Reset Streak",
-                    buttonColor = Color(0xFF7E57C2),
+                    buttonColor = tokens.primary,
                     onClick = { pendingResetAction = ResetType.RESET_STREAK },
                     enabled = !isBackupBusy && canRestoreBackup,
                 )
@@ -1182,7 +1206,7 @@ internal fun DesktopSettingsScreen(
                     title = "Reset Tasks & Progress",
                     description = "Clears tasks, assignments, courses, focus history, and harbor progress. Protection rules, class schedules, settings, and models remain.",
                     buttonText = "Reset Tasks & Progress",
-                    buttonColor = Color(0xFFE53935),
+                    buttonColor = tokens.clayRose,
                     onClick = { pendingResetAction = ResetType.FACTORY_RESET },
                     enabled = !isBackupBusy && canRestoreBackup,
                 )
@@ -1203,9 +1227,9 @@ internal fun DesktopSettingsScreen(
                     color =
                         when (updateState) {
                             is UpdateState.UpdateAvailable -> AnchorColors.HarborAction
-                            is UpdateState.UpdateSuccess -> Color(0xFF4CAF50)
-                            is UpdateState.Error -> Color(0xFFE57373)
-                            else -> Color.White.copy(alpha = 0.15f)
+                            is UpdateState.UpdateSuccess -> tokens.sage
+                            is UpdateState.Error -> tokens.clayRose
+                            else -> tokens.rule
                         },
                 ),
         ) {
@@ -1238,7 +1262,7 @@ internal fun DesktopSettingsScreen(
                                 text = "Anchor Updates & Safe In-App Sync",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = tokens.ink,
                             )
                             val envLabel =
                                 if (DesktopUpdateManager.isGitEnvironment) {
@@ -1295,7 +1319,7 @@ internal fun DesktopSettingsScreen(
                         Text(
                             text = "Anchor automatically checks GitHub for updates. Click \"Check for Updates\" anytime to verify without manual redownloads.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = tokens.muted,
                         )
                     }
 
@@ -1310,7 +1334,7 @@ internal fun DesktopSettingsScreen(
                             Text(
                                 text = "Checking remote GitHub repository for new commits & releases...",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = tokens.ink2,
                             )
                         }
                     }
@@ -1319,15 +1343,15 @@ internal fun DesktopSettingsScreen(
                         Text(
                             text = state.message,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = tokens.ink2,
                         )
                     }
 
                     is UpdateState.UpToDate -> {
                         Surface(
                             shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                            color = Color(0xFF003829).copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, Color(0xFF4CAF50).copy(alpha = 0.4f)),
+                            color = tokens.sageSoft.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, tokens.sage.copy(alpha = 0.4f)),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Row(
@@ -1337,7 +1361,7 @@ internal fun DesktopSettingsScreen(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
-                                    tint = Color(0xFF81C784),
+                                    tint = tokens.sage,
                                     modifier = Modifier.size(20.dp),
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
@@ -1346,14 +1370,14 @@ internal fun DesktopSettingsScreen(
                                         text = "Source checkout is up to date",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF81C784),
+                                        color = tokens.sage,
                                     )
                                     Text(
                                         text =
                                             "No newer commits on origin/${state.branch}. " +
                                                 "Checkout: ${state.currentVersion} • ${state.commitHash}.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = tokens.ink2,
                                     )
                                 }
                             }
@@ -1386,7 +1410,7 @@ internal fun DesktopSettingsScreen(
                                                 text = "New Update Available! (${state.commitsBehind} new commit${if (state.commitsBehind > 1) "s" else ""})",
                                                 style = MaterialTheme.typography.titleSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                color = tokens.ink,
                                             )
                                             Text(
                                                 text = "Latest: ${state.latestCommit}${if (state.latestTag != null) " (${state.latestTag})" else ""}",
@@ -1427,7 +1451,7 @@ internal fun DesktopSettingsScreen(
                                         text = "Recent Changes:",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = tokens.ink2,
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Surface(
@@ -1442,14 +1466,14 @@ internal fun DesktopSettingsScreen(
                                                     style = MaterialTheme.typography.bodySmall,
                                                     fontFamily = FontFamily.Monospace,
                                                     fontSize = 11.sp,
-                                                    color = Color.White.copy(alpha = 0.85f),
+                                                    color = tokens.ink2,
                                                 )
                                             }
                                             if (state.changelog.size > 5) {
                                                 Text(
                                                     text = "... and ${state.changelog.size - 5} more commits",
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    color = tokens.muted,
                                                     modifier = Modifier.padding(top = 4.dp),
                                                 )
                                             }
@@ -1479,13 +1503,13 @@ internal fun DesktopSettingsScreen(
                                         text = state.stage,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        color = tokens.ink,
                                     )
                                 }
                                 if (state.logs.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Surface(
-                                        color = Color.Black.copy(alpha = 0.5f),
+                                        color = tokens.paper3.copy(alpha = 0.85f),
                                         shape = RoundedCornerShape(6.dp),
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
@@ -1509,8 +1533,8 @@ internal fun DesktopSettingsScreen(
                     is UpdateState.UpdateSuccess -> {
                         Surface(
                             shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                            color = Color(0xFF003829).copy(alpha = 0.7f),
-                            border = BorderStroke(1.dp, Color(0xFF4CAF50)),
+                            color = tokens.sageSoft.copy(alpha = 0.7f),
+                            border = BorderStroke(1.dp, tokens.sage),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Row(
@@ -1522,7 +1546,7 @@ internal fun DesktopSettingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = Color(0xFF81C784),
+                                        tint = tokens.sage,
                                         modifier = Modifier.size(24.dp),
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -1531,12 +1555,12 @@ internal fun DesktopSettingsScreen(
                                             text = "Update Complete!",
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF81C784),
+                                            color = tokens.sage,
                                         )
                                         Text(
                                             text = state.message,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.85f),
+                                            color = tokens.ink2,
                                         )
                                     }
                                 }
@@ -1549,8 +1573,8 @@ internal fun DesktopSettingsScreen(
                                         },
                                         colors =
                                             ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF4CAF50),
-                                                contentColor = Color.Black,
+                                                containerColor = tokens.sage,
+                                                contentColor = tokens.beaconInk,
                                             ),
                                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                                     ) {
@@ -1566,7 +1590,7 @@ internal fun DesktopSettingsScreen(
                                         Text(
                                             text = "Finish or reset your timer and let pending saves finish before restarting Anchor.",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.7f),
+                                            color = tokens.ink2,
                                         )
                                     }
                                 }
@@ -1577,8 +1601,8 @@ internal fun DesktopSettingsScreen(
                     is UpdateState.Error -> {
                         Surface(
                             shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                            color = Color(0xFF380000).copy(alpha = 0.6f),
-                            border = BorderStroke(1.dp, Color(0xFFE57373).copy(alpha = 0.5f)),
+                            color = tokens.clayRoseSoft.copy(alpha = 0.6f),
+                            border = BorderStroke(1.dp, tokens.clayRose.copy(alpha = 0.5f)),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -1586,7 +1610,7 @@ internal fun DesktopSettingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Warning,
                                         contentDescription = null,
-                                        tint = Color(0xFFE57373),
+                                        tint = tokens.clayRose,
                                         modifier = Modifier.size(20.dp),
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
@@ -1594,7 +1618,7 @@ internal fun DesktopSettingsScreen(
                                         text = state.message,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFE57373),
+                                        color = tokens.clayRose,
                                     )
                                 }
                                 if (!state.details.isNullOrBlank()) {
@@ -1604,7 +1628,7 @@ internal fun DesktopSettingsScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 10.sp,
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = tokens.ink2,
                                     )
                                 }
                             }
@@ -1620,7 +1644,7 @@ internal fun DesktopSettingsScreen(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.04f))
+                            .background(tokens.paper2)
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1636,7 +1660,7 @@ internal fun DesktopSettingsScreen(
                             "Zero Data Loss Guarantee: Your focus sessions, streak, milestones, " +
                                 "and settings in %APPDATA%\\Anchor are 100% preserved during all updates.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = tokens.muted,
                     )
                 }
             }
@@ -1667,9 +1691,9 @@ internal fun DesktopSettingsScreen(
                         .border(
                             1.dp,
                             when (action) {
-                                ResetType.CLEAR_TASKS -> Color(0xFFFFA000)
-                                ResetType.RESET_STREAK -> Color(0xFF7E57C2)
-                                ResetType.FACTORY_RESET -> Color(0xFFE53935)
+                                ResetType.CLEAR_TASKS -> tokens.beacon
+                                ResetType.RESET_STREAK -> tokens.primary
+                                ResetType.FACTORY_RESET -> tokens.clayRose
                             }.copy(alpha = 0.6f),
                             RoundedCornerShape(AnchorSpacing.radiusScene),
                         ),
@@ -1685,9 +1709,9 @@ internal fun DesktopSettingsScreen(
                                     .clip(CircleShape)
                                     .background(
                                         when (action) {
-                                            ResetType.CLEAR_TASKS -> Color(0xFFFFA000).copy(alpha = 0.2f)
-                                            ResetType.RESET_STREAK -> Color(0xFF7E57C2).copy(alpha = 0.2f)
-                                            ResetType.FACTORY_RESET -> Color(0xFFE53935).copy(alpha = 0.2f)
+                                            ResetType.CLEAR_TASKS -> tokens.beacon.copy(alpha = 0.2f)
+                                            ResetType.RESET_STREAK -> tokens.primary.copy(alpha = 0.2f)
+                                            ResetType.FACTORY_RESET -> tokens.clayRose.copy(alpha = 0.2f)
                                         },
                                     ),
                             contentAlignment = Alignment.Center,
@@ -1697,9 +1721,9 @@ internal fun DesktopSettingsScreen(
                                 contentDescription = null,
                                 tint =
                                     when (action) {
-                                        ResetType.CLEAR_TASKS -> Color(0xFFFFA000)
-                                        ResetType.RESET_STREAK -> Color(0xFF7E57C2)
-                                        ResetType.FACTORY_RESET -> Color(0xFFE53935)
+                                        ResetType.CLEAR_TASKS -> tokens.beacon
+                                        ResetType.RESET_STREAK -> tokens.primary
+                                        ResetType.FACTORY_RESET -> tokens.clayRose
                                     },
                                 modifier = Modifier.size(24.dp),
                             )
@@ -1715,12 +1739,12 @@ internal fun DesktopSettingsScreen(
                                     },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = tokens.ink,
                             )
                             Text(
                                 text = "A recovery backup is saved before this change.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = tokens.muted,
                             )
                         }
                     }
@@ -1738,7 +1762,7 @@ internal fun DesktopSettingsScreen(
                                     "This clears tasks, assignments, courses, focus sessions, and harbor progress. Protection rules, class schedules, preferences, and downloaded models remain available."
                             },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = tokens.ink2,
                         lineHeight = 20.sp,
                     )
 
@@ -1751,9 +1775,9 @@ internal fun DesktopSettingsScreen(
                         OutlinedButton(
                             onClick = { pendingResetAction = null },
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                            border = BorderStroke(1.dp, tokens.rule),
                         ) {
-                            Text("Cancel", color = Color.White)
+                            Text("Cancel", color = tokens.ink)
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -1787,11 +1811,11 @@ internal fun DesktopSettingsScreen(
                                 ButtonDefaults.buttonColors(
                                     containerColor =
                                         when (action) {
-                                            ResetType.CLEAR_TASKS -> Color(0xFFFFA000)
-                                            ResetType.RESET_STREAK -> Color(0xFF7E57C2)
-                                            ResetType.FACTORY_RESET -> Color(0xFFE53935)
+                                            ResetType.CLEAR_TASKS -> tokens.beacon
+                                            ResetType.RESET_STREAK -> tokens.primary
+                                            ResetType.FACTORY_RESET -> tokens.clayRose
                                         },
-                                    contentColor = Color.White,
+                                    contentColor = tokens.ink,
                                 ),
                         ) {
                             Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1817,13 +1841,14 @@ private fun StatPill(
     label: String,
     value: String,
 ) {
+    val tokens = LocalAnchorTokens.current
     Surface(
         shape = RoundedCornerShape(AnchorSpacing.radiusChip),
         color = AnchorColors.HarborBackground.copy(alpha = 0.7f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+        border = BorderStroke(1.dp, tokens.rule),
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = tokens.muted)
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
@@ -1844,10 +1869,11 @@ private fun ResetOptionRow(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
+    val tokens = LocalAnchorTokens.current
     Surface(
         shape = RoundedCornerShape(AnchorSpacing.radiusCard),
         color = AnchorColors.HarborBackground.copy(alpha = 0.6f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        border = BorderStroke(1.dp, tokens.rule),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
@@ -1865,13 +1891,13 @@ private fun ResetOptionRow(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = tokens.ink,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = tokens.muted,
                     fontSize = 12.sp,
                 )
             }

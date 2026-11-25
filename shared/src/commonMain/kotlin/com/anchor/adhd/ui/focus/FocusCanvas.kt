@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -109,7 +111,17 @@ fun FocusCanvas(
             },
         contentAlignment = Alignment.Center,
     ) {
-        val minDim = min(maxWidth, maxHeight)
+        val effectiveWidth = when {
+            constraints.hasBoundedWidth -> maxWidth
+            minWidth > 0.dp -> minWidth
+            else -> 280.dp
+        }
+        val effectiveHeight = when {
+            constraints.hasBoundedHeight -> maxHeight
+            minHeight > 0.dp -> minHeight
+            else -> effectiveWidth.coerceAtMost(310.dp)
+        }
+        val minDim = min(effectiveWidth, effectiveHeight)
         val hudHorizontalPadding = (minDim * 0.13f).coerceIn(16.dp, 36.dp)
         val displayScale = (minDim / 250.dp).coerceIn(0.62f, 1f)
         val baseDisplay = MaterialTheme.typography.displayLarge
@@ -125,7 +137,7 @@ fun FocusCanvas(
 
         Spacer(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .drawWithCache {
                     val width = size.width
                     val height = size.height
@@ -288,7 +300,10 @@ fun FocusCanvas(
 
         // Center HUD: Newsreader tabular countdown & optional task title
         Column(
-            modifier = Modifier.padding(horizontal = hudHorizontalPadding),
+            modifier = Modifier
+                .then(if (!constraints.hasBoundedWidth) Modifier.widthIn(min = effectiveWidth) else Modifier)
+                .then(if (!constraints.hasBoundedHeight) Modifier.heightIn(min = effectiveHeight) else Modifier)
+                .padding(horizontal = hudHorizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {

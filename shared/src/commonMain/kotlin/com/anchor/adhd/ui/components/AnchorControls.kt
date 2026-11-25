@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -58,6 +59,18 @@ fun AnchorQuietButton(
     }
     val shape = RoundedCornerShape(AnchorSpacing.radiusButton)
     val textStyle = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum")
+    val buttonContent: @Composable RowScope.() -> Unit = {
+        if (leadingIcon != null) {
+            leadingIcon()
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            text = label,
+            style = textStyle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 
     if (outlined) {
         OutlinedButton(
@@ -76,18 +89,8 @@ fun AnchorQuietButton(
                 disabledContentColor = resolvedTint.copy(alpha = 0.45f),
             ),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-        ) {
-            if (leadingIcon != null) {
-                leadingIcon()
-                Spacer(Modifier.width(6.dp))
-            }
-            Text(
-                text = label,
-                style = textStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+            content = buttonContent,
+        )
     } else {
         TextButton(
             onClick = onClick,
@@ -101,18 +104,8 @@ fun AnchorQuietButton(
                 disabledContentColor = resolvedTint.copy(alpha = 0.45f),
             ),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-        ) {
-            if (leadingIcon != null) {
-                leadingIcon()
-                Spacer(Modifier.width(6.dp))
-            }
-            Text(
-                text = label,
-                style = textStyle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+            content = buttonContent,
+        )
     }
 }
 

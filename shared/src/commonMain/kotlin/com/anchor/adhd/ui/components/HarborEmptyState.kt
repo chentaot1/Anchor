@@ -71,7 +71,7 @@ fun HarborEmptyState(
             color = tokens.muted,
             textAlign = TextAlign.Center,
         )
-        if (actionLabel != null && onAction != null) {
+        if (!actionLabel.isNullOrBlank() && onAction != null) {
             AnchorQuietButton(
                 label = actionLabel,
                 onClick = onAction,

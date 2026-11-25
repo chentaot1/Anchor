@@ -6,25 +6,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.ui.focus.FocusCanvas
 import com.anchor.adhd.ui.theme.LocalAnchorTokens
+import com.anchor.adhd.ui.theme.MorningHarborTokens
 import com.anchor.adhd.ui.theme.SharedAnchorTheme
 import org.jetbrains.skia.EncodedImageFormat
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class AnchorPrimitivesRenderTest {
@@ -161,6 +169,126 @@ class AnchorPrimitivesRenderTest {
             val dir = File(dumpDir).apply { mkdirs() }
             File(dir, "task-3-primitives-light.png").writeBytes(lightBytes)
             File(dir, "task-3-primitives-dark.png").writeBytes(darkBytes)
+        }
+    }
+
+    @Test
+    fun focusCanvasDrawsInsideUnboundedVerticalScrollWithMinHeight() {
+        val blankCanvasBytes = renderPng(width = 360, height = 420) {
+            SharedAnchorTheme(
+                darkTheme = false,
+                displayFont = FontFamily.Serif,
+                bodyFont = FontFamily.SansSerif,
+                reducedMotion = true,
+            ) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(LocalAnchorTokens.current.paper),
+                )
+            }
+        }
+
+        // Case 1: FocusCanvas directly inside verticalScroll with heightIn(min = 310.dp)
+        val directScene = ImageComposeScene(
+            width = 360,
+            height = 420,
+            density = Density(1f),
+        ) {
+            SharedAnchorTheme(
+                darkTheme = false,
+                displayFont = FontFamily.Serif,
+                bodyFont = FontFamily.SansSerif,
+                reducedMotion = true,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LocalAnchorTokens.current.paper)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    FocusCanvas(
+                        progress = 0.72f,
+                        isWorkPhase = true,
+                        remainingSeconds = 600L,
+                        taskTitle = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 310.dp),
+                    )
+                }
+            }
+        }
+        try {
+            val image = directScene.render(0L)
+            val pngBytes = image.encodeToData(EncodedImageFormat.PNG)!!.bytes
+            assertTrue(pngBytes.isNotEmpty())
+            assertFalse(
+                pngBytes.contentEquals(blankCanvasBytes),
+                "FocusCanvas inside verticalScroll must draw visible pixels",
+            )
+            // Verify water basin pixels well below the center text (y = 250 inside 310dp tall ring)
+            val pixels = image.toComposeImageBitmap().toPixelMap()
+            assertNotEquals(
+                MorningHarborTokens.paper,
+                pixels[180, 250],
+                "FocusCanvas tide basin collapsed under unbounded verticalScroll constraints",
+            )
+        } finally {
+            directScene.close()
+        }
+
+        // Case 2: FocusCanvas(Modifier.fillMaxSize()) inside Box(heightIn(min = 310.dp)) in verticalScroll
+        // (mirrors Android FocusScreen.kt)
+        val wrappedScene = ImageComposeScene(
+            width = 360,
+            height = 420,
+            density = Density(1f),
+        ) {
+            SharedAnchorTheme(
+                darkTheme = false,
+                displayFont = FontFamily.Serif,
+                bodyFont = FontFamily.SansSerif,
+                reducedMotion = true,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LocalAnchorTokens.current.paper)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 310.dp),
+                    ) {
+                        FocusCanvas(
+                            progress = 0.72f,
+                            isWorkPhase = true,
+                            remainingSeconds = 600L,
+                            taskTitle = null,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            }
+        }
+        try {
+            val image = wrappedScene.render(0L)
+            val pngBytes = image.encodeToData(EncodedImageFormat.PNG)!!.bytes
+            assertTrue(pngBytes.isNotEmpty())
+            assertFalse(
+                pngBytes.contentEquals(blankCanvasBytes),
+                "Wrapped FocusCanvas inside verticalScroll must draw visible pixels",
+            )
+            val pixels = image.toComposeImageBitmap().toPixelMap()
+            assertNotEquals(
+                MorningHarborTokens.paper,
+                pixels[180, 250],
+                "Wrapped FocusCanvas tide basin collapsed under Box(heightIn(min = 310.dp)) in verticalScroll",
+            )
+        } finally {
+            wrappedScene.close()
         }
     }
 }

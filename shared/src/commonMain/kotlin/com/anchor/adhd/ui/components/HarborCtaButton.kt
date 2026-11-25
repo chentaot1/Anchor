@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -39,14 +41,14 @@ fun HarborCtaButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale = if (reducedMotion) {
-        1f
+    val scaleState = if (reducedMotion) {
+        null
     } else {
         animateFloatAsState(
             targetValue = if (isPressed && enabled) AnchorMotion.PRESS_SCALE else 1f,
             animationSpec = tween(durationMillis = AnchorMotion.MICRO_MS),
             label = "ctaPressScale",
-        ).value
+        )
     }
 
     val containerColor = if (onBeaconPlate) tokens.beaconPlateCta else tokens.beacon
@@ -54,6 +56,7 @@ fun HarborCtaButton(
     Button(
         onClick = onClick,
         modifier = modifier.graphicsLayer {
+            val scale = scaleState?.value ?: 1f
             scaleX = scale
             scaleY = scale
         },
@@ -73,6 +76,11 @@ fun HarborCtaButton(
             disabledContainerColor = containerColor.copy(alpha = 0.45f),
             disabledContentColor = tokens.beaconInk.copy(alpha = 0.45f),
         ),
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(
+            LocalTextStyle provides LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
+        ) {
+            content()
+        }
+    }
 }

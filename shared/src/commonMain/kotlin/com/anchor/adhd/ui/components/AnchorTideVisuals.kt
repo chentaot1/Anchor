@@ -17,8 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,13 +87,16 @@ fun AnchorWeeklyTide(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Weekly tide",
                 style = MaterialTheme.typography.titleSmall,
                 color = tokens.ink,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = stageLabel,
@@ -106,7 +109,7 @@ fun AnchorWeeklyTide(
 
         Text(
             text = formatTideDuration(totalMinutes),
-            style = MaterialTheme.typography.displaySmall,
+            style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
             color = tokens.ink,
         )
 
@@ -114,7 +117,7 @@ fun AnchorWeeklyTide(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics(mergeDescendants = true) {
+                    .clearAndSetSemantics {
                         val breakdown = days.joinToString(", ") { day ->
                             "${day.shortLabel} ${formatTideDuration(day.minutes)}"
                         }
@@ -169,18 +172,22 @@ fun AnchorWeeklyTide(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Today ${formatTideDuration(todayMinutes)}",
                 style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
                 color = tokens.ink2,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "${deflectedCount.coerceAtLeast(0)} deflected",
                 style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
                 color = tokens.muted,
+                maxLines = 1,
             )
         }
     }
@@ -203,7 +210,7 @@ fun AnchorTodayTideStrip(
     val pillShape = RoundedCornerShape(AnchorSpacing.radiusPill)
 
     AnchorWell(
-        modifier = modifier.semantics(mergeDescendants = true) {
+        modifier = modifier.clearAndSetSemantics {
             contentDescription =
                 "Today's tide: ${formatTideDuration(safeToday)} of ${formatTideDuration(safeGoal)}, $stageLabel"
         },
@@ -212,10 +219,11 @@ fun AnchorTodayTideStrip(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
+                modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -223,12 +231,14 @@ fun AnchorTodayTideStrip(
                     text = "Today's tide",
                     style = MaterialTheme.typography.titleSmall,
                     color = tokens.ink,
+                    maxLines = 1,
                 )
                 Text(
                     text = stageLabel,
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = tokens.sage,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(

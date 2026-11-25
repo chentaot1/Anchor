@@ -33,7 +33,7 @@
 Consolidate all theme tokens in `shared/src/commonMain/kotlin/com/anchor/adhd/ui/theme/`:
 
 - **`AnchorColors.kt`:** Single palette source with Morning Harbor (Light) and Night Harbor (Dark) semantic tokens defined in `DESIGN.md`. Every pairing meets WCAG AA (≥4.5:1 body/muted text, ≥3:1 large text, icons, focus outlines, and input field edges).
-  - Light `clayRose` error token moves from `#C97F7F` to `#B35252` so error messages clear 4.5:1 on warm paper (`#F6F1E7`) and wells (`#ECE5D6`).
+  - Light `clayRose` error token moves from `#C97F7F` to `#A34848` so error messages clear 4.5:1 on warm paper (`#F6F1E7`) and wells (`#ECE5D6`).
   - Dark mode steps *lighter* by ~3% luminance per elevation layer (`#0E1624` → `#152032` → `#1E2E46`) with zero drop shadows.
   - Committed Deep-Harbor NOW Plate tokens (`beaconPlate`, `beaconPlateBorder`, `beaconPlateInk`, `beaconPlateInk2`, `beaconPlatePill`, `beaconPlateCta`, `beaconPlateCaptain`) work cohesively in both Light (`#15263B`) and Dark (`#182B44`).
   - Living Tide Focus water tokens (`tideBack`, `tideWave1`, `tideWave2`, `tideBreakWave1`, `tideBreakWave2`) adapt cleanly between Morning Light and Night Dark.

@@ -4,6 +4,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontFamily
 
 @Composable
@@ -15,14 +16,19 @@ fun SharedAnchorTheme(
     content: @Composable () -> Unit,
 ) {
     val tokens = if (darkTheme) NightHarborTokens else MorningHarborTokens
-    val scheme = if (darkTheme) anchorDarkColorScheme() else anchorLightColorScheme()
+    val scheme = remember(darkTheme) {
+        if (darkTheme) anchorDarkColorScheme() else anchorLightColorScheme()
+    }
+    val typography = remember(displayFont, bodyFont) {
+        anchorTypography(display = displayFont, body = bodyFont)
+    }
     CompositionLocalProvider(
         LocalAnchorTokens provides tokens,
         LocalReducedMotion provides reducedMotion,
     ) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = anchorTypography(display = displayFont, body = bodyFont),
+            typography = typography,
             shapes = AnchorShapes,
         ) {
             CompositionLocalProvider(LocalContentColor provides tokens.ink) {

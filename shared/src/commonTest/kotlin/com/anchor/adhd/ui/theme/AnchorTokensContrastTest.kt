@@ -65,6 +65,12 @@ class AnchorTokensContrastTest {
         assertEquals(MorningHarborTokens.beaconInk, light.onTertiary)
         assertEquals(MorningHarborTokens.clayRose, light.error)
         assertEquals(MorningHarborTokens.clayRoseSoft, light.errorContainer)
+        assertEquals(MorningHarborTokens.beaconPlate, light.inverseSurface)
+        assertEquals(MorningHarborTokens.beaconPlateInk, light.inverseOnSurface)
+        assertEquals(NightHarborTokens.primary, light.inversePrimary)
+        assertEquals(MorningHarborTokens.paper3, light.surfaceDim)
+        assertEquals(MorningHarborTokens.surface, light.surfaceBright)
+        assertEquals(NightHarborTokens.paper, light.scrim)
 
         val dark = anchorDarkColorScheme()
         assertEquals(NightHarborTokens.paper, dark.background)
@@ -83,12 +89,62 @@ class AnchorTokensContrastTest {
         assertEquals(NightHarborTokens.beaconInk, dark.onTertiary)
         assertEquals(NightHarborTokens.clayRose, dark.error)
         assertEquals(NightHarborTokens.clayRoseSoft, dark.errorContainer)
+        assertEquals(MorningHarborTokens.paper, dark.inverseSurface)
+        assertEquals(MorningHarborTokens.ink, dark.inverseOnSurface)
+        assertEquals(MorningHarborTokens.primary, dark.inversePrimary)
+        assertEquals(NightHarborTokens.paper, dark.surfaceDim)
+        assertEquals(NightHarborTokens.paper3, dark.surfaceBright)
+        assertEquals(NightHarborTokens.paper, dark.scrim)
 
         listOf(light, dark).forEach { scheme ->
             assertTrue(contrast(scheme.onPrimary, scheme.primary) >= 4.5, "onPrimary/primary low")
             assertTrue(contrast(scheme.onSecondary, scheme.secondary) >= 4.5, "onSecondary/secondary low")
             assertTrue(contrast(scheme.onTertiary, scheme.tertiary) >= 4.5, "onTertiary/tertiary low")
             assertTrue(contrast(scheme.onError, scheme.error) >= 4.5, "onError/error low")
+            assertTrue(contrast(scheme.inverseOnSurface, scheme.inverseSurface) >= 10.0, "inverseOnSurface/inverseSurface low")
+            assertTrue(contrast(scheme.inversePrimary, scheme.inverseSurface) >= 4.5, "inversePrimary/inverseSurface low")
+
+            val allSchemeColors = listOf(
+                scheme.primary,
+                scheme.onPrimary,
+                scheme.primaryContainer,
+                scheme.onPrimaryContainer,
+                scheme.inversePrimary,
+                scheme.secondary,
+                scheme.onSecondary,
+                scheme.secondaryContainer,
+                scheme.onSecondaryContainer,
+                scheme.tertiary,
+                scheme.onTertiary,
+                scheme.tertiaryContainer,
+                scheme.onTertiaryContainer,
+                scheme.background,
+                scheme.onBackground,
+                scheme.surface,
+                scheme.onSurface,
+                scheme.surfaceVariant,
+                scheme.onSurfaceVariant,
+                scheme.surfaceTint,
+                scheme.inverseSurface,
+                scheme.inverseOnSurface,
+                scheme.error,
+                scheme.onError,
+                scheme.errorContainer,
+                scheme.onErrorContainer,
+                scheme.outline,
+                scheme.outlineVariant,
+                scheme.scrim,
+                scheme.surfaceBright,
+                scheme.surfaceDim,
+                scheme.surfaceContainer,
+                scheme.surfaceContainerHigh,
+                scheme.surfaceContainerHighest,
+                scheme.surfaceContainerLow,
+                scheme.surfaceContainerLowest,
+            )
+            allSchemeColors.forEach { color ->
+                assertFalse(color == Color.Black || color == Color.White, "Scheme contains pure black/white: $color")
+            }
         }
     }
 
@@ -167,10 +223,6 @@ class AnchorTokensContrastTest {
         assertEquals(320, AnchorMotion.SHEET_MS)
         assertEquals(10000, AnchorMotion.TIDE_MS)
         assertEquals(0.985f, AnchorMotion.PRESS_SCALE)
-        val reducedMotionLocal: androidx.compose.runtime.ProvidableCompositionLocal<Boolean> = LocalReducedMotion
-        assertEquals(LocalReducedMotion, reducedMotionLocal)
-        val tokensLocal: androidx.compose.runtime.ProvidableCompositionLocal<AnchorTokens> = LocalAnchorTokens
-        assertEquals(LocalAnchorTokens, tokensLocal)
     }
 
     @Test

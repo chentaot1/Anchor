@@ -3,40 +3,18 @@ package com.anchor.adhd.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Park
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,41 +23,37 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anchor.adhd.data.AnchorContainer
 import com.anchor.adhd.data.model.EnergyLevel
-import com.anchor.adhd.service.FocusBlockService
 import com.anchor.adhd.ui.ai.AiScreen
 import com.anchor.adhd.ui.chat.ChatScreen
-import com.anchor.adhd.ui.components.AnchorScreenBackground
 import com.anchor.adhd.ui.components.AirlockSheet
+import com.anchor.adhd.ui.components.CalendarEventDetailSheet
+import com.anchor.adhd.ui.components.HarborModalSheet
 import com.anchor.adhd.ui.components.MorningRitualSheet
-import com.anchor.adhd.ui.components.RoutineRunnerSheet
 import com.anchor.adhd.ui.components.PostFocusDialog
 import com.anchor.adhd.ui.components.ResetTimerDialog
+import com.anchor.adhd.ui.components.RoutineRunnerSheet
 import com.anchor.adhd.ui.components.ShutdownSheet
 import com.anchor.adhd.ui.components.StrategyDialog
 import com.anchor.adhd.ui.components.TaskDetailSheet
-import com.anchor.adhd.ui.components.CalendarEventDetailSheet
 import com.anchor.adhd.ui.focus.FocusScreen
-import com.anchor.adhd.ui.plan.PlanScreen
-import com.anchor.adhd.ui.vm.AnchorViewModel
-import com.anchor.adhd.ui.vm.AnchorViewModelFactory
 import com.anchor.adhd.ui.grove.GroveHomeScreen
 import com.anchor.adhd.ui.more.MoreScreen
+import com.anchor.adhd.ui.plan.PlanScreen
 import com.anchor.adhd.ui.theme.AnchorMotion
-import com.anchor.adhd.ui.theme.LocalAnchorExtras
-import com.anchor.adhd.MainActivity
+import com.anchor.adhd.ui.theme.rememberReducedMotion
+import com.anchor.adhd.ui.vm.AnchorViewModel
+import com.anchor.adhd.ui.vm.AnchorViewModelFactory
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnchorRoot(
     container: AnchorContainer,
@@ -280,10 +254,8 @@ fun AnchorRoot(
 
     morningRoutineRunner?.let { routine ->
         val steps by vm.routineSteps(routine.id).collectAsState()
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { vm.dismissMorningRoutineRunner() },
-            sheetState = sheetState
+        HarborModalSheet(
+            onDismissRequest = { vm.dismissMorningRoutineRunner() }
         ) {
             RoutineRunnerSheet(
                 routine = routine,
@@ -336,9 +308,8 @@ fun AnchorRoot(
     }
 
     if (showChatSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showChatSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        HarborModalSheet(
+            onDismissRequest = { showChatSheet = false }
         ) {
             Column(Modifier.fillMaxSize().height(600.dp)) {
                 ChatScreen(vm, Modifier.fillMaxSize())
@@ -359,6 +330,7 @@ fun AnchorRoot(
     }
 
     val replanCount = replanWithTasks.size
+    val reducedMotion = rememberReducedMotion()
     AnchorShell(
         selectedTab = tab,
         onTabSelected = { selected ->
@@ -366,22 +338,12 @@ fun AnchorRoot(
             if (selected != AnchorTabs.MORE) moreRoute = MoreRoute.Hub
         },
         snackbarHostState = snackbar,
-        planBadgeCount = replanCount,
-        tabBackground = { t ->
-            val extras = LocalAnchorExtras.current
-            when (t) {
-                AnchorTabs.GROVE -> extras.groveGradient
-                AnchorTabs.AI -> extras.screenGradient
-                AnchorTabs.FOCUS -> extras.focusGradient
-                AnchorTabs.PLAN -> extras.planGradient
-                else -> extras.screenGradient
-            }
-        }
+        planBadgeCount = replanCount
     ) { padding ->
         screenState.SaveableStateProvider(tab) {
             Crossfade(
                 targetState = tab,
-                animationSpec = tween(AnchorMotion.QUICK_MS),
+                animationSpec = tween(if (reducedMotion) 0 else AnchorMotion.SHORT_MS),
                 label = "tab"
             ) { current ->
             when (current) {

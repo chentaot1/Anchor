@@ -1,18 +1,11 @@
 package com.anchor.adhd.desktop.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,41 +14,57 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.FullscreenExit
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.OpenInFull
+import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import com.anchor.adhd.desktop.theme.AnchorColors
-import com.anchor.adhd.desktop.theme.AnchorSpacing
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 
 enum class DesktopScreen {
     GROVE,
@@ -71,22 +80,28 @@ data class NavItem(
     val screen: DesktopScreen,
     val label: String,
     val icon: ImageVector,
+    val selectedIcon: ImageVector = icon,
 )
 
 val DESKTOP_NAV_ITEMS =
     listOf(
-        NavItem(DesktopScreen.GROVE, "Grove (Home)", Icons.Default.Home),
-        NavItem(DesktopScreen.FOCUS, "Focus Canvas", Icons.Default.Timer),
-        NavItem(DesktopScreen.BLOCKER, "App Blocker", Icons.Default.Shield),
-        NavItem(DesktopScreen.PLAN, "Milestones", Icons.Default.Checklist),
-        NavItem(DesktopScreen.SYLLABUS, "Syllabus", Icons.Default.School),
-        NavItem(DesktopScreen.AI, "Pilot", Icons.Default.AutoAwesome),
-        NavItem(DesktopScreen.SETTINGS, "Settings", Icons.Default.Settings),
+        NavItem(DesktopScreen.GROVE, "Home", Icons.Outlined.Home, Icons.Filled.Home),
+        NavItem(DesktopScreen.PLAN, "Plan", Icons.Outlined.CalendarMonth, Icons.Filled.CalendarMonth),
+        NavItem(DesktopScreen.FOCUS, "Focus", Icons.Outlined.Timer, Icons.Filled.Timer),
+        NavItem(DesktopScreen.BLOCKER, "Blocker", Icons.Outlined.Shield, Icons.Filled.Shield),
+        NavItem(DesktopScreen.SYLLABUS, "Syllabus", Icons.Outlined.School, Icons.Filled.School),
+        NavItem(DesktopScreen.AI, "Captain", Icons.Outlined.AutoAwesome, Icons.Filled.AutoAwesome),
+        NavItem(DesktopScreen.SETTINGS, "Settings", Icons.Outlined.Settings, Icons.Filled.Settings),
     )
 
-/**
- * Windows 11 Maritime Navigation Sidebar.
- */
+internal val SIDEBAR_COMPACT_BREAKPOINT = 760.dp
+internal val SIDEBAR_EXPANDED_WIDTH = 200.dp
+internal val SIDEBAR_COMPACT_WIDTH = 64.dp
+
+internal fun isCompactSidebarWidth(width: Dp): Boolean = width < SIDEBAR_COMPACT_BREAKPOINT
+
+internal fun desktopScreenForShortcutNumber(number: Int): DesktopScreen? = DESKTOP_NAV_ITEMS.getOrNull(number - 1)?.screen
+
 @Composable
 fun DesktopNavigationSidebar(
     currentScreen: DesktopScreen,
@@ -100,279 +115,540 @@ fun DesktopNavigationSidebar(
     onToggleFullscreen: () -> Unit = {},
     hasUpdateBadge: Boolean = false,
     isStandingShieldActive: Boolean = false,
+    planPendingCount: Int = 0,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "sidebar_pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1.0f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(1800, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "active_pulse",
-    )
+    val tokens = LocalAnchorTokens.current
+    val itemShape = RoundedCornerShape(AnchorSpacing.radiusChip)
+    val sidebarWidth = if (compact) SIDEBAR_COMPACT_WIDTH else SIDEBAR_EXPANDED_WIDTH
 
-    Surface(
+    Row(
         modifier =
             modifier
-                .width(240.dp)
-                .fillMaxHeight(),
-        color = AnchorColors.HarborDock,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                .width(sidebarWidth)
+                .fillMaxHeight()
+                .background(tokens.paper2),
     ) {
         Column(
             modifier =
                 Modifier
+                    .weight(1f)
                     .fillMaxHeight()
-                    .padding(16.dp),
+                    .padding(horizontal = 8.dp, vertical = if (compact) 8.dp else 14.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(
                 modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
             ) {
-                // Logo & Header
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(AnchorColors.HarborBackground),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Anchor,
-                            contentDescription = null,
-                            tint = AnchorColors.HarborPrimary,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "Anchor",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                        Text(
-                            text = "Windows 11 • ADHD",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = AnchorColors.HarborPrimary.copy(alpha = 0.8f),
-                        )
-                    }
-                }
+                SidebarBrandHeader(compact = compact)
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(if (compact) 6.dp else 12.dp))
 
-                // Navigation Items List
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (item in DESKTOP_NAV_ITEMS) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    DESKTOP_NAV_ITEMS.forEachIndexed { index, item ->
                         val isSelected = currentScreen == item.screen
-                        Surface(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                                    .selectable(selected = isSelected, role = Role.Tab, onClick = { onScreenSelected(item.screen) }),
-                            // M3 rail language shared with mobile: tonal pill, no border.
-                            color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-                            border = null,
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                        val isCaptain = item.screen == DesktopScreen.AI
+                        val hasBlockerIndicator =
+                            item.screen == DesktopScreen.BLOCKER && (isFocusActive || isStandingShieldActive)
+                        val hasUpdateIndicator = item.screen == DesktopScreen.SETTINGS && hasUpdateBadge
+                        val showPlanCount = item.screen == DesktopScreen.PLAN && planPendingCount > 0
+
+                        val iconTint =
+                            when {
+                                isSelected && isCaptain -> tokens.captain
+                                isSelected -> tokens.primary
+                                else -> tokens.ink2
+                            }
+                        val labelColor =
+                            when {
+                                isSelected && isCaptain -> if (tokens.isDark) tokens.captain else tokens.captainInk
+                                isSelected -> tokens.ink
+                                else -> tokens.ink2
+                            }
+                        val containerColor = if (isSelected) tokens.paper3 else Color.Transparent
+                        val shortcutNumber = index + 1
+                        val tooltipText =
+                            if (showPlanCount) {
+                                "${item.label}, $planPendingCount pending (Ctrl+$shortcutNumber)"
+                            } else {
+                                "${item.label} (Ctrl+$shortcutNumber)"
+                            }
+
+                        SidebarTooltip(text = tooltipText, enabled = compact) {
+                            Surface(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = if (compact) 36.dp else 40.dp)
+                                        .clip(itemShape)
+                                        .selectable(
+                                            selected = isSelected,
+                                            role = Role.Tab,
+                                            onClick = { onScreenSelected(item.screen) },
+                                        ),
+                                shape = itemShape,
+                                color = containerColor,
+                                shadowElevation = 0.dp,
+                                tonalElevation = 0.dp,
                             ) {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = null,
-                                    tint = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else Color.White.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = item.label,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else Color.White.copy(alpha = 0.7f),
-                                )
-                                if (item.screen == DesktopScreen.BLOCKER && (isFocusActive || isStandingShieldActive)) {
-                                    Spacer(modifier = Modifier.weight(1f))
+                                if (compact) {
                                     Box(
-                                        modifier =
-                                            Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(AnchorColors.HarborGrowth),
-                                    )
-                                } else if (item.screen == DesktopScreen.SETTINGS && hasUpdateBadge) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(AnchorColors.HarborAction),
-                                    )
+                                        modifier = Modifier.fillMaxWidth().height(36.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isSelected) item.selectedIcon else item.icon,
+                                            contentDescription = item.label,
+                                            tint = iconTint,
+                                            modifier = Modifier.size(19.dp),
+                                        )
+                                        val indicatorColor =
+                                            when {
+                                                hasBlockerIndicator -> tokens.sage
+                                                hasUpdateIndicator -> tokens.beacon
+                                                showPlanCount -> tokens.primary
+                                                else -> null
+                                            }
+                                        if (indicatorColor != null) {
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(top = 5.dp, end = 8.dp)
+                                                        .size(6.dp)
+                                                        .clip(CircleShape)
+                                                        .background(indicatorColor),
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isSelected) item.selectedIcon else item.icon,
+                                            contentDescription = null,
+                                            tint = iconTint,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                        Text(
+                                            text = item.label,
+                                            style =
+                                                MaterialTheme.typography.labelLarge.copy(
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                ),
+                                            color = labelColor,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        if (showPlanCount) {
+                                            Text(
+                                                text = "$planPendingCount",
+                                                style =
+                                                    MaterialTheme.typography.labelSmall.copy(
+                                                        fontFeatureSettings = "tnum",
+                                                    ),
+                                                color = tokens.muted,
+                                                maxLines = 1,
+                                            )
+                                        } else if (hasBlockerIndicator) {
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .size(7.dp)
+                                                        .clip(CircleShape)
+                                                        .background(tokens.sage),
+                                            )
+                                        } else if (hasUpdateIndicator) {
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .size(7.dp)
+                                                        .clip(CircleShape)
+                                                        .background(tokens.beacon),
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Airlock Quick Entry Button
-                Button(
-                    onClick = onOpenAirlock,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = AnchorColors.HarborAi.copy(alpha = 0.25f),
-                            contentColor = AnchorColors.HarborAi,
-                        ),
-                    border = BorderStroke(1.dp, AnchorColors.HarborAi.copy(alpha = 0.5f)),
-                ) {
-                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Airlock (Triage)", fontWeight = FontWeight.Bold)
-                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Bottom Section: Pinned to bottom of the sidebar
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Utility Dual Selector Pills: Floating Island & Fullscreen
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Floating Island Micro-HUD Pill
-                    Surface(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                                .toggleable(value = isFloatingIslandActive, role = Role.Switch, onValueChange = { onToggleFloatingIsland() }),
-                        color =
-                            if (isFloatingIslandActive) {
-                                AnchorColors.HarborGrowth.copy(alpha = 0.25f)
-                            } else {
-                                Color.White.copy(alpha = 0.05f)
-                            },
-                        border =
-                            BorderStroke(
-                                1.dp,
-                                if (isFloatingIslandActive) AnchorColors.HarborFoliage.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.12f),
-                            ),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.OpenInFull,
-                                contentDescription = null,
-                                tint = if (isFloatingIslandActive) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isFloatingIslandActive) "Island On" else "Island",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isFloatingIslandActive) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.8f),
-                            )
-                        }
-                    }
-
-                    // Fullscreen Immersion Mode Toggle Pill (F11)
-                    Surface(
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                                .toggleable(value = isFullscreen, role = Role.Switch, onValueChange = { onToggleFullscreen() }),
-                        color = if (isFullscreen) AnchorColors.HarborPrimary.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f),
-                        border =
-                            BorderStroke(
-                                1.dp,
-                                if (isFullscreen) AnchorColors.HarborPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.12f),
-                            ),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            Icon(
-                                imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                                contentDescription = null,
-                                tint = if (isFullscreen) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.7f),
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isFullscreen) "Exit F11" else "Full F11",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isFullscreen) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.8f),
-                            )
-                        }
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)) {
+                if (isFocusActive) {
+                    ActiveFocusSidebarStatus(
+                        remainingSeconds = remainingSeconds,
+                        compact = compact,
+                        itemShape = itemShape,
+                        onClick = { onScreenSelected(DesktopScreen.FOCUS) },
+                    )
                 }
 
-                // Bottom Active Status Card
-                if (isFocusActive) {
-                    val mins = remainingSeconds / 60
-                    val secs = remainingSeconds % 60
-                    Surface(
+                AnchorHairline(modifier = Modifier.padding(vertical = if (compact) 2.dp else 4.dp))
+
+                QuietFooterAction(
+                    label = "Airlock reset",
+                    shortcut = "Ctrl K",
+                    icon = Icons.Outlined.Air,
+                    iconTint = tokens.captain,
+                    compact = compact,
+                    itemShape = itemShape,
+                    onClick = onOpenAirlock,
+                )
+
+                QuietFooterToggle(
+                    label = "Floating Island",
+                    shortcut = "Ctrl I",
+                    icon = Icons.Outlined.OpenInFull,
+                    checked = isFloatingIslandActive,
+                    compact = compact,
+                    itemShape = itemShape,
+                    onToggle = onToggleFloatingIsland,
+                )
+
+                QuietFooterToggle(
+                    label = if (isFullscreen) "Exit full" else "Fullscreen",
+                    shortcut = "F11",
+                    icon = if (isFullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                    checked = isFullscreen,
+                    compact = compact,
+                    itemShape = itemShape,
+                    onToggle = onToggleFullscreen,
+                )
+            }
+        }
+
+        Box(
+            modifier =
+                Modifier
+                    .width(1.dp)
+                    .fillMaxHeight()
+                    .background(tokens.rule),
+        )
+    }
+}
+
+@Composable
+private fun SidebarBrandHeader(compact: Boolean) {
+    val tokens = LocalAnchorTokens.current
+    if (compact) {
+        SidebarTooltip(text = "Anchor", enabled = true) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                        .clearAndSetSemantics { contentDescription = "Anchor" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "A",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = tokens.ink,
+                        maxLines = 1,
+                    )
+                    Box(
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
-                                .clickable { onScreenSelected(DesktopScreen.FOCUS) },
-                        color = Color(0xFF0F2B1D),
-                        border = BorderStroke(1.dp, AnchorColors.HarborGrowth.copy(alpha = 0.5f)),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(AnchorColors.HarborGrowth.copy(alpha = pulseAlpha)),
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Focus In Progress",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AnchorColors.HarborFoliage,
-                                )
-                                Text(
-                                    text = String.format("%02d:%02d remaining", mins, secs),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White,
-                                )
-                            }
-                        }
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(tokens.beacon),
+                    )
+                }
+            }
+        }
+    } else {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Anchor",
+                style = MaterialTheme.typography.titleLarge,
+                color = tokens.ink,
+                maxLines = 1,
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(tokens.beacon),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ActiveFocusSidebarStatus(
+    remainingSeconds: Int,
+    compact: Boolean,
+    itemShape: RoundedCornerShape,
+    onClick: () -> Unit,
+) {
+    val tokens = LocalAnchorTokens.current
+    val safeSeconds = remainingSeconds.coerceAtLeast(0)
+    val mins = safeSeconds / 60
+    val secs = safeSeconds % 60
+    val formattedTime = String.format("%02d:%02d", mins, secs)
+    val accessibleLabel = "Focus active, $formattedTime remaining"
+
+    SidebarTooltip(text = "Focus active ($formattedTime)", enabled = compact) {
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(itemShape)
+                    .clickable(role = Role.Button, onClick = onClick)
+                    .semantics { contentDescription = accessibleLabel },
+            shape = itemShape,
+            color = tokens.sageSoft,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+        ) {
+            if (compact) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(28.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "${mins}m",
+                        style =
+                            MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFeatureSettings = "tnum",
+                            ),
+                        color = tokens.sage,
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(tokens.sage),
+                    )
+                    Column {
+                        Text(
+                            text = "Focus active",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = tokens.sage,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = "$formattedTime remaining",
+                            style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                            color = tokens.ink,
+                            maxLines = 1,
+                        )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun QuietFooterAction(
+    label: String,
+    shortcut: String,
+    icon: ImageVector,
+    iconTint: Color,
+    compact: Boolean,
+    itemShape: RoundedCornerShape,
+    onClick: () -> Unit,
+) {
+    val tokens = LocalAnchorTokens.current
+    SidebarTooltip(text = "$label ($shortcut)", enabled = compact) {
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = if (compact) 30.dp else 36.dp)
+                    .clip(itemShape)
+                    .clickable(role = Role.Button, onClick = onClick),
+            shape = itemShape,
+            color = Color.Transparent,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+        ) {
+            if (compact) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(30.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = iconTint,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = tokens.ink2,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = shortcut,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tokens.muted,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuietFooterToggle(
+    label: String,
+    shortcut: String,
+    icon: ImageVector,
+    checked: Boolean,
+    compact: Boolean,
+    itemShape: RoundedCornerShape,
+    onToggle: () -> Unit,
+) {
+    val tokens = LocalAnchorTokens.current
+    val contentTint = if (checked) tokens.primary else tokens.ink2
+    val textColor = if (checked) tokens.ink else tokens.ink2
+
+    SidebarTooltip(text = "$label ($shortcut)", enabled = compact) {
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = if (compact) 30.dp else 36.dp)
+                    .clip(itemShape)
+                    .toggleable(
+                        value = checked,
+                        role = Role.Switch,
+                        onValueChange = { onToggle() },
+                    ),
+            shape = itemShape,
+            color = if (checked) tokens.paper3 else Color.Transparent,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+        ) {
+            if (compact) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(30.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = contentTint,
+                        modifier = Modifier.size(17.dp),
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = contentTint,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = textColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = shortcut,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tokens.muted,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SidebarTooltip(
+    text: String,
+    enabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    if (!enabled) {
+        content()
+        return
+    }
+    val tokens = LocalAnchorTokens.current
+    TooltipArea(
+        tooltip = {
+            Surface(
+                shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                color = tokens.surface,
+                contentColor = tokens.ink,
+                border = BorderStroke(1.dp, tokens.rule),
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp,
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = tokens.ink,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        },
+        delayMillis = 250,
+        tooltipPlacement =
+            TooltipPlacement.ComponentRect(
+                anchor = Alignment.CenterEnd,
+                alignment = Alignment.CenterEnd,
+                offset = DpOffset(x = 8.dp, y = 0.dp),
+            ),
+        content = content,
+    )
 }

@@ -382,7 +382,6 @@ class AnchorDesignSystemLintTest {
             "app/src/main/java/com/anchor/adhd/ui/grow/HabitHeatmap.kt",
             "app/src/main/java/com/anchor/adhd/ui/more/MoreScreen.kt",
             // Desktop legacy UI files
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/Main.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/blocker/DesktopRescueWindow.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopAiScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopAirlockDialog.kt",
@@ -392,7 +391,6 @@ class AnchorDesignSystemLintTest {
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFunLinks.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopHarborScene.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopHomeDeck.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopNavigationSidebar.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopNowCard.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopPlanScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSettingsScreen.kt",

@@ -1,8 +1,10 @@
 package com.anchor.adhd.desktop
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,8 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,18 +36,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
@@ -58,27 +60,27 @@ import com.anchor.adhd.desktop.blocker.DesktopRescueOverlay
 import com.anchor.adhd.desktop.blocker.ScaledTimeBank
 import com.anchor.adhd.desktop.blocker.TimeBankStatus
 import com.anchor.adhd.desktop.db.AnchorDesktopDatabase
-import com.anchor.adhd.desktop.db.DesktopTask
 import com.anchor.adhd.desktop.db.DesktopDataOperations
 import com.anchor.adhd.desktop.db.DesktopStreak
-import com.anchor.adhd.desktop.db.DesktopThoughtCapture
-import com.anchor.adhd.desktop.db.DesktopTaskDeletion
+import com.anchor.adhd.desktop.db.DesktopTask
 import com.anchor.adhd.desktop.db.DesktopTaskChanges
+import com.anchor.adhd.desktop.db.DesktopTaskDeletion
+import com.anchor.adhd.desktop.db.DesktopThoughtCapture
 import com.anchor.adhd.desktop.db.DesktopThoughtCaptureState
+import com.anchor.adhd.desktop.focus.DesktopActiveTimer
 import com.anchor.adhd.desktop.focus.DesktopCountdown
 import com.anchor.adhd.desktop.focus.DesktopFocusCredit
 import com.anchor.adhd.desktop.focus.DesktopFocusLedger
 import com.anchor.adhd.desktop.focus.DesktopFocusSaveQueue
-import com.anchor.adhd.desktop.focus.DesktopActiveTimer
 import com.anchor.adhd.desktop.focus.DesktopTimerRecovery
 import com.anchor.adhd.desktop.focus.DesktopTimerRecoveryStore
+import com.anchor.adhd.desktop.platform.DesktopAppIcon
 import com.anchor.adhd.desktop.platform.DesktopAutostartManager
 import com.anchor.adhd.desktop.platform.DesktopFullscreenManager
-import com.anchor.adhd.desktop.platform.DesktopNotifications
-import com.anchor.adhd.desktop.platform.DesktopAppIcon
 import com.anchor.adhd.desktop.platform.DesktopInstanceLock
+import com.anchor.adhd.desktop.platform.DesktopNotifications
+import com.anchor.adhd.desktop.platform.DesktopSystemAppearance
 import com.anchor.adhd.desktop.prefs.DesktopUserPreferences
-import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorTheme
 import com.anchor.adhd.desktop.ui.DesktopAiScreen
 import com.anchor.adhd.desktop.ui.DesktopAirlockDialog
@@ -93,16 +95,24 @@ import com.anchor.adhd.desktop.ui.DesktopScreen
 import com.anchor.adhd.desktop.ui.DesktopSettingsScreen
 import com.anchor.adhd.desktop.ui.DesktopSyllabusScreen
 import com.anchor.adhd.desktop.ui.DesktopTaskbarIntegration
+import com.anchor.adhd.desktop.ui.desktopScreenForShortcutNumber
+import com.anchor.adhd.desktop.ui.isCompactSidebarWidth
 import com.anchor.adhd.desktop.update.DesktopUpdateManager
+import com.anchor.adhd.domain.AppearanceMode
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
+private const val ANCHOR_WINDOW_TITLE = "Anchor ADHD — Living Maritime Focus"
+
 internal fun restoreExistingAnchorWindow() {
     if (com.sun.jna.Platform.isWindows()) {
         try {
-            val anchorHwnd = com.sun.jna.platform.win32.User32.INSTANCE.FindWindow(null, "Anchor ADHD — Living Maritime Focus")
+            val anchorHwnd = com.sun.jna.platform.win32.User32.INSTANCE.FindWindow(null, ANCHOR_WINDOW_TITLE)
             if (anchorHwnd != null) {
                 val user32 = com.sun.jna.platform.win32.User32.INSTANCE
                 // SW_RESTORE also unmaximizes a visible window; reopening should retain its layout.
@@ -213,6 +223,12 @@ internal fun launchDesktopApplication(
     initialTaskDeletions: List<DesktopTaskDeletion> = emptyList(),
 ) {
     application {
+        val prefs = remember { DesktopUserPreferences() }
+        val appearanceMode by prefs.appearanceModeFlow.collectAsState(initial = AppearanceMode.SYSTEM)
+        val systemDarkTheme = remember(appearanceMode) { DesktopSystemAppearance.isSystemDarkTheme() }
+        val darkTheme = appearanceMode.resolveDarkTheme(systemDarkTheme)
+        val reducedMotion = remember { DesktopSystemAppearance.isReducedMotionEnabled() }
+
         val mainWindowState =
             rememberWindowState(
                 placement = if (startFullscreen) WindowPlacement.Maximized else WindowPlacement.Floating,
@@ -259,7 +275,7 @@ internal fun launchDesktopApplication(
             },
             state = mainWindowState,
             icon = DesktopAppIcon.painter,
-            title = "Anchor ADHD — Living Maritime Focus",
+            title = ANCHOR_WINDOW_TITLE,
             onPreviewKeyEvent = { event ->
                 // Let focused controls handle Space before using it as a timer shortcut.
                 if (event.key == Key.Spacebar) false
@@ -308,8 +324,9 @@ internal fun launchDesktopApplication(
                 }
             }
 
-            AnchorTheme {
+            AnchorTheme(darkTheme = darkTheme, reducedMotion = reducedMotion) {
                 DesktopAnchorApp(
+                    prefs = prefs,
                     initialTaskDeletions = initialTaskDeletions,
                     window = this.window,
                     isFullscreen = isFullscreen,
@@ -400,7 +417,7 @@ internal fun launchDesktopApplication(
                         } catch (_: Throwable) {}
                     }
                 }
-                AnchorTheme {
+                AnchorTheme(darkTheme = darkTheme, reducedMotion = reducedMotion) {
                     DesktopRescueOverlay(
                         detection = distraction,
                         taskTitle = currentTaskTitle,
@@ -445,6 +462,7 @@ internal fun launchDesktopApplication(
 
 @Composable
 internal fun DesktopAnchorApp(
+    prefs: DesktopUserPreferences = remember { DesktopUserPreferences() },
     initialTaskDeletions: List<DesktopTaskDeletion> = emptyList(),
     window: java.awt.Window? = null,
     isFullscreen: Boolean = false,
@@ -493,7 +511,6 @@ internal fun DesktopAnchorApp(
         )
     }
     val rescueCaptureState by rescueCapture.state.collectAsState()
-    val prefs = remember { DesktopUserPreferences() }
     val focusSaves = remember {
         DesktopFocusSaveQueue(java.io.File(db.appDataDirectory, "pending-focus"), save = { credit ->
             db.recordFocusSession(
@@ -1066,13 +1083,13 @@ internal fun DesktopAnchorApp(
             when (event.key) {
                 Key.K -> { airlock.open(); true }
                 Key.I -> { isFloatingIslandVisible = !isFloatingIslandVisible; true }
-                Key.One -> { currentScreen = DesktopScreen.GROVE; true }
-                Key.Two -> { currentScreen = DesktopScreen.FOCUS; true }
-                Key.Three -> { currentScreen = DesktopScreen.BLOCKER; true }
-                Key.Four -> { currentScreen = DesktopScreen.PLAN; true }
-                Key.Five -> { currentScreen = DesktopScreen.SYLLABUS; true }
-                Key.Six -> { currentScreen = DesktopScreen.AI; true }
-                Key.Seven -> { currentScreen = DesktopScreen.SETTINGS; true }
+                Key.One -> { desktopScreenForShortcutNumber(1)?.let { currentScreen = it }; true }
+                Key.Two -> { desktopScreenForShortcutNumber(2)?.let { currentScreen = it }; true }
+                Key.Three -> { desktopScreenForShortcutNumber(3)?.let { currentScreen = it }; true }
+                Key.Four -> { desktopScreenForShortcutNumber(4)?.let { currentScreen = it }; true }
+                Key.Five -> { desktopScreenForShortcutNumber(5)?.let { currentScreen = it }; true }
+                Key.Six -> { desktopScreenForShortcutNumber(6)?.let { currentScreen = it }; true }
+                Key.Seven -> { desktopScreenForShortcutNumber(7)?.let { currentScreen = it }; true }
                 else -> false
             }
         } else false
@@ -1082,12 +1099,15 @@ internal fun DesktopAnchorApp(
         onDispose { onRegisterKeyHandler(null) }
     }
 
-    Box(
+    val tokens = LocalAnchorTokens.current
+
+    BoxWithConstraints(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(AnchorColors.HarborBackground),
+                .background(tokens.paper),
     ) {
+        val compactSidebar = isCompactSidebarWidth(maxWidth)
         Row(modifier = Modifier.fillMaxSize()) {
             // Sidebar Navigation Rail
             DesktopNavigationSidebar(
@@ -1102,6 +1122,8 @@ internal fun DesktopAnchorApp(
                 onToggleFullscreen = onToggleFullscreen,
                 hasUpdateBadge = hasUpdateBadge,
                 isStandingShieldActive = standingShieldEnabled || has247Rules,
+                planPendingCount = tasks.count { !it.isCompleted },
+                compact = compactSidebar,
             )
 
             // Main Active Screen Content Area
@@ -1113,30 +1135,41 @@ internal fun DesktopAnchorApp(
             ) {
                 dataOperationState.feedback?.let { message ->
                     Column(
-                        modifier = Modifier.fillMaxWidth().background(AnchorColors.HarborDock)
-                            .heightIn(max = 160.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(tokens.paper2)
+                                .heightIn(max = 160.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         SelectionContainer {
-                            Text(message, color = if (dataOperationState.isError) Color(0xFFFFB4AB) else Color.White)
+                            Text(message, color = if (dataOperationState.isError) tokens.clayRose else tokens.ink)
                         }
                         OutlinedButton(onClick = dataOperations::dismissFeedback) { Text("Dismiss") }
                     }
+                    AnchorHairline()
                 }
                 if (!timerRecoveryReady || recoveredTimerNotice || timerRecoveryStatus.error != null || archivedRecoveryPath != null) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().background(AnchorColors.HarborDock)
-                            .heightIn(max = 180.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(tokens.paper2)
+                                .heightIn(max = 180.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        if (!timerRecoveryReady) Text("Preparing focus timer…", color = Color.White)
+                        if (!timerRecoveryReady) Text("Preparing focus timer…", color = tokens.ink)
                         if (recoveredTimerNotice) {
-                            Text("Recovered timer — paused", color = Color.White, fontWeight = FontWeight.SemiBold)
-                            Text("Time while Anchor was closed was excluded. Continue or reset the timer below.", color = Color.White.copy(alpha = 0.8f))
+                            Text("Recovered timer — paused", color = tokens.ink, fontWeight = FontWeight.SemiBold)
+                            Text("Time while Anchor was closed was excluded. Continue or reset the timer below.", color = tokens.ink2)
                         }
                         timerRecoveryStatus.error?.let { error ->
-                            Text(error, color = Color(0xFFFFB4AB))
-                            Text("Keep Anchor open until timer recovery can be saved. A damaged file is preserved until you archive it.", color = Color.White.copy(alpha = 0.8f))
+                            Text(error, color = tokens.clayRose)
+                            Text("Keep Anchor open until timer recovery can be saved. A damaged file is preserved until you archive it.", color = tokens.ink2)
                             if (timerRecoveryStatus.damagedFile) {
                                 Button(onClick = {
                                     scope.launch {
@@ -1155,20 +1188,26 @@ internal fun DesktopAnchorApp(
                             }
                         }
                         archivedRecoveryPath?.let { path ->
-                            Text("Original recovery file kept at $path", color = Color.White.copy(alpha = 0.8f))
+                            Text("Original recovery file kept at $path", color = tokens.ink2)
                             OutlinedButton(onClick = { archivedRecoveryPath = null }) { Text("Dismiss") }
                         }
                     }
+                    AnchorHairline()
                 }
                 if (focusSaveState.error != null || focusSaveState.pendingCount > 0) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().background(AnchorColors.HarborDock)
-                            .heightIn(max = 180.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(tokens.paper2)
+                                .heightIn(max = 180.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = if (focusSaveState.isSaving) "Saving focus history…" else "Focus history needs attention (${focusSaveState.pendingCount} pending).",
-                            color = Color.White,
+                            color = tokens.ink,
                             fontWeight = FontWeight.SemiBold,
                         )
                         if (!focusSaveState.isSaving) {
@@ -1178,12 +1217,13 @@ internal fun DesktopAnchorApp(
                                     focusSaveState.pendingCount > 0 -> "Recovery records are kept on this computer. Retry to add this work to your history."
                                     else -> "The focus recovery folder could not be checked. Retry before resetting or restoring data."
                                 },
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = tokens.ink2,
                             )
-                            focusSaveState.error?.let { Text(it, color = Color(0xFFFFB4AB)) }
+                            focusSaveState.error?.let { Text(it, color = tokens.clayRose) }
                             Button(onClick = { scope.launch { focusSaves.retry() } }) { Text("Retry saving history") }
                         }
                     }
+                    AnchorHairline()
                 }
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     when (currentScreen) {
@@ -1507,10 +1547,14 @@ internal fun DesktopAnchorApp(
         dataOperationState.runningLabel?.let { label ->
             AlertDialog(
                 onDismissRequest = {},
+                shape = RoundedCornerShape(AnchorSpacing.radiusSheet),
+                containerColor = tokens.surface,
+                titleContentColor = tokens.ink,
+                textContentColor = tokens.ink2,
                 title = { Text(label) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = tokens.primary)
                         Text("Please wait while Anchor finishes this operation.")
                     }
                 },
@@ -1521,6 +1565,10 @@ internal fun DesktopAnchorApp(
         dataOperationError?.let { message ->
             AlertDialog(
                 onDismissRequest = { dataOperationError = null },
+                shape = RoundedCornerShape(AnchorSpacing.radiusSheet),
+                containerColor = tokens.surface,
+                titleContentColor = tokens.ink,
+                textContentColor = tokens.ink2,
                 title = { Text("Data change could not finish") },
                 text = { Text(message) },
                 confirmButton = { Button(onClick = { dataOperationError = null }) { Text("OK") } },
@@ -1569,19 +1617,32 @@ internal fun DesktopAnchorApp(
                     processMonitor.resetContinuousRabbitHoleTimer()
                     activeRabbitHoleTarget = null
                 },
+                shape = RoundedCornerShape(AnchorSpacing.radiusSheet),
+                containerColor = tokens.surface,
+                titleContentColor = tokens.ink,
+                textContentColor = tokens.ink2,
                 title = {
-                    Text("🐇 Rabbit Hole Reality Check", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        text = "Rabbit Hole Reality Check",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = tokens.ink,
+                    )
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val displayTarget = rabbitHoleTarget.replaceFirstChar { it.uppercase() }
                         Text(
-                            text = "You've been active in ${rabbitHoleTarget.replaceFirstChar { it.uppercase() }} for $activeRabbitHoleMinutes continuous minutes without switching windows.",
-                            color = Color.White.copy(alpha = 0.9f),
+                            text =
+                                "You've been active in $displayTarget for $activeRabbitHoleMinutes " +
+                                    "continuous minutes without switching windows.",
+                            color = tokens.ink2,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = "Are you still working on your homework anchor (\"${focusTask?.title ?: "Deep Work"}\"), or did you get pulled into a rabbit hole?",
-                            color = AnchorColors.HarborPrimary,
+                            text =
+                                "Are you still working on your homework anchor " +
+                                    "(\"${focusTask?.title ?: "Deep Work"}\"), or did you get pulled into a rabbit hole?",
+                            color = tokens.primary,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -1593,7 +1654,11 @@ internal fun DesktopAnchorApp(
                             processMonitor.resetContinuousRabbitHoleTimer()
                             activeRabbitHoleTarget = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborPrimary, contentColor = Color(0xFF002A4A)),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
                     ) {
                         Text("Still on Task", fontWeight = FontWeight.Bold)
                     }
@@ -1606,7 +1671,8 @@ internal fun DesktopAnchorApp(
                             processMonitor.restorePreviousWorkWindow()
                             activeRabbitHoleTarget = null
                         },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = BorderStroke(1.dp, tokens.rule),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.ink),
                     ) {
                         Text("Back to Notes / Anchor")
                     }

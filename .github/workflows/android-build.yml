@@ -53,7 +53,7 @@ jobs:
   release:
     name: Build & Release APK
     needs: test
-    if: startsWith(github.ref, 'refs/tags/android-v') && vars.ANCHOR_ANDROID_CI_RELEASES == 'true'
+    if: startsWith(github.ref, 'refs/tags/android-v')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:

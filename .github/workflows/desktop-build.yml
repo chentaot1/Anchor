@@ -31,7 +31,7 @@ jobs:
   release:
     name: Build & Release Installers
     needs: test
-    if: startsWith(github.ref, 'refs/tags/desktop-v') && vars.ANCHOR_DESKTOP_CI_RELEASES == 'true'
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
     runs-on: windows-latest
     timeout-minutes: 90
     permissions:

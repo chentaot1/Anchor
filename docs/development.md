@@ -173,7 +173,7 @@ On Windows, run `powershell -NoProfile -File tools/verify_windows_updater.ps1` t
 
 The desktop suite covers routing, structured breakdown validation, academic context, blocker policies, database behavior, and platform helpers. Android tests cover scheduling, focus and replan behavior, and app-protection policies and service logic.
 
-The [Android CI workflow](../.github/workflows/android-build.yml) runs unit tests on configured branches, pull requests, and manual runs. It does not run desktop tests. An `android-v*` tag can additionally stage the model, build and verify the APK, and publish it when `ANCHOR_ANDROID_CI_RELEASES` is enabled.
+The [Android CI workflow](../.github/workflows/android-build.yml) runs unit tests on configured branches, pull requests, and manual runs. It does not run desktop tests. An `android-v*` tag builds and verifies the APK, then publishes it. A `desktop-v*` tag does the same for the Windows MSI and EXE.
 
 ## Android signing and updates
 

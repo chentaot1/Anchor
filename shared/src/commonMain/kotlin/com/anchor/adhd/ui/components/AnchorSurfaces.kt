@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +27,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -175,22 +178,30 @@ fun AnchorListRow(
     trailing: (@Composable () -> Unit)? = null,
     minHeight: Dp = 48.dp,
     showDivider: Boolean = true,
+    checked: Boolean? = null,
     modifier: Modifier = Modifier,
 ) {
     val tokens = LocalAnchorTokens.current
+    val interactionModifier = when {
+        checked != null && onClick != null ->
+            Modifier.toggleable(
+                value = checked,
+                role = Role.Checkbox,
+                onValueChange = { onClick() },
+            )
+        onClick != null ->
+            Modifier.clickable(role = Role.Button, onClick = onClick)
+        checked != null ->
+            Modifier.semantics { toggleableState = ToggleableState(checked) }
+        else -> Modifier
+    }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = minHeight)
-                .then(
-                    if (onClick != null) {
-                        Modifier.clickable(role = Role.Button, onClick = onClick)
-                    } else {
-                        Modifier
-                    },
-                )
+                .then(interactionModifier)
                 .padding(horizontal = 4.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),

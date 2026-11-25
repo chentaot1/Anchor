@@ -53,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -479,10 +478,7 @@ fun DesktopFocusScreen(
                                     onClick = { microSteps[index] = step to !checked },
                                     minHeight = 40.dp,
                                     showDivider = index < microSteps.lastIndex,
-                                    modifier =
-                                        Modifier.semantics {
-                                            stateDescription = if (checked) "Completed" else "Not completed"
-                                        },
+                                    checked = checked,
                                     leading = {
                                         Icon(
                                             imageVector =

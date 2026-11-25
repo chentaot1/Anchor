@@ -37,6 +37,11 @@ class DesktopFocusRenderTest {
         assertEquals("25:00", formatCountdownClock(25 * 60))
         assertEquals("60:00", formatCountdownClock(60 * 60))
 
+        assertEquals("Pause focus", floatingIslandToggleContentDescription(isFocusActive = true, isWorkPhase = true))
+        assertEquals("Pause break", floatingIslandToggleContentDescription(isFocusActive = true, isWorkPhase = false))
+        assertEquals("Resume focus", floatingIslandToggleContentDescription(isFocusActive = false, isWorkPhase = true))
+        assertEquals("Resume break", floatingIslandToggleContentDescription(isFocusActive = false, isWorkPhase = false))
+
         assertEquals(0f, computeDesktopFocusProgress(remainingSeconds = 1500, durationMinutes = 25), 0.0001f)
         assertEquals(0.5f, computeDesktopFocusProgress(remainingSeconds = 750, durationMinutes = 25), 0.0001f)
         assertEquals(1f, computeDesktopFocusProgress(remainingSeconds = 0, durationMinutes = 25), 0.0001f)
@@ -222,11 +227,13 @@ class DesktopFocusRenderTest {
                 }
             }
         return try {
-            // Subcomposed BoxWithConstraints layers launch FocusCanvas's InfiniteTransition across initial frames.
+            // Subcomposed BoxWithConstraints layers launch FocusCanvas's InfiniteTransition across initial frames,
+            // and a follow-up render flushes any deferred snapshot invalidation from advancing time.
             scene.render(0L)
             scene.render(16_000_000L)
             val frame1 = scene.render(32_000_000L)
-            val frame2 = scene.render(2_532_000_000L)
+            scene.render(2_532_000_000L)
+            val frame2 = scene.render(2_548_000_000L)
             val pixels = frame1.toComposeImageBitmap().toPixelMap()
             val expectedTokens = if (darkTheme) NightHarborTokens else MorningHarborTokens
             RenderedFocus(
@@ -266,8 +273,10 @@ class DesktopFocusRenderTest {
             }
         return try {
             scene.render(0L)
-            val frame1 = scene.render(16_000_000L)
-            val frame2 = scene.render(2_016_000_000L)
+            scene.render(16_000_000L)
+            val frame1 = scene.render(32_000_000L)
+            scene.render(2_032_000_000L)
+            val frame2 = scene.render(2_048_000_000L)
             val pixels = frame1.toComposeImageBitmap().toPixelMap()
             val expectedTokens = if (darkTheme) NightHarborTokens else MorningHarborTokens
             RenderedIsland(

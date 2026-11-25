@@ -1,6 +1,7 @@
 package com.anchor.adhd.ui.focus
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class FocusProgressTest {
@@ -83,6 +84,57 @@ class FocusProgressTest {
                 breakMinutes = 5,
             ),
             0.0001f,
+        )
+    }
+
+    @Test
+    fun firstStepShowsNowTaskNotesOnlyWhenIdleOrMatchingActiveTask() {
+        assertEquals(
+            "Open lab rubric",
+            resolveFocusFirstStep(
+                active = false,
+                isWorkPhase = true,
+                timerTaskId = null,
+                nowTaskId = 42L,
+                nowTaskNotes = "  \nOpen lab rubric\nSecond line",
+            ),
+        )
+        assertEquals(
+            "Open lab rubric",
+            resolveFocusFirstStep(
+                active = true,
+                isWorkPhase = true,
+                timerTaskId = 42L,
+                nowTaskId = 42L,
+                nowTaskNotes = "Open lab rubric",
+            ),
+        )
+        assertNull(
+            resolveFocusFirstStep(
+                active = true,
+                isWorkPhase = true,
+                timerTaskId = 99L,
+                nowTaskId = 42L,
+                nowTaskNotes = "Unrelated now task notes",
+            ),
+        )
+        assertNull(
+            resolveFocusFirstStep(
+                active = true,
+                isWorkPhase = true,
+                timerTaskId = null,
+                nowTaskId = 42L,
+                nowTaskNotes = "Unrelated now task notes",
+            ),
+        )
+        assertNull(
+            resolveFocusFirstStep(
+                active = true,
+                isWorkPhase = false,
+                timerTaskId = 42L,
+                nowTaskId = 42L,
+                nowTaskNotes = "Open lab rubric",
+            ),
         )
     }
 }

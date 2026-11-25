@@ -46,6 +46,17 @@ internal fun formatCountdownClock(remainingSeconds: Int): String {
     return "${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}"
 }
 
+internal fun floatingIslandToggleContentDescription(
+    isFocusActive: Boolean,
+    isWorkPhase: Boolean,
+): String =
+    when {
+        isFocusActive && isWorkPhase -> "Pause focus"
+        isFocusActive -> "Pause break"
+        !isWorkPhase -> "Resume break"
+        else -> "Resume focus"
+    }
+
 /**
  * Windows 11 Floating Island Micro-HUD.
  * A lightweight, draggable, always-on-top ambient anchor widget that adapts to
@@ -196,7 +207,7 @@ internal fun DesktopFloatingIslandSurface(
                 ) {
                     Icon(
                         imageVector = if (isFocusActive) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isFocusActive) "Pause focus" else "Start focus",
+                        contentDescription = floatingIslandToggleContentDescription(isFocusActive, isWorkPhase),
                         tint = if (isFocusActive) tokens.sage else tokens.primary,
                         modifier = Modifier.size(18.dp),
                     )

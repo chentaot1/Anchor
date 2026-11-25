@@ -81,6 +81,22 @@ internal fun computeFocusProgress(
     return (1f - remainingSeconds.coerceAtLeast(0).toFloat() / totalPhaseSeconds).coerceIn(0f, 1f)
 }
 
+internal fun resolveFocusFirstStep(
+    active: Boolean,
+    isWorkPhase: Boolean,
+    timerTaskId: Long?,
+    nowTaskId: Long?,
+    nowTaskNotes: String?,
+): String? {
+    if (!isWorkPhase) return null
+    val matchesActiveTask = !active || (timerTaskId != null && timerTaskId == nowTaskId)
+    if (!matchesActiveTask) return null
+    return nowTaskNotes
+        ?.lineSequence()
+        ?.map(String::trim)
+        ?.firstOrNull { it.isNotEmpty() }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FocusScreen(
@@ -114,18 +130,17 @@ fun FocusScreen(
 
     val remainingSecs = if (active) timer.remainingSeconds.coerceAtLeast(0).toLong() else (pickerMinutes * 60L)
     val currentTaskTitle = when {
-        active && !isWorkPhase -> "Restorative break"
-        active -> timer.taskTitle ?: now.task?.title ?: "Deep focus"
+        active && !isWorkPhase -> "Step away until the break finishes"
+        active -> timer.taskTitle ?: now.task?.takeIf { timer.taskId != null && timer.taskId == it.id }?.title ?: "Deep focus"
         else -> now.task?.title ?: "Ready to anchor"
     }
-    val firstStep = if (isWorkPhase) {
-        now.task?.notes
-            ?.lineSequence()
-            ?.map(String::trim)
-            ?.firstOrNull { it.isNotEmpty() }
-    } else {
-        "Step away from the screen until the break finishes."
-    }
+    val firstStep = resolveFocusFirstStep(
+        active = active,
+        isWorkPhase = isWorkPhase,
+        timerTaskId = timer.taskId,
+        nowTaskId = now.task?.id,
+        nowTaskNotes = now.task?.notes,
+    )
 
     Box(
         modifier = modifier
@@ -202,7 +217,7 @@ fun FocusScreen(
                     Text(
                         text = currentTaskTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        color = tokens.ink,
+                        color = if (active && !isWorkPhase) tokens.sage else tokens.ink,
                         textAlign = TextAlign.Center,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
@@ -292,33 +307,37 @@ fun FocusScreen(
                         )
                     }
 
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        AnchorQuietButton(
-                            label = AppCopy.FOCUS_END_EARLY,
-                            onClick = { vm.requestEndFocus(timer.phase != FocusTimerState.Phase.WORK) },
-                            outlined = false,
-                            tint = tokens.muted,
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        )
-                        if (onOpenAirlock != null) {
-                            AnchorQuietButton(
-                                label = "Airlock reset",
-                                onClick = onOpenAirlock,
-                                outlined = true,
-                                tint = captainLabelColor,
-                                modifier = Modifier.heightIn(min = 48.dp),
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Air,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                },
-                            )
+                    if (isWorkPhase || onOpenAirlock != null) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            if (isWorkPhase) {
+                                AnchorQuietButton(
+                                    label = AppCopy.FOCUS_END_EARLY,
+                                    onClick = { vm.requestEndFocus(false) },
+                                    outlined = false,
+                                    tint = tokens.muted,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                )
+                            }
+                            if (onOpenAirlock != null) {
+                                AnchorQuietButton(
+                                    label = "Airlock reset",
+                                    onClick = onOpenAirlock,
+                                    outlined = true,
+                                    tint = captainLabelColor,
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Air,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
                 } else {
@@ -404,7 +423,7 @@ fun FocusScreen(
                                     label = "Airlock reset",
                                     onClick = onOpenAirlock,
                                     outlined = true,
-                                    tint = tokens.ink,
+                                    tint = captainLabelColor,
                                     modifier = Modifier.heightIn(min = 48.dp),
                                     leadingIcon = {
                                         Icon(

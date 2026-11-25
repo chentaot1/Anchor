@@ -159,16 +159,19 @@ fun DayTimeline(
                     .weight(1f)
                     .height(height)
                     .clip(gridShape)
-                    .background(tokens.paper2),
+                    .background(tokens.paper)
+                    .border(1.dp, tokens.rule, gridShape),
             ) {
                 for (h in DAY_START_HOUR..DAY_END_HOUR) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .offset(y = ((h - DAY_START_HOUR) * HOUR_HEIGHT_DP).dp)
-                            .background(tokens.rule),
-                    )
+                    if (h > DAY_START_HOUR) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .offset(y = ((h - DAY_START_HOUR) * HOUR_HEIGHT_DP).dp)
+                                .background(tokens.rule),
+                        )
+                    }
                 }
 
                 calendarEvents.forEach { event ->
@@ -177,13 +180,13 @@ fun DayTimeline(
                         label = event.title,
                         startMillis = event.startMillis,
                         endMillis = event.endMillis,
-                        containerColor = if (isNear) tokens.paper3 else tokens.surface,
+                        containerColor = if (isNear) tokens.paper3 else tokens.paper2,
                         borderColor = tokens.rule,
                         contentColor = if (isNear) tokens.ink else tokens.ink2,
                         leadingIcon = Icons.Outlined.Event,
+                        leadingIconDescription = "Calendar event",
                         leadingIconTint = tokens.muted,
-                        trailingIcon = null,
-                        trailingIconTint = tokens.muted,
+                        statusIcons = emptyList(),
                         zone = zone,
                         highlighted = false,
                         draggable = false,
@@ -201,30 +204,37 @@ fun DayTimeline(
                     val isNear = isSpotlight || isWithinActiveWindow(start, nowMillis)
 
                     val containerColor = when {
-                        isSpotlight -> tokens.beaconPlate
-                        isNear -> tokens.primarySoft
-                        else -> tokens.surface
+                        isSpotlight || isNear -> tokens.primarySoft
+                        else -> tokens.paper2
                     }
                     val borderColor = when {
-                        isSpotlight -> tokens.beaconPlateCta
-                        isNear -> tokens.primary
+                        isSpotlight -> tokens.primary
+                        isNear -> tokens.primary.copy(alpha = 0.55f)
                         else -> tokens.rule
                     }
                     val contentColor = when {
-                        isSpotlight -> tokens.beaconPlateInk
-                        isNear -> tokens.ink
+                        isSpotlight || isNear -> tokens.ink
                         else -> tokens.ink2
                     }
-                    val statusIcon = when {
-                        isLocked -> Icons.Outlined.Lock
-                        task.dueAtMillis != null -> Icons.Outlined.Flag
-                        else -> null
-                    }
-                    val statusTint = when {
-                        isLocked && isSpotlight -> tokens.beaconPlateCta
-                        isLocked -> tokens.muted
-                        task.dueAtMillis != null && isSpotlight -> tokens.beaconPlateCta
-                        else -> tokens.clayRose
+                    val statusIcons = buildList {
+                        if (isLocked) {
+                            add(
+                                TimelineStatusIcon(
+                                    icon = Icons.Outlined.Lock,
+                                    contentDescription = "Locked",
+                                    tint = if (isSpotlight) tokens.primary else tokens.muted,
+                                ),
+                            )
+                        }
+                        if (task.dueAtMillis != null) {
+                            add(
+                                TimelineStatusIcon(
+                                    icon = Icons.Outlined.Flag,
+                                    contentDescription = "Has due date",
+                                    tint = tokens.clayRose,
+                                ),
+                            )
+                        }
                     }
 
                     TimelineBlock(
@@ -235,9 +245,9 @@ fun DayTimeline(
                         borderColor = borderColor,
                         contentColor = contentColor,
                         leadingIcon = null,
+                        leadingIconDescription = null,
                         leadingIconTint = contentColor,
-                        trailingIcon = statusIcon,
-                        trailingIconTint = statusTint,
+                        statusIcons = statusIcons,
                         zone = zone,
                         highlighted = isSpotlight,
                         draggable = !isLocked,
@@ -315,6 +325,12 @@ private fun isWithinActiveWindow(startMillis: Long, nowMillis: Long): Boolean {
     return diffMinutes <= 60.0
 }
 
+private data class TimelineStatusIcon(
+    val icon: ImageVector,
+    val contentDescription: String,
+    val tint: Color,
+)
+
 @Composable
 private fun TimelineBlock(
     label: String,
@@ -324,9 +340,9 @@ private fun TimelineBlock(
     borderColor: Color,
     contentColor: Color,
     leadingIcon: ImageVector?,
+    leadingIconDescription: String?,
     leadingIconTint: Color,
-    trailingIcon: ImageVector?,
-    trailingIconTint: Color,
+    statusIcons: List<TimelineStatusIcon>,
     zone: ZoneId,
     highlighted: Boolean,
     draggable: Boolean,
@@ -408,7 +424,7 @@ private fun TimelineBlock(
         if (leadingIcon != null) {
             Icon(
                 imageVector = leadingIcon,
-                contentDescription = null,
+                contentDescription = leadingIconDescription,
                 tint = leadingIconTint,
                 modifier = Modifier.size(14.dp),
             )
@@ -423,11 +439,11 @@ private fun TimelineBlock(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        if (trailingIcon != null) {
+        statusIcons.forEach { statusIcon ->
             Icon(
-                imageVector = trailingIcon,
-                contentDescription = null,
-                tint = trailingIconTint,
+                imageVector = statusIcon.icon,
+                contentDescription = statusIcon.contentDescription,
+                tint = statusIcon.tint,
                 modifier = Modifier.size(14.dp),
             )
         }

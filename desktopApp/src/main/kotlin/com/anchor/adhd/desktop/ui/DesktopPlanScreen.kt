@@ -50,9 +50,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -452,26 +457,40 @@ internal fun DesktopPlanScreen(
                                 trailingText = "${task.durationMinutes}m",
                                 minHeight = 44.dp,
                                 showDivider = false,
-                                checked = task.isCompleted,
-                                onClick = {
-                                    if (controlsEnabled) {
-                                        onTaskChange("Updating milestone") {
-                                            db.setTaskCompleted(task.id, !task.isCompleted)
-                                        }
-                                    }
-                                },
                                 leading = {
-                                    Icon(
-                                        imageVector =
-                                            if (task.isCompleted) {
-                                                Icons.Default.CheckCircle
-                                            } else {
-                                                Icons.Outlined.RadioButtonUnchecked
-                                            },
-                                        contentDescription = null,
-                                        tint = if (task.isCompleted) tokens.sage else tokens.muted,
-                                        modifier = Modifier.size(20.dp),
-                                    )
+                                    IconButton(
+                                        onClick = {
+                                            onTaskChange("Updating milestone") {
+                                                db.setTaskCompleted(task.id, !task.isCompleted)
+                                            }
+                                        },
+                                        enabled = controlsEnabled,
+                                        modifier =
+                                            Modifier
+                                                .size(36.dp)
+                                                .semantics {
+                                                    role = Role.Checkbox
+                                                    toggleableState = ToggleableState(task.isCompleted)
+                                                    stateDescription = if (task.isCompleted) "Completed" else "Not completed"
+                                                },
+                                    ) {
+                                        Icon(
+                                            imageVector =
+                                                if (task.isCompleted) {
+                                                    Icons.Default.CheckCircle
+                                                } else {
+                                                    Icons.Outlined.RadioButtonUnchecked
+                                                },
+                                            contentDescription =
+                                                if (task.isCompleted) {
+                                                    "Mark ${task.title} incomplete"
+                                                } else {
+                                                    "Mark ${task.title} complete"
+                                                },
+                                            tint = if (task.isCompleted) tokens.sage else tokens.muted,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    }
                                 },
                                 trailing =
                                     if (!compactRow) {
@@ -506,7 +525,7 @@ internal fun DesktopPlanScreen(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 32.dp, bottom = 8.dp),
+                                            .padding(start = 48.dp, bottom = 8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {

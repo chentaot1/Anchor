@@ -58,10 +58,10 @@ fun WorkloadBanner(
         WorkloadStatus.WARNING -> "Getting full: $loadLabel of $capacityLabel"
         WorkloadStatus.OVER -> "Over capacity: $loadLabel of $capacityLabel"
     }
-    val progress = if (workload.capacityMinutes <= 0) {
-        1f
-    } else {
-        (workload.effectiveLoad.toFloat() / workload.capacityMinutes.toFloat()).coerceIn(0f, 1f)
+    val progress = when {
+        workload.effectiveLoad <= 0 -> 0f
+        workload.capacityMinutes <= 0 -> 1f
+        else -> (workload.effectiveLoad.toFloat() / workload.capacityMinutes.toFloat()).coerceIn(0f, 1f)
     }
 
     Surface(

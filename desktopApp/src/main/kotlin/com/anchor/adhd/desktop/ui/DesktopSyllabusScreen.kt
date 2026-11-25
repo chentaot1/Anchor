@@ -30,8 +30,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -65,8 +67,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -680,20 +687,36 @@ private fun SyllabusDeliverableRow(
             trailingText = item.dueDateText,
             minHeight = 44.dp,
             showDivider = false,
-            checked = item.isCompleted,
-            onClick = onToggleComplete,
+            onClick = if (item.prepSteps.isNotEmpty()) onToggleExpand else null,
             leading = {
-                Icon(
-                    imageVector =
-                        if (item.isCompleted) {
-                            Icons.Default.CheckCircle
-                        } else {
-                            Icons.Outlined.RadioButtonUnchecked
-                        },
-                    contentDescription = null,
-                    tint = if (item.isCompleted) tokens.sage else tokens.muted,
-                    modifier = Modifier.size(20.dp),
-                )
+                IconButton(
+                    onClick = onToggleComplete,
+                    modifier =
+                        Modifier
+                            .size(36.dp)
+                            .semantics {
+                                role = Role.Checkbox
+                                toggleableState = ToggleableState(item.isCompleted)
+                                stateDescription = if (item.isCompleted) "Completed" else "Not completed"
+                            },
+                ) {
+                    Icon(
+                        imageVector =
+                            if (item.isCompleted) {
+                                Icons.Default.CheckCircle
+                            } else {
+                                Icons.Outlined.RadioButtonUnchecked
+                            },
+                        contentDescription =
+                            if (item.isCompleted) {
+                                "Mark ${item.title} incomplete"
+                            } else {
+                                "Mark ${item.title} complete"
+                            },
+                        tint = if (item.isCompleted) tokens.sage else tokens.muted,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             },
             trailing =
                 if (!compactRow) {
@@ -708,7 +731,7 @@ private fun SyllabusDeliverableRow(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 32.dp, bottom = 8.dp),
+                        .padding(start = 48.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -857,7 +880,7 @@ private fun PasteSyllabusDialog(
             border = BorderStroke(1.dp, tokens.rule),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth(0.92f).height(480.dp),
+            modifier = Modifier.fillMaxWidth(0.92f).heightIn(max = 480.dp),
         ) {
             Column(
                 modifier = Modifier.padding(22.dp),
@@ -886,7 +909,7 @@ private fun PasteSyllabusDialog(
                             color = tokens.muted,
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(min = 140.dp, max = 300.dp),
                     textStyle = MaterialTheme.typography.bodyMedium,
                     shape = RoundedCornerShape(AnchorSpacing.radiusChip),
                     colors = syllabusFieldColors(),
@@ -942,7 +965,7 @@ private fun SyllabusAirlockDialog(
             border = BorderStroke(1.dp, tokens.rule),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth(0.95f).height(580.dp),
+            modifier = Modifier.fillMaxWidth(0.95f).heightIn(max = 580.dp),
         ) {
             Column(
                 modifier = Modifier.padding(22.dp),
@@ -1021,7 +1044,7 @@ private fun SyllabusAirlockDialog(
                 )
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
                 ) {
                     itemsIndexed(staged.deliverables) { index, item ->
                         val isChecked = index in selectedIndices
@@ -1122,10 +1145,10 @@ private fun AddManualDeliverableDialog(
             border = BorderStroke(1.dp, tokens.rule),
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth(0.9f),
+            modifier = Modifier.fillMaxWidth(0.9f).heightIn(max = 520.dp),
         ) {
             Column(
-                modifier = Modifier.padding(22.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()).padding(22.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

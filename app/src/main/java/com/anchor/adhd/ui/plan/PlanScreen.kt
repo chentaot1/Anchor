@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -55,7 +55,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anchor.adhd.data.model.InboxState
 import com.anchor.adhd.data.model.RoutineEntity
@@ -175,8 +174,13 @@ private fun PlanTimelineFirst(
 
     if (showInbox) {
         HarborModalSheet(onDismissRequest = { showInbox = false }) {
-            Column(Modifier.fillMaxWidth().height(560.dp)) {
-                InboxTab(vm, Modifier.fillMaxSize())
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 560.dp)
+                    .imePadding(),
+            ) {
+                InboxTab(vm, Modifier.fillMaxWidth())
             }
         }
     }
@@ -184,7 +188,12 @@ private fun PlanTimelineFirst(
     if (showMoreSheet) {
         HarborModalSheet(onDismissRequest = { showMoreSheet = false }) {
             var sheetTab by remember(moreInitialSheetTab) { mutableIntStateOf(moreInitialSheetTab) }
-            Column(Modifier.fillMaxWidth().height(560.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 560.dp)
+                    .imePadding(),
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -206,8 +215,8 @@ private fun PlanTimelineFirst(
                 }
                 AnchorHairline()
                 when (sheetTab) {
-                    0 -> ReplanTab(vm, Modifier.weight(1f))
-                    else -> MoreTab(vm, Modifier.weight(1f))
+                    0 -> ReplanTab(vm, Modifier.weight(1f, fill = false))
+                    else -> MoreTab(vm, Modifier.weight(1f, fill = false))
                 }
             }
         }
@@ -536,7 +545,7 @@ private fun InboxTab(vm: AnchorViewModel, modifier: Modifier) {
         verticalArrangement = Arrangement.spacedBy(AnchorSpacing.itemGap),
     ) {
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(AnchorSpacing.itemGap),
         ) {
             item(key = "quick-capture") {
@@ -750,27 +759,32 @@ private fun ReplanTab(vm: AnchorViewModel, modifier: Modifier) {
         modifier = modifier.padding(horizontal = AnchorSpacing.screenHorizontal, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(AnchorSpacing.itemGap),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            AnchorSectionHeader(
-                title = "Replan queue",
-                trailingLabel = "${replan.size}",
-            )
-            Text(
-                text = AppCopy.REPLAN_SECTION,
-                style = MaterialTheme.typography.bodySmall,
-                color = tokens.muted,
-            )
-        }
-
-        if (replan.isEmpty()) {
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                HarborEmptyState(
-                    title = "All caught up",
-                    message = AppCopy.REPLAN_EMPTY,
-                )
+        LazyColumn(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalArrangement = Arrangement.spacedBy(AnchorSpacing.itemGap),
+        ) {
+            item(key = "replan-header") {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    AnchorSectionHeader(
+                        title = "Replan queue",
+                        trailingLabel = "${replan.size}",
+                    )
+                    Text(
+                        text = AppCopy.REPLAN_SECTION,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.muted,
+                    )
+                }
             }
-        } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+
+            if (replan.isEmpty()) {
+                item(key = "replan-empty") {
+                    HarborEmptyState(
+                        title = "All caught up",
+                        message = AppCopy.REPLAN_EMPTY,
+                    )
+                }
+            } else {
                 itemsIndexed(replan, key = { _, pair -> pair.first.id }) { index, (item, task) ->
                     Column(modifier = Modifier.fillMaxWidth()) {
                         AnchorListRow(
@@ -817,6 +831,46 @@ private fun ReplanTab(vm: AnchorViewModel, modifier: Modifier) {
                     }
                 }
             }
+
+            aiPreview?.let { preview ->
+                item(key = "replan-captain-preview") {
+                    AnchorWell(
+                        tone = AnchorWellTone.Captain,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AnchorSectionHeader(title = "Captain suggestions")
+                        preview.message?.let { message ->
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = tokens.ink,
+                            )
+                        }
+                        preview.recommended_titles.forEach { title ->
+                            Text(
+                                text = "Today: $title",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = tokens.ink2,
+                            )
+                        }
+                        preview.defer_titles.forEach { title ->
+                            Text(
+                                text = "Someday: $title",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = tokens.ink2,
+                            )
+                        }
+                        HarborCtaButton(
+                            onClick = { vm.applyReplanAi() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp),
+                        ) {
+                            Text("Apply suggestions", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+            }
         }
 
         AnchorQuietButton(
@@ -836,44 +890,6 @@ private fun ReplanTab(vm: AnchorViewModel, modifier: Modifier) {
                 )
             },
         )
-
-        aiPreview?.let { preview ->
-            AnchorWell(
-                tone = AnchorWellTone.Captain,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                AnchorSectionHeader(title = "Captain suggestions")
-                preview.message?.let { message ->
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = tokens.ink,
-                    )
-                }
-                preview.recommended_titles.forEach { title ->
-                    Text(
-                        text = "Today: $title",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tokens.ink2,
-                    )
-                }
-                preview.defer_titles.forEach { title ->
-                    Text(
-                        text = "Someday: $title",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tokens.ink2,
-                    )
-                }
-                HarborCtaButton(
-                    onClick = { vm.applyReplanAi() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp),
-                ) {
-                    Text("Apply suggestions", style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        }
     }
 }
 
@@ -943,8 +959,8 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
                         colors = planFieldColors(),
                     )
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     HarborCtaButton(
@@ -957,15 +973,13 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
                             }
                         },
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .heightIn(min = 48.dp),
                         enabled = assignTitle.isNotBlank(),
                     ) {
                         Text(
                             text = "Add assignment",
                             style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                     AnchorQuietButton(
@@ -974,7 +988,7 @@ private fun MoreTab(vm: AnchorViewModel, modifier: Modifier) {
                         outlined = true,
                         tint = tokens.primary,
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .heightIn(min = 48.dp),
                         leadingIcon = {
                             Icon(

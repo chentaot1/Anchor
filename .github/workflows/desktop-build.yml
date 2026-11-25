@@ -54,7 +54,9 @@ jobs:
           if (-not (Get-Command light.exe -ErrorAction SilentlyContinue)) {
             choco install wixtoolset --no-progress -y
           }
-          light.exe -help | Select-Object -First 1
+          $light = Get-Command light.exe -ErrorAction SilentlyContinue
+          if (-not $light) { throw "WiX light.exe was not found after install" }
+          Write-Host $light.Source
 
       - name: Build installers
         shell: bash

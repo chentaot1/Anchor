@@ -131,13 +131,7 @@ internal fun DesktopHomeDeck(
 ) {
     val tokens = LocalAnchorTokens.current
     val effectiveStreak = if (streakDays > 0) streakDays else harborState.streakDays
-    val effectiveWeeklySessions =
-        if (weeklySessionCount > 0) {
-            weeklySessionCount
-        } else {
-            weeklyFocusDays.count { it.minutes > 0 }
-        }
-    val stageLabel = GroveLevel.vitalityLabel(GroveLevel.vitalityStageForWeeklySessions(effectiveWeeklySessions))
+    val stageLabel = GroveLevel.vitalityLabel(GroveLevel.vitalityStageForWeeklySessions(weeklySessionCount))
     val totalWeeklyMinutes = weeklyFocusDays.sumOf { it.minutes }.coerceAtLeast(todayFocusMinutes)
     val captainAction: (() -> Unit)? =
         when {

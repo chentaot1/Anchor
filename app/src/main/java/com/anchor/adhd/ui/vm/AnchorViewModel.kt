@@ -839,6 +839,10 @@ class AnchorViewModel(
     }
 
     fun breakdownTask(title: String) {
+        if (_aiPreviewParentTitle.value != title) {
+            _aiPreview.value = null
+        }
+        _aiPreviewParentTitle.value = title
         launchAi(
             block = {
                 container.aiRepository.breakdownTask(

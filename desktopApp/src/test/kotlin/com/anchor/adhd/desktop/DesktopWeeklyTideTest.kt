@@ -141,6 +141,18 @@ class DesktopWeeklyTideTest {
             assertEquals(1, db.weeklySessionCount.value)
             assertEquals(1, db.todaySessionCount.value)
 
+            db.recordFocusSession(
+                taskTitle = "Ended early",
+                durationSeconds = 1500,
+                actualSeconds = 600,
+                completed = false,
+                now = LocalDateTime.now(),
+            )
+            val afterIncomplete = db.weeklyFocusDays.value
+            assertEquals(35, afterIncomplete.last().minutes)
+            assertEquals(1, db.weeklySessionCount.value)
+            assertEquals(1, db.todaySessionCount.value)
+
             db.resetFocusHistoryAndStreak()
             val afterReset = db.weeklyFocusDays.value
             assertEquals(7, afterReset.size)

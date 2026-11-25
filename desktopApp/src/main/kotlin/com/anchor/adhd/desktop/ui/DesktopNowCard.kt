@@ -35,7 +35,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.anchor.adhd.desktop.db.DesktopTask
 import com.anchor.adhd.ui.components.AnchorBeaconPlate
 import com.anchor.adhd.ui.components.AnchorQuietButton
@@ -64,7 +63,9 @@ fun DesktopNowCard(
 ) {
     val tokens = LocalAnchorTokens.current
     val safeRemainingSeconds = remainingSeconds.coerceAtLeast(0)
-    val formattedRemaining = String.format("%02d:%02d", safeRemainingSeconds / 60, safeRemainingSeconds % 60)
+    val mins = safeRemainingSeconds / 60
+    val secs = safeRemainingSeconds % 60
+    val formattedRemaining = "${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}"
     val showProgress = isFocusActive || hasOpenFocusSession || !isWorkPhase
     val progress =
         if (showProgress) {
@@ -162,12 +163,7 @@ fun DesktopNowCard(
 
         Text(
             text = currentTask?.title ?: "Select or create a task to begin",
-            style =
-                MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 19.sp,
-                    lineHeight = 25.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
+            style = MaterialTheme.typography.titleMedium,
             color = tokens.beaconPlateInk,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,

@@ -56,7 +56,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.anchor.adhd.data.model.CheckInTag
 import com.anchor.adhd.data.model.EnergyLevel
 import com.anchor.adhd.domain.CheckInCodec
@@ -64,6 +63,7 @@ import com.anchor.adhd.domain.GroveLevel
 import com.anchor.adhd.service.FocusTimerState
 import com.anchor.adhd.ui.components.AnchorBeaconPlate
 import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorHairline
 import com.anchor.adhd.ui.components.AnchorListRow
 import com.anchor.adhd.ui.components.AnchorQuietButton
 import com.anchor.adhd.ui.components.AnchorSectionHeader
@@ -228,46 +228,49 @@ fun GroveHomeScreen(
                             )
                         }
 
-                        Surface(
-                            shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                            color = tokens.beaconPlatePill,
-                            border = BorderStroke(1.dp, tokens.beaconPlateBorder),
-                            shadowElevation = 0.dp,
-                            tonalElevation = 0.dp,
+                        Box(
                             modifier = Modifier
+                                .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
                                 .clickable(role = Role.Button, onClickLabel = "Choose focus duration") {
                                     showCustomDurationDialog = true
-                                }
+                                },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .heightIn(min = 32.dp)
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            Surface(
+                                shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                                color = tokens.beaconPlatePill,
+                                border = BorderStroke(1.dp, tokens.beaconPlateBorder),
+                                shadowElevation = 0.dp,
+                                tonalElevation = 0.dp
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Timer,
-                                    contentDescription = null,
-                                    tint = tokens.beaconPlateInk2,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "${selectedWorkMinutes}m",
-                                    style = MaterialTheme.typography.labelMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontFeatureSettings = "tnum"
-                                    ),
-                                    color = tokens.beaconPlateInk,
-                                    maxLines = 1
-                                )
-                                Icon(
-                                    imageVector = Icons.Outlined.Edit,
-                                    contentDescription = null,
-                                    tint = tokens.beaconPlateInk2,
-                                    modifier = Modifier.size(13.dp)
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Timer,
+                                        contentDescription = null,
+                                        tint = tokens.beaconPlateInk2,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "${selectedWorkMinutes}m",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontFeatureSettings = "tnum"
+                                        ),
+                                        color = tokens.beaconPlateInk,
+                                        maxLines = 1
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Outlined.Edit,
+                                        contentDescription = null,
+                                        tint = tokens.beaconPlateInk2,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -275,11 +278,7 @@ fun GroveHomeScreen(
                     val title = now.task?.title ?: now.routine?.name ?: "Ready to anchor"
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 19.sp,
-                            lineHeight = 25.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
+                        style = MaterialTheme.typography.titleMedium,
                         color = tokens.beaconPlateInk,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
@@ -301,10 +300,12 @@ fun GroveHomeScreen(
                     }
 
                     if (isSessionActive) {
-                        val totalSecs = timerState.totalWorkSeconds.coerceAtLeast(1)
+                        val totalSecs = (if (isWorkPhase) timerState.totalWorkSeconds else timerState.breakMinutes * 60).coerceAtLeast(1)
                         val remainingSecs = timerState.remainingSeconds.coerceAtLeast(0)
                         val tideProgress = (1f - remainingSecs.toFloat() / totalSecs).coerceIn(0f, 1f)
-                        val timeText = String.format("%02d:%02d", remainingSecs / 60, remainingSecs % 60)
+                        val mins = remainingSecs / 60
+                        val secs = remainingSecs % 60
+                        val timeText = "${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}"
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -394,9 +395,17 @@ fun GroveHomeScreen(
                                 tint = tokens.beaconPlateInk2
                             )
                         }
+                        val currentTask = now.task
                         AnchorQuietButton(
-                            label = if (now.task != null) "Break down with Captain" else "Ask Captain",
-                            onClick = onOpenChat,
+                            label = if (currentTask != null) "Break down with Captain" else "Ask Captain",
+                            onClick = {
+                                if (currentTask != null) {
+                                    vm.openTaskDetail(currentTask)
+                                    vm.breakdownTask(currentTask.title)
+                                } else {
+                                    onOpenChat()
+                                }
+                            },
                             outlined = false,
                             tint = tokens.beaconPlateCaptain,
                             leadingIcon = {
@@ -454,7 +463,7 @@ fun GroveHomeScreen(
                     } else {
                         val visibleLater = if (showAllLater) later else later.take(3)
                         visibleLater.forEachIndexed { index, item ->
-                            val hasMoreRows = index < visibleLater.lastIndex || replan.isNotEmpty()
+                            val hasMoreRows = index < visibleLater.lastIndex || (later.size <= 3 && replan.isNotEmpty())
                             AnchorListRow(
                                 title = item.title,
                                 subtitle = item.notes
@@ -493,6 +502,9 @@ fun GroveHomeScreen(
                                 outlined = false,
                                 tint = tokens.primary
                             )
+                            if (replan.isNotEmpty()) {
+                                AnchorHairline()
+                            }
                         }
 
                         if (replan.isNotEmpty()) {

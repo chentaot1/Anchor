@@ -123,6 +123,7 @@ sealed class PendingCoolingOffAction {
  * Windows 11 Native App & Browser Blocker Configuration Screen.
  * Allows the user to view, toggle, add, and test distraction blocking rules.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DesktopBlockerScreen(
     db: AnchorDesktopDatabase,
@@ -348,22 +349,9 @@ fun DesktopBlockerScreen(
         }
 
         // ====================================================
-        // 1. Unified Shield Command Hub (Clean, Calm Executive Card)
+        // 1. Unified Shield Command Hub
         // ====================================================
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
-                    .border(
-                        1.dp,
-                        if (isShieldActive) tokens.sage.copy(alpha = 0.5f) else tokens.ink.copy(alpha = 0.1f),
-                        RoundedCornerShape(AnchorSpacing.radiusCard),
-                    ),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = if (isShieldActive) tokens.sageSoft else tokens.surface,
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
+        AnchorWell(modifier = Modifier.fillMaxWidth()) {
                 // Top Row: Status badge & primary toggles
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -433,15 +421,14 @@ fun DesktopBlockerScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         // 24/7 Guard Switch
-                        Surface(
-                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            color = if (standingShieldEnabled) tokens.sage.copy(alpha = 0.2f) else tokens.ink.copy(alpha = 0.05f),
-                            border = BorderStroke(1.dp, if (standingShieldEnabled) tokens.sage.copy(alpha = 0.4f) else tokens.ink.copy(alpha = 0.1f)),
+                        Row(
+                            modifier =
+                                Modifier
+                                    .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
+                                    .background(if (standingShieldEnabled) tokens.sageSoft else tokens.paper3)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
                                 Text(
                                     text = "24/7 Guard",
                                     style = MaterialTheme.typography.labelSmall,
@@ -460,7 +447,6 @@ fun DesktopBlockerScreen(
                                             uncheckedTrackColor = tokens.ink.copy(alpha = 0.1f),
                                         ),
                                 )
-                            }
                         }
 
                         // Strict Daily Lockdown Action
@@ -756,22 +742,12 @@ fun DesktopBlockerScreen(
                         containerColor = tokens.surface,
                     )
                 }
-            }
         }
 
         // ====================================================
         // 1.5. Scaled Time-Bank: Focus-to-Leisure Economy Card
         // ====================================================
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = if (isEarnedLeisureActive) tokens.sageSoft else tokens.surface,
-            border = BorderStroke(
-                1.dp,
-                if (isEarnedLeisureActive) tokens.sage else tokens.primary.copy(alpha = 0.25f),
-            ),
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+        AnchorWell(modifier = Modifier.fillMaxWidth()) {
                 // Header Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1012,22 +988,15 @@ fun DesktopBlockerScreen(
                         }
                     }
                 }
-            }
         }
 
         // ====================================================
         // 1.6. AI Scope Sentinel & Distraction Tax Card
         // ====================================================
-        Surface(
+        AnchorWell(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = if (scopeSentinelEnabled) tokens.captainSoft else tokens.surface,
-            border = BorderStroke(
-                1.dp,
-                if (scopeSentinelEnabled) tokens.primary.copy(alpha = 0.4f) else tokens.ink.copy(alpha = 0.1f),
-            ),
+            tone = if (scopeSentinelEnabled) AnchorWellTone.Captain else AnchorWellTone.Neutral,
         ) {
-            Column(modifier = Modifier.padding(18.dp)) {
                 // Header with Switch
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1196,21 +1165,12 @@ fun DesktopBlockerScreen(
                         )
                     }
                 }
-            }
         }
 
         // ====================================================
-        // 2. Add Rule Composer (Spacious 2-tier design)
+        // 2. Add Rule Composer
         // ====================================================
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-            color = tokens.surface,
-            border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        AnchorWell(modifier = Modifier.fillMaxWidth()) {
                 // Row 1: Target Input + Type Toggle + Add Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1343,253 +1303,109 @@ fun DesktopBlockerScreen(
                         }
                     }
                 }
-            }
         }
 
         // ====================================================
-        // 3. Rules Explorer & Filter Tabs (Apps & Websites)
+        // 3. Rules Explorer — chip filters + hairline rule rows
         // ====================================================
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Configured rules (${blockRules.size})",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = tokens.ink.copy(alpha = 0.6f),
-            )
-
-            // Filter Tabs
-            Surface(
-                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                color = tokens.ink.copy(alpha = 0.05f),
-                border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AnchorSectionHeader("Configured rules")
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(modifier = Modifier.padding(3.dp)) {
-                    val tabs = listOf(
-                        "All Rules (${blockRules.size})",
-                        "Apps (${appRules.size})",
-                        "Websites (${webRules.size})",
+                listOf(
+                    Triple(0, "All", blockRules.size),
+                    Triple(1, "Apps", appRules.size),
+                    Triple(2, "Websites", webRules.size),
+                ).forEach { (index, label, count) ->
+                    AnchorChip(
+                        label = "$label ($count)",
+                        selected = rulesFilterTab == index,
+                        onClick = { rulesFilterTab = index },
                     )
-                    tabs.forEachIndexed { index, label ->
-                        val isSelected = rulesFilterTab == index
-                        Button(
-                            onClick = { rulesFilterTab = index },
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = if (isSelected) tokens.primary else Color.Transparent,
-                                    contentColor = if (isSelected) tokens.beaconInk else tokens.ink.copy(alpha = 0.7f),
-                                ),
-                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        ) {
-                            Text(label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, fontSize = 12.sp)
-                        }
-                    }
                 }
             }
-        }
 
-        // Rules Cards (Natural full height, smooth scrolling, unconstrained)
-        when (rulesFilterTab) {
-            0 -> {
-                // Two-Column Grid: Apps on Left, Websites on Right
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    // Blocked Apps Column
-                    Surface(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                        color = tokens.surface.copy(alpha = 0.7f),
-                        border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(
-                                text = "BLOCKED APPLICATIONS (${appRules.size})",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.primary,
-                            )
-                            if (appRules.isEmpty()) {
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
-                                    color = tokens.ink.copy(alpha = 0.03f),
-                                ) {
-                                    Text(
-                                        text = "No applications configured. Add games or chat apps above.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = tokens.ink.copy(alpha = 0.4f),
-                                        modifier = Modifier.padding(16.dp),
-                                    )
-                                }
-                            } else {
-                                appRules.forEach { rule ->
-                                    val groupUsed = if (!rule.quotaGroup.isNullOrBlank()) {
-                                        appRules.filter { it.quotaGroup == rule.quotaGroup }.sumOf { dailyUsages[it.target.lowercase().trim()] ?: 0 }
-                                    } else {
-                                        dailyUsages[rule.target.lowercase().trim()] ?: 0
-                                    }
-                                    RuleItemCard(
-                                        rule = rule,
-                                        usedSeconds = dailyUsages[rule.target.lowercase().trim()] ?: 0,
-                                        groupUsedSeconds = groupUsed,
-                                        isHardLocked = isFocusActive || activeClass != null || isStrictDailyLockdownActive,
-                                        onAttemptToggle = { isExhausted, isLocked -> attemptToggleRule(rule, isExhausted, isLocked) },
-                                        onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
-                                        onUpdateAllowance = { newMinutes, lock24h ->
-                                            if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                                showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
-                                            } else {
-                                                scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
-                                            }
-                                        },
-                                        onLockFor24Hours = { scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
-                                        onAttemptDelete = { isLocked -> attemptDeleteRule(rule, isLocked) },
-                                    )
-                                }
-                            }
-                        }
-                    }
+            val isHardLocked = isFocusActive || activeClass != null || isStrictDailyLockdownActive
+            val onUpdateAllowance: (DesktopBlockRule, Int, Boolean) -> Unit = { rule, newMinutes, lock24h ->
+                if (isHardLocked) {
+                    showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
+                } else {
+                    scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
+                }
+            }
 
-                    // Blocked Websites Column
-                    Surface(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                        color = tokens.surface.copy(alpha = 0.7f),
-                        border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
+            when (rulesFilterTab) {
+                0 ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(
-                                text = "Blocked browser SITES (${webRules.size})",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = tokens.beacon,
-                            )
-                            if (webRules.isEmpty()) {
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
-                                    color = tokens.ink.copy(alpha = 0.03f),
-                                ) {
-                                    Text(
-                                        text = "No websites configured. Add social media or streaming sites above.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = tokens.ink.copy(alpha = 0.4f),
-                                        modifier = Modifier.padding(16.dp),
-                                    )
-                                }
-                            } else {
-                                webRules.forEach { rule ->
-                                    val groupUsed = if (!rule.quotaGroup.isNullOrBlank()) {
-                                        webRules.filter { it.quotaGroup == rule.quotaGroup }.sumOf { dailyUsages[it.target.lowercase().trim()] ?: 0 }
-                                    } else {
-                                        dailyUsages[rule.target.lowercase().trim()] ?: 0
-                                    }
-                                    RuleItemCard(
-                                        rule = rule,
-                                        usedSeconds = dailyUsages[rule.target.lowercase().trim()] ?: 0,
-                                        groupUsedSeconds = groupUsed,
-                                        isHardLocked = isFocusActive || activeClass != null || isStrictDailyLockdownActive,
-                                        onAttemptToggle = { isExhausted, isLocked -> attemptToggleRule(rule, isExhausted, isLocked) },
-                                        onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
-                                        onUpdateAllowance = { newMinutes, lock24h ->
-                                            if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                                showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
-                                            } else {
-                                                scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
-                                            }
-                                        },
-                                        onLockFor24Hours = { scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
-                                        onAttemptDelete = { isLocked -> attemptDeleteRule(rule, isLocked) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            1 -> {
-                // Apps Only (Full Width)
-                Surface(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                    color = tokens.surface.copy(alpha = 0.7f),
-                    border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
-                ) {
-                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "BLOCKED APPLICATIONS (${appRules.size})",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.primary,
+                        BlockerRuleWell(
+                            sectionTitle = "Blocked applications",
+                            rules = appRules,
+                            quotaPeerRules = appRules,
+                            dailyUsages = dailyUsages,
+                            isHardLocked = isHardLocked,
+                            emptyTitle = "No apps blocked",
+                            emptyMessage = "No applications configured. Add games or chat apps above.",
+                            modifier = Modifier.weight(1f),
+                            onAttemptToggle = { rule, exhausted, locked -> attemptToggleRule(rule, exhausted, locked) },
+                            onAttemptToggleSchedule = { rule, mode, locked -> attemptToggleSchedule(rule, mode, locked) },
+                            onUpdateAllowance = onUpdateAllowance,
+                            onLockFor24Hours = { rule -> scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
+                            onAttemptDelete = { rule, locked -> attemptDeleteRule(rule, locked) },
                         )
-                        appRules.forEach { rule ->
-                            val groupUsed = if (!rule.quotaGroup.isNullOrBlank()) {
-                                appRules.filter { it.quotaGroup == rule.quotaGroup }.sumOf { dailyUsages[it.target.lowercase().trim()] ?: 0 }
-                            } else {
-                                dailyUsages[rule.target.lowercase().trim()] ?: 0
-                            }
-                            RuleItemCard(
-                                rule = rule,
-                                usedSeconds = dailyUsages[rule.target.lowercase().trim()] ?: 0,
-                                groupUsedSeconds = groupUsed,
-                                isHardLocked = isFocusActive || activeClass != null || isStrictDailyLockdownActive,
-                                onAttemptToggle = { isExhausted, isLocked -> attemptToggleRule(rule, isExhausted, isLocked) },
-                                onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
-                                onUpdateAllowance = { newMinutes, lock24h ->
-                                    if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                        showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
-                                    } else {
-                                        scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
-                                    }
-                                },
-                                onLockFor24Hours = { scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
-                                onAttemptDelete = { isLocked -> attemptDeleteRule(rule, isLocked) },
-                            )
-                        }
-                    }
-                }
-            }
-            2 -> {
-                // Websites Only (Full Width)
-                Surface(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                    color = tokens.surface.copy(alpha = 0.7f),
-                    border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
-                ) {
-                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "Blocked browser SITES (${webRules.size})",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = tokens.beacon,
+                        BlockerRuleWell(
+                            sectionTitle = "Blocked browser sites",
+                            rules = webRules,
+                            quotaPeerRules = webRules,
+                            dailyUsages = dailyUsages,
+                            isHardLocked = isHardLocked,
+                            emptyTitle = "No sites blocked",
+                            emptyMessage = "No websites configured. Add social media or streaming sites above.",
+                            modifier = Modifier.weight(1f),
+                            onAttemptToggle = { rule, exhausted, locked -> attemptToggleRule(rule, exhausted, locked) },
+                            onAttemptToggleSchedule = { rule, mode, locked -> attemptToggleSchedule(rule, mode, locked) },
+                            onUpdateAllowance = onUpdateAllowance,
+                            onLockFor24Hours = { rule -> scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
+                            onAttemptDelete = { rule, locked -> attemptDeleteRule(rule, locked) },
                         )
-                        webRules.forEach { rule ->
-                            val groupUsed = if (!rule.quotaGroup.isNullOrBlank()) {
-                                webRules.filter { it.quotaGroup == rule.quotaGroup }.sumOf { dailyUsages[it.target.lowercase().trim()] ?: 0 }
-                            } else {
-                                dailyUsages[rule.target.lowercase().trim()] ?: 0
-                            }
-                            RuleItemCard(
-                                rule = rule,
-                                usedSeconds = dailyUsages[rule.target.lowercase().trim()] ?: 0,
-                                groupUsedSeconds = groupUsed,
-                                isHardLocked = isFocusActive || activeClass != null || isStrictDailyLockdownActive,
-                                onAttemptToggle = { isExhausted, isLocked -> attemptToggleRule(rule, isExhausted, isLocked) },
-                                onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
-                                onUpdateAllowance = { newMinutes, lock24h ->
-                                    if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                        showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
-                                    } else {
-                                        scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
-                                    }
-                                },
-                                onLockFor24Hours = { scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
-                                onAttemptDelete = { isLocked -> attemptDeleteRule(rule, isLocked) },
-                            )
-                        }
                     }
-                }
+                1 ->
+                    BlockerRuleWell(
+                        sectionTitle = "Blocked applications",
+                        rules = appRules,
+                        quotaPeerRules = appRules,
+                        dailyUsages = dailyUsages,
+                        isHardLocked = isHardLocked,
+                        emptyTitle = "No apps blocked",
+                        emptyMessage = "No applications configured. Add games or chat apps above.",
+                        modifier = Modifier.fillMaxWidth(),
+                        onAttemptToggle = { rule, exhausted, locked -> attemptToggleRule(rule, exhausted, locked) },
+                        onAttemptToggleSchedule = { rule, mode, locked -> attemptToggleSchedule(rule, mode, locked) },
+                        onUpdateAllowance = onUpdateAllowance,
+                        onLockFor24Hours = { rule -> scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
+                        onAttemptDelete = { rule, locked -> attemptDeleteRule(rule, locked) },
+                    )
+                2 ->
+                    BlockerRuleWell(
+                        sectionTitle = "Blocked browser sites",
+                        rules = webRules,
+                        quotaPeerRules = webRules,
+                        dailyUsages = dailyUsages,
+                        isHardLocked = isHardLocked,
+                        emptyTitle = "No sites blocked",
+                        emptyMessage = "No websites configured. Add social media or streaming sites above.",
+                        modifier = Modifier.fillMaxWidth(),
+                        onAttemptToggle = { rule, exhausted, locked -> attemptToggleRule(rule, exhausted, locked) },
+                        onAttemptToggleSchedule = { rule, mode, locked -> attemptToggleSchedule(rule, mode, locked) },
+                        onUpdateAllowance = onUpdateAllowance,
+                        onLockFor24Hours = { rule -> scope.launch { db.lockBlockRuleFor24Hours(rule.id) } },
+                        onAttemptDelete = { rule, locked -> attemptDeleteRule(rule, locked) },
+                    )
             }
         }
 
@@ -1700,11 +1516,66 @@ fun DesktopBlockerScreen(
 }
 
 @Composable
-private fun RuleItemCard(
+private fun BlockerRuleWell(
+    sectionTitle: String,
+    rules: List<DesktopBlockRule>,
+    quotaPeerRules: List<DesktopBlockRule>,
+    dailyUsages: Map<String, Int>,
+    isHardLocked: Boolean,
+    emptyTitle: String,
+    emptyMessage: String,
+    modifier: Modifier = Modifier,
+    onAttemptToggle: (DesktopBlockRule, Boolean, Boolean) -> Unit,
+    onAttemptToggleSchedule: (DesktopBlockRule, String, Boolean) -> Unit,
+    onUpdateAllowance: (DesktopBlockRule, Int, Boolean) -> Unit,
+    onLockFor24Hours: (DesktopBlockRule) -> Unit,
+    onAttemptDelete: (DesktopBlockRule, Boolean) -> Unit,
+) {
+    AnchorWell(
+        modifier = modifier,
+        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp),
+    ) {
+        Text(
+            text = sectionTitle,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        if (rules.isEmpty()) {
+            HarborEmptyState(title = emptyTitle, message = emptyMessage)
+        } else {
+            rules.forEachIndexed { index, rule ->
+                val groupUsed =
+                    if (!rule.quotaGroup.isNullOrBlank()) {
+                        quotaPeerRules
+                            .filter { it.quotaGroup == rule.quotaGroup }
+                            .sumOf { dailyUsages[it.target.lowercase().trim()] ?: 0 }
+                    } else {
+                        dailyUsages[rule.target.lowercase().trim()] ?: 0
+                    }
+                RuleListEntry(
+                    rule = rule,
+                    usedSeconds = dailyUsages[rule.target.lowercase().trim()] ?: 0,
+                    groupUsedSeconds = groupUsed,
+                    isHardLocked = isHardLocked,
+                    showDivider = index < rules.lastIndex,
+                    onAttemptToggle = { exhausted, locked -> onAttemptToggle(rule, exhausted, locked) },
+                    onAttemptToggleSchedule = { mode, locked -> onAttemptToggleSchedule(rule, mode, locked) },
+                    onUpdateAllowance = { minutes, lock24h -> onUpdateAllowance(rule, minutes, lock24h) },
+                    onLockFor24Hours = { onLockFor24Hours(rule) },
+                    onAttemptDelete = { locked -> onAttemptDelete(rule, locked) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RuleListEntry(
     rule: DesktopBlockRule,
     usedSeconds: Int,
     groupUsedSeconds: Int = usedSeconds,
     isHardLocked: Boolean = false,
+    showDivider: Boolean = true,
     onAttemptToggle: (isQuotaExhausted: Boolean, isLocked: Boolean) -> Unit,
     onAttemptToggleSchedule: (newMode: String, isLocked: Boolean) -> Unit,
     onUpdateAllowance: (Int, Boolean) -> Unit,
@@ -1724,208 +1595,86 @@ private fun RuleItemCard(
 
     var showTuneDialog by remember { mutableStateOf(false) }
 
-    Surface(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
-        color = if (rule.enabled) tokens.paper.copy(alpha = 0.8f) else tokens.ink.copy(alpha = 0.03f),
-        border = BorderStroke(1.dp, if (rule.enabled) tokens.ink.copy(alpha = 0.12f) else tokens.ink.copy(alpha = 0.05f)),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = rule.target,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (rule.enabled) tokens.ink else tokens.ink.copy(alpha = 0.4f),
-                        )
+    val modeLabel =
+        when {
+            is247 -> "24/7 block"
+            isSharedPool -> "Shared 3.5h pool"
+            hasQuota -> "Quota ${quotaMinutes}m/d"
+            else -> "Study time"
+        }
 
-                        // Mode Badge
-                        Surface(
-                            modifier =
-                                Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .clickable {
-                                        if (!isSharedPool) {
-                                            val nextMode =
-                                                when {
-                                                    is247 -> "FOCUS_ONLY"
-                                                    hasQuota -> "ALWAYS_24_7"
-                                                    else -> "LEISURE_QUOTA"
-                                                }
-                                            if (nextMode == "LEISURE_QUOTA") {
-                                                onUpdateAllowance(75, false)
-                                            } else {
-                                                onAttemptToggleSchedule(nextMode, isLocked)
-                                            }
-                                        }
-                                    },
-                            color =
-                                when {
-                                    is247 -> tokens.clayRoseSoft.copy(alpha = 0.8f)
-                                    isSharedPool -> tokens.sage.copy(alpha = 0.25f)
-                                    hasQuota -> tokens.primary.copy(alpha = 0.25f)
-                                    else -> tokens.sage.copy(alpha = 0.35f)
-                                },
-                            border =
-                                BorderStroke(
-                                    1.dp,
-                                    when {
-                                        is247 -> tokens.clayRose.copy(alpha = 0.5f)
-                                        isSharedPool -> tokens.sage.copy(alpha = 0.6f)
-                                        hasQuota -> tokens.primary.copy(alpha = 0.6f)
-                                        else -> tokens.sage.copy(alpha = 0.4f)
-                                    },
-                                ),
-                        ) {
-                            Text(
-                                text =
-                                    when {
-                                        is247 -> "24/7 block"
-                                        isSharedPool -> "Shared 3.5h Pool"
-                                        hasQuota -> "Quota: ${quotaMinutes}m/d"
-                                        else -> "Study Time"
-                                    },
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color =
-                                    when {
-                                        is247 -> tokens.clayRose
-                                        isSharedPool -> tokens.sage
-                                        hasQuota -> tokens.primary
-                                        else -> tokens.sage
-                                    },
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            )
-                        }
+    val lockNote =
+        if (isLocked) {
+            val remainingMillis = (rule.lockUntilEpoch - now).coerceAtLeast(0L)
+            val remainingHours = remainingMillis / 3600_000L
+            val remainingMins = (remainingMillis % 3600_000L) / 60_000L
+            "24h lock (${remainingHours}h ${remainingMins}m left)"
+        } else {
+            null
+        }
 
-                        // 24h Lock Badge if active
-                        if (isLocked) {
-                            val remainingMillis = (rule.lockUntilEpoch - now).coerceAtLeast(0L)
-                            val remainingHours = remainingMillis / 3600_000L
-                            val remainingMins = (remainingMillis % 3600_000L) / 60_000L
-                            Surface(
-                                modifier = Modifier.clip(RoundedCornerShape(4.dp)),
-                                color = tokens.paper3.copy(alpha = 0.8f),
-                                border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.7f)),
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = null,
-                                        tint = tokens.beacon,
-                                        modifier = Modifier.size(11.dp),
-                                    )
-                                    Text(
-                                        text = "24h Lock (${remainingHours}h ${remainingMins}m left)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = tokens.beacon,
-                                    )
-                                }
-                            }
-                        }
+    val statusSubtitle =
+        buildList {
+            add(modeLabel)
+            lockNote?.let { add(it) }
+            if (hasQuota) {
+                if (isQuotaExhausted) add("Quota exhausted until 4:00 AM")
+                else if (isSharedPool) add("Homework AI pool active")
+            } else {
+                val isTrackOnly = rule.scheduleMode.equals("TRACK_ONLY", ignoreCase = true)
+                val detail =
+                    when {
+                        !rule.enabled -> "Rule turned off"
+                        isTrackOnly -> "${usedMinutes}m active today · unmetered homework tracker"
+                        is247 -> "Always blocked (24/7 guard)"
+                        else -> "Blocked during active study sessions"
                     }
+                add(detail)
+            }
+        }.joinToString(" · ")
 
-                    Spacer(modifier = Modifier.height(4.dp))
+    val quotaTrailing = if (hasQuota) "$usedMinutes / $quotaMinutes m" else null
 
-                    if (hasQuota) {
-                        val progress = if (quotaMinutes > 0) (usedMinutes.toFloat() / quotaMinutes.toFloat()).coerceIn(0f, 1f) else 1f
-                        Column {
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth(0.9f)
-                                        .height(5.dp)
-                                        .clip(RoundedCornerShape(3.dp)),
-                                color = if (isQuotaExhausted) tokens.clayRose else tokens.primary,
-                                trackColor = tokens.ink.copy(alpha = 0.12f),
-                            )
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                val labelText = if (isSharedPool) {
-                                    val h = usedMinutes / 60
-                                    val m = usedMinutes % 60
-                                    "${h}h ${m}m of 3.5h used (Shared AI: Claude, Gemini, ChatGPT)"
-                                } else {
-                                    "$usedMinutes of ${quotaMinutes}m used today"
-                                }
-                                Text(
-                                    text = labelText,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isQuotaExhausted) tokens.clayRose else tokens.ink.copy(alpha = 0.7f),
-                                )
-                                if (isQuotaExhausted) {
-                                    Text(
-                                        text = "• Quota Exhausted (Locked until 4:00 AM reset)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = tokens.clayRose,
-                                    )
-                                } else if (isSharedPool) {
-                                    Text(
-                                        text = "• Homework AI (Active)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = tokens.sage.copy(alpha = 0.85f),
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        val isTrackOnly = rule.scheduleMode.equals("TRACK_ONLY", ignoreCase = true)
-                        Text(
-                            text =
-                                when {
-                                    !rule.enabled -> "Rule turned off"
-                                    isTrackOnly -> "${usedMinutes}m active today • Unmetered Homework Tracker (Blocked in class & curfew)"
-                                    is247 -> "Always blocked (24/7 continuous guard)"
-                                    else -> "Blocked during active study sessions only"
-                                },
-                            style = MaterialTheme.typography.labelSmall,
-                            color =
-                                when {
-                                    !rule.enabled -> tokens.ink.copy(alpha = 0.3f)
-                                    isTrackOnly -> tokens.sage.copy(alpha = 0.85f)
-                                    is247 -> tokens.clayRose.copy(alpha = 0.8f)
-                                    else -> tokens.primary.copy(alpha = 0.75f)
-                                },
-                        )
-                    }
-                }
-
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AnchorListRow(
+            title = rule.target,
+            subtitle = statusSubtitle,
+            trailingText = quotaTrailing,
+            showDivider = false,
+            minHeight = 48.dp,
+            trailing = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Settings / Tune Button
+                    AnchorChip(
+                        label = modeLabel,
+                        selected = rule.enabled,
+                        onClick = {
+                            if (!isSharedPool) {
+                                val nextMode =
+                                    when {
+                                        is247 -> "FOCUS_ONLY"
+                                        hasQuota -> "ALWAYS_24_7"
+                                        else -> "LEISURE_QUOTA"
+                                    }
+                                if (nextMode == "LEISURE_QUOTA") {
+                                    onUpdateAllowance(75, false)
+                                } else {
+                                    onAttemptToggleSchedule(nextMode, isLocked)
+                                }
+                            }
+                        },
+                        enabled = rule.enabled && !isSharedPool,
+                    )
                     IconButton(
                         onClick = { showTuneDialog = true },
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Tune,
-                            contentDescription = "Configure Rule Quota & Lock",
-                            tint = tokens.ink.copy(alpha = 0.6f),
-                            modifier = Modifier.size(16.dp),
+                            contentDescription = "Configure rule quota and lock",
+                            tint = tokens.muted,
+                            modifier = Modifier.size(18.dp),
                         )
                     }
-
-                    // Toggle Switch (intercepts click to enforce guardrails)
                     Switch(
                         checked = rule.enabled,
                         onCheckedChange = { onAttemptToggle(isQuotaExhausted, isLocked) },
@@ -1933,27 +1682,50 @@ private fun RuleItemCard(
                             SwitchDefaults.colors(
                                 checkedThumbColor = if (is247) tokens.clayRose else tokens.primary,
                                 checkedTrackColor = if (is247) tokens.clayRoseSoft else tokens.primary.copy(alpha = 0.4f),
-                                uncheckedThumbColor = tokens.ink.copy(alpha = 0.5f),
-                                uncheckedTrackColor = tokens.ink.copy(alpha = 0.1f),
-                                disabledCheckedThumbColor = tokens.ink.copy(alpha = 0.4f),
-                                disabledCheckedTrackColor = tokens.ink.copy(alpha = 0.2f),
+                                uncheckedThumbColor = tokens.muted,
+                                uncheckedTrackColor = tokens.rule,
                             ),
                     )
-
-                    // Delete Button (disabled / locked icon if locked)
                     IconButton(
                         onClick = { onAttemptDelete(isLocked) },
-                        modifier = Modifier.size(28.dp),
+                        modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
                             imageVector = if (isLocked || isHardLocked) Icons.Default.Lock else Icons.Default.Delete,
-                            contentDescription = if (isLocked || isHardLocked) "Rule Locked (Cannot Delete)" else "Delete Rule",
-                            tint = if (isLocked || isHardLocked) tokens.beacon.copy(alpha = 0.5f) else tokens.ink.copy(alpha = 0.35f),
-                            modifier = Modifier.size(16.dp),
+                            contentDescription = if (isLocked || isHardLocked) "Rule locked" else "Delete rule",
+                            tint = if (isLocked || isHardLocked) tokens.beacon else tokens.muted,
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
+            },
+        )
+        if (hasQuota) {
+            val progress = if (quotaMinutes > 0) (usedMinutes.toFloat() / quotaMinutes.toFloat()).coerceIn(0f, 1f) else 1f
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                color = if (isQuotaExhausted) tokens.clayRose else tokens.primary,
+                trackColor = tokens.rule,
+            )
+            if (isSharedPool) {
+                val h = usedMinutes / 60
+                val m = usedMinutes % 60
+                Text(
+                    text = "${h}h ${m}m of 3.5h shared pool used",
+                    style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                    color = if (isQuotaExhausted) tokens.clayRose else tokens.muted,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                )
             }
+        }
+        if (showDivider) {
+            AnchorHairline()
         }
     }
 

@@ -26,8 +26,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -218,13 +222,13 @@ fun DesktopBlockerScreen(
                     showLockReason = "Strict Daily Lockdown Active\n\nAll rules and quotas are frozen until 4:00 AM (${remHours}h ${remMins}m remaining). Rules cannot be turned off today."
                 }
                 isQuotaExhausted -> {
-                    showLockReason = "🔒 Daily Quota Exhausted\n\nYou have used up your daily screen time allowance for ${rule.target}. Locked until 4:00 AM reset to protect your commitment."
+                    showLockReason = "Daily quota exhausted\n\nYou have used up your daily screen time allowance for ${rule.target}. Locked until 4:00 AM reset to protect your commitment."
                 }
                 isLocked -> {
                     val remainingMillis = (rule.lockUntilEpoch - System.currentTimeMillis()).coerceAtLeast(0L)
                     val remHours = remainingMillis / 3600_000L
                     val remMins = (remainingMillis % 3600_000L) / 60_000L
-                    showLockReason = "🔒 24-Hour Cooling Lock Active\n\nThis rule was locked with a 24-hour cooling lock (${remHours}h ${remMins}m left). It cannot be disabled until the cooling period ends."
+                    showLockReason = "24-hour cooling lock active\n\nThis rule was locked with a 24-hour cooling lock (${remHours}h ${remMins}m left). It cannot be disabled until the cooling period ends."
                 }
                 else -> {
                     pendingCoolingOffAction = PendingCoolingOffAction.ToggleRuleOff(rule)
@@ -245,7 +249,7 @@ fun DesktopBlockerScreen(
                 showLockReason = "Strict Daily Lockdown Active\n\nRules cannot be deleted while daily lockdown is active."
             }
             isLocked -> {
-                showLockReason = "🔒 24-Hour Cooling Lock Active\n\nThis rule is locked and cannot be deleted until the cooling lock expires."
+                showLockReason = "24-hour cooling lock active\n\nThis rule is locked and cannot be deleted until the cooling lock expires."
             }
             else -> {
                 pendingCoolingOffAction = PendingCoolingOffAction.DeleteRule(rule)
@@ -264,7 +268,7 @@ fun DesktopBlockerScreen(
                 isFocusActive -> showLockReason = "Locked During Focus: Schedule mode cannot be loosened during active focus."
                 activeClass != null -> showLockReason = "Locked During Class: Cannot loosen protection during class hours."
                 isStrictDailyLockdownActive -> showLockReason = "Strict Daily Lockdown Active: Cannot loosen rules until 4:00 AM."
-                isLocked -> showLockReason = "🔒 24-Hour Lock Active: Cannot loosen rule schedule mode."
+                isLocked -> showLockReason = "24-hour lock active: Cannot loosen rule schedule mode."
                 else -> pendingCoolingOffAction = PendingCoolingOffAction.ChangeScheduleMode(rule, nextMode)
             }
         }
@@ -521,7 +525,12 @@ fun DesktopBlockerScreen(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("📅", fontSize = 12.sp)
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = if (activeClass != null) tokens.primary else tokens.ink2,
+                                modifier = Modifier.size(14.dp),
+                            )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (activeClass != null) "In Session: ${activeClass?.courseCode}" else syncedClassesSummary,
@@ -530,10 +539,11 @@ fun DesktopBlockerScreen(
                                 color = if (activeClass != null) tokens.beacon else tokens.ink.copy(alpha = 0.8f),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (showClassScheduleDrawer) "▲" else "▼",
-                                fontSize = 10.sp,
-                                color = tokens.ink.copy(alpha = 0.5f),
+                            Icon(
+                                imageVector = if (showClassScheduleDrawer) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = tokens.muted,
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }
@@ -657,7 +667,7 @@ fun DesktopBlockerScreen(
 
                     AlertDialog(
                         onDismissRequest = { showAddClassScheduleDialog = false },
-                        title = { Text("📅 Add Class Schedule Slot", fontWeight = FontWeight.Bold, color = tokens.ink) },
+                        title = { Text("Add class schedule slot", fontWeight = FontWeight.Bold, color = tokens.ink) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 OutlinedTextField(
@@ -948,7 +958,7 @@ fun DesktopBlockerScreen(
                                         Spacer(modifier = Modifier.width(3.dp))
                                     }
                                     Text(
-                                        text = "T$tNum: $req → $leisure",
+                                        text = "T$tNum: $req -> $leisure",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 10.sp,
                                         color = if (isCompleted) tokens.sage else if (isCurrent) tokens.primary else tokens.ink.copy(alpha = 0.5f),
@@ -1083,7 +1093,12 @@ fun DesktopBlockerScreen(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("✓", color = tokens.sage, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = tokens.sage,
+                                    modifier = Modifier.size(14.dp),
+                                )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "In-Scope Disciplines (Protected)",
@@ -1112,7 +1127,12 @@ fun DesktopBlockerScreen(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("✕", color = tokens.clayRose, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = tokens.clayRose,
+                                    modifier = Modifier.size(14.dp),
+                                )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Out-of-Scope Triggers (-1m/min Tax)",
@@ -2025,7 +2045,7 @@ private fun DesktopCoolingOffDialog(
                     Spacer(modifier = Modifier.height(10.dp))
                     if (secondsRemaining > 0) {
                         Text(
-                            text = "⏳ Pausing for $secondsRemaining seconds...",
+                            text = "Pausing for $secondsRemaining seconds…",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = tokens.beacon,
@@ -2039,7 +2059,7 @@ private fun DesktopCoolingOffDialog(
                         )
                     } else {
                         Text(
-                            text = "✅ 30-Second Pause Complete",
+                            text = "30-second pause complete",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = tokens.sage,

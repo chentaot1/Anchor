@@ -373,13 +373,10 @@ class AnchorDesignSystemLintTest {
             // Android legacy UI files
             "app/src/main/java/com/anchor/adhd/ui/components/AnchorComponents.kt",
             "app/src/main/java/com/anchor/adhd/ui/components/VitalityBar.kt",
-            "app/src/main/java/com/anchor/adhd/ui/focus/ShieldRescueOverlay.kt",
             "app/src/main/java/com/anchor/adhd/ui/grove/FunLinksStrip.kt",
             "app/src/main/java/com/anchor/adhd/ui/grow/HabitHeatmap.kt",
             "app/src/main/java/com/anchor/adhd/ui/more/MoreScreen.kt",
             // Desktop legacy UI files
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/blocker/DesktopRescueWindow.kt",
-            "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopBlockerScreen.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopFunLinks.kt",
             "desktopApp/src/main/kotlin/com/anchor/adhd/desktop/ui/DesktopSettingsScreen.kt",
         )

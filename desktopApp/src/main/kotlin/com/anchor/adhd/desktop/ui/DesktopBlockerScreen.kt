@@ -77,6 +77,20 @@ import com.anchor.adhd.desktop.blocker.DesktopProcessMonitor
 import com.anchor.adhd.desktop.db.AnchorDesktopDatabase
 import com.anchor.adhd.desktop.db.DesktopBlockRule
 import com.anchor.adhd.desktop.prefs.DesktopUserPreferences
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
+import com.anchor.adhd.ui.components.HarborEmptyState
+import com.anchor.adhd.ui.components.HarborCtaButton
+import com.anchor.adhd.ui.components.AnchorWellTone
+import com.anchor.adhd.ui.components.AnchorWell
+import com.anchor.adhd.ui.components.AnchorSectionHeader
+import com.anchor.adhd.ui.components.AnchorQuietButton
+import com.anchor.adhd.ui.components.AnchorListRow
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.components.AnchorChip
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.anchor.adhd.desktop.theme.AnchorColors
 import com.anchor.adhd.desktop.theme.AnchorSpacing
 import kotlinx.coroutines.delay
@@ -118,6 +132,7 @@ fun DesktopBlockerScreen(
     onTestRescueShield: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tokens = LocalAnchorTokens.current
     val scope = rememberCoroutineScope()
     val blockRules by db.blockRules.collectAsState()
     val classSchedules by db.classSchedules.collectAsState()
@@ -190,16 +205,16 @@ fun DesktopBlockerScreen(
             // Attempting to turn OFF / loosen:
             when {
                 isFocusActive -> {
-                    showLockReason = "🔒 Locked During Focus Session\n\nYou have an active study session running. Distraction shields cannot be disabled until your session completes.\n\nTip: If you need an emergency check, use the Rescue Overlay for an intentional timed pass."
+                    showLockReason = "Locked During Focus Session\n\nYou have an active study session running. Distraction shields cannot be disabled until your session completes.\n\nTip: If you need an emergency check, use the Rescue Overlay for an intentional timed pass."
                 }
                 activeClass != null -> {
-                    showLockReason = "🔒 Locked During Class\n\nAutomated Lecture Shield is active for ${activeClass?.courseCode} until ${activeClass?.formatTimeRange()}. All distraction rules are locked during class hours."
+                    showLockReason = "Locked During Class\n\nAutomated Lecture Shield is active for ${activeClass?.courseCode} until ${activeClass?.formatTimeRange()}. All distraction rules are locked during class hours."
                 }
                 isStrictDailyLockdownActive -> {
                     val remainingMillis = (strictLockdownUntil - System.currentTimeMillis()).coerceAtLeast(0L)
                     val remHours = remainingMillis / 3600_000L
                     val remMins = (remainingMillis % 3600_000L) / 60_000L
-                    showLockReason = "🔒 Strict Daily Lockdown Active\n\nAll rules and quotas are frozen until 4:00 AM (${remHours}h ${remMins}m remaining). Rules cannot be turned off today."
+                    showLockReason = "Strict Daily Lockdown Active\n\nAll rules and quotas are frozen until 4:00 AM (${remHours}h ${remMins}m remaining). Rules cannot be turned off today."
                 }
                 isQuotaExhausted -> {
                     showLockReason = "🔒 Daily Quota Exhausted\n\nYou have used up your daily screen time allowance for ${rule.target}. Locked until 4:00 AM reset to protect your commitment."
@@ -220,13 +235,13 @@ fun DesktopBlockerScreen(
     val attemptDeleteRule: (DesktopBlockRule, Boolean) -> Unit = { rule, isLocked ->
         when {
             isFocusActive -> {
-                showLockReason = "🔒 Locked During Focus Session\n\nRules cannot be deleted while a study session is running."
+                showLockReason = "Locked During Focus Session\n\nRules cannot be deleted while a study session is running."
             }
             activeClass != null -> {
-                showLockReason = "🔒 Locked During Class\n\nRules cannot be deleted during scheduled lecture hours (${activeClass?.courseCode})."
+                showLockReason = "Locked During Class\n\nRules cannot be deleted during scheduled lecture hours (${activeClass?.courseCode})."
             }
             isStrictDailyLockdownActive -> {
-                showLockReason = "🔒 Strict Daily Lockdown Active\n\nRules cannot be deleted while daily lockdown is active."
+                showLockReason = "Strict Daily Lockdown Active\n\nRules cannot be deleted while daily lockdown is active."
             }
             isLocked -> {
                 showLockReason = "🔒 24-Hour Cooling Lock Active\n\nThis rule is locked and cannot be deleted until the cooling lock expires."
@@ -245,9 +260,9 @@ fun DesktopBlockerScreen(
             scope.launch { db.updateBlockRuleScheduleMode(rule.id, nextMode) }
         } else {
             when {
-                isFocusActive -> showLockReason = "🔒 Locked During Focus: Schedule mode cannot be loosened during active focus."
-                activeClass != null -> showLockReason = "🔒 Locked During Class: Cannot loosen protection during class hours."
-                isStrictDailyLockdownActive -> showLockReason = "🔒 Strict Daily Lockdown Active: Cannot loosen rules until 4:00 AM."
+                isFocusActive -> showLockReason = "Locked During Focus: Schedule mode cannot be loosened during active focus."
+                activeClass != null -> showLockReason = "Locked During Class: Cannot loosen protection during class hours."
+                isStrictDailyLockdownActive -> showLockReason = "Strict Daily Lockdown Active: Cannot loosen rules until 4:00 AM."
                 isLocked -> showLockReason = "🔒 24-Hour Lock Active: Cannot loosen rule schedule mode."
                 else -> pendingCoolingOffAction = PendingCoolingOffAction.ChangeScheduleMode(rule, nextMode)
             }
@@ -259,9 +274,9 @@ fun DesktopBlockerScreen(
             scope.launch { prefs.setStandingShieldEnabled(true) }
         } else {
             when {
-                isFocusActive -> showLockReason = "🔒 Locked During Focus: Continuous shield cannot be turned off during active focus."
-                activeClass != null -> showLockReason = "🔒 Locked During Class: Continuous shield cannot be turned off during class hours."
-                isStrictDailyLockdownActive -> showLockReason = "🔒 Strict Daily Lockdown Active: Continuous shield cannot be disabled until 4:00 AM."
+                isFocusActive -> showLockReason = "Locked During Focus: Continuous shield cannot be turned off during active focus."
+                activeClass != null -> showLockReason = "Locked During Class: Continuous shield cannot be turned off during class hours."
+                isStrictDailyLockdownActive -> showLockReason = "Strict Daily Lockdown Active: Continuous shield cannot be disabled until 4:00 AM."
                 else -> pendingCoolingOffAction = PendingCoolingOffAction.ToggleStandingShieldOff
             }
         }
@@ -290,6 +305,7 @@ fun DesktopBlockerScreen(
         modifier =
             modifier
                 .fillMaxSize()
+                .background(tokens.paper)
                 .verticalScroll(scrollState)
                 .padding(horizontal = 28.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -305,12 +321,12 @@ fun DesktopBlockerScreen(
                     text = "Distraction Shield & App Blocker",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = tokens.ink,
                 )
                 Text(
                     text = "Native Win32 process & browser tab scanner (<0.05% CPU)",
                     style = MaterialTheme.typography.bodySmall,
-                    color = AnchorColors.HarborPrimary.copy(alpha = 0.8f),
+                    color = tokens.primary.copy(alpha = 0.8f),
                 )
             }
 
@@ -318,8 +334,8 @@ fun DesktopBlockerScreen(
             OutlinedButton(
                 onClick = onTestRescueShield,
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                border = BorderStroke(1.dp, AnchorColors.HarborAction),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = AnchorColors.HarborAction),
+                border = BorderStroke(1.dp, tokens.beacon),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
             ) {
                 Icon(
                     imageVector = Icons.Default.Visibility,
@@ -341,11 +357,11 @@ fun DesktopBlockerScreen(
                     .clip(RoundedCornerShape(AnchorSpacing.radiusCard))
                     .border(
                         1.dp,
-                        if (isShieldActive) AnchorColors.HarborGrowth.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f),
+                        if (isShieldActive) tokens.sage.copy(alpha = 0.5f) else tokens.ink.copy(alpha = 0.1f),
                         RoundedCornerShape(AnchorSpacing.radiusCard),
                     ),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = if (isShieldActive) Color(0xFF0C2418) else AnchorColors.HarborDock,
+            color = if (isShieldActive) tokens.sageSoft else tokens.surface,
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
                 // Top Row: Status badge & primary toggles
@@ -364,14 +380,14 @@ fun DesktopBlockerScreen(
                                     .size(44.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isShieldActive) AnchorColors.HarborGrowth.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
+                                        if (isShieldActive) tokens.sage.copy(alpha = 0.25f) else tokens.ink.copy(alpha = 0.08f),
                                     ),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Shield,
                                 contentDescription = null,
-                                tint = if (isShieldActive) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.6f),
+                                tint = if (isShieldActive) tokens.sage else tokens.ink.copy(alpha = 0.6f),
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -379,12 +395,12 @@ fun DesktopBlockerScreen(
                         Column {
                             val titleText =
                                 when {
-                                    activeClass != null -> "LECTURE SHIELD ACTIVE — ${activeClass?.courseCode} (${activeClass?.formatTimeRange()})"
-                                    isFocusActive -> "STUDY MODE ACTIVE — Guard Engaged"
-                                    count247 > 0 -> "24/7 CONTINUOUS PROTECTION ACTIVE ($count247 rules)"
-                                    standingShieldEnabled -> "CONTINUOUS SHIELD ACTIVE — Standing Guard"
-                                    countQuota > 0 -> "QUOTA SHIELD ACTIVE — ($countQuota metered)"
-                                    else -> "SHIELD STANDBY — Ready for Focus"
+                                    activeClass != null -> "Lecture shield active — ${activeClass?.courseCode} (${activeClass?.formatTimeRange()})"
+                                    isFocusActive -> "Study mode active — guard engaged"
+                                    count247 > 0 -> "24/7 continuous protection active ($count247 rules)"
+                                    standingShieldEnabled -> "Continuous shield active — standing guard"
+                                    countQuota > 0 -> "Quota shield active — ($countQuota metered)"
+                                    else -> "Shield standby — ready for focus"
                                 }
                             val descText =
                                 when {
@@ -399,12 +415,12 @@ fun DesktopBlockerScreen(
                                 text = titleText,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isShieldActive) AnchorColors.HarborFoliage else Color.White,
+                                color = if (isShieldActive) tokens.sage else tokens.ink,
                             )
                             Text(
                                 text = descText,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = tokens.ink.copy(alpha = 0.7f),
                             )
                         }
                     }
@@ -419,8 +435,8 @@ fun DesktopBlockerScreen(
                         // 24/7 Guard Switch
                         Surface(
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            color = if (standingShieldEnabled) AnchorColors.HarborGrowth.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
-                            border = BorderStroke(1.dp, if (standingShieldEnabled) AnchorColors.HarborGrowth.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.1f)),
+                            color = if (standingShieldEnabled) tokens.sage.copy(alpha = 0.2f) else tokens.ink.copy(alpha = 0.05f),
+                            border = BorderStroke(1.dp, if (standingShieldEnabled) tokens.sage.copy(alpha = 0.4f) else tokens.ink.copy(alpha = 0.1f)),
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -430,7 +446,7 @@ fun DesktopBlockerScreen(
                                     text = "24/7 Guard",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (standingShieldEnabled) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.7f),
+                                    color = if (standingShieldEnabled) tokens.sage else tokens.ink.copy(alpha = 0.7f),
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Switch(
@@ -438,10 +454,10 @@ fun DesktopBlockerScreen(
                                     onCheckedChange = { checked -> attemptToggleStandingShield(checked) },
                                     colors =
                                         SwitchDefaults.colors(
-                                            checkedThumbColor = AnchorColors.HarborFoliage,
-                                            checkedTrackColor = AnchorColors.HarborGrowth,
-                                            uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
-                                            uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                            checkedThumbColor = tokens.sage,
+                                            checkedTrackColor = tokens.sage,
+                                            uncheckedThumbColor = tokens.ink.copy(alpha = 0.5f),
+                                            uncheckedTrackColor = tokens.ink.copy(alpha = 0.1f),
                                         ),
                                 )
                             }
@@ -452,8 +468,8 @@ fun DesktopBlockerScreen(
                             OutlinedButton(
                                 onClick = { showConfirmLockdownDialog = true },
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.7f)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFD54F)),
+                                border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.7f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.beacon),
                             ) {
                                 Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -465,20 +481,20 @@ fun DesktopBlockerScreen(
                             val remMins = (remMillis % 3600_000L) / 60_000L
                             Surface(
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                color = Color(0xFFFFD54F).copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, Color(0xFFFFD54F)),
+                                color = tokens.beacon.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, tokens.beacon),
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFFFD54F), modifier = Modifier.size(13.dp))
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = tokens.beacon, modifier = Modifier.size(13.dp))
                                     Spacer(modifier = Modifier.width(5.dp))
                                     Text(
                                         text = "Locked (${remHours}h ${remMins}m left)",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFFFD54F),
+                                        color = tokens.beacon,
                                     )
                                 }
                             }
@@ -512,8 +528,8 @@ fun DesktopBlockerScreen(
                                 .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
                                 .clickable { showClassScheduleDrawer = !showClassScheduleDrawer },
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                        color = if (activeClass != null) Color(0xFF4C1D1D) else Color.White.copy(alpha = 0.05f),
-                        border = BorderStroke(1.dp, if (activeClass != null) AnchorColors.HarborAction.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f)),
+                        color = if (activeClass != null) tokens.clayRoseSoft else tokens.ink.copy(alpha = 0.05f),
+                        border = BorderStroke(1.dp, if (activeClass != null) tokens.beacon.copy(alpha = 0.5f) else tokens.ink.copy(alpha = 0.1f)),
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -525,13 +541,13 @@ fun DesktopBlockerScreen(
                                 text = if (activeClass != null) "In Session: ${activeClass?.courseCode}" else syncedClassesSummary,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (activeClass != null) AnchorColors.HarborAction else Color.White.copy(alpha = 0.8f),
+                                color = if (activeClass != null) tokens.beacon else tokens.ink.copy(alpha = 0.8f),
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (showClassScheduleDrawer) "▲" else "▼",
                                 fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = tokens.ink.copy(alpha = 0.5f),
                             )
                         }
                     }
@@ -542,14 +558,14 @@ fun DesktopBlockerScreen(
                             Icon(
                                 imageVector = Icons.Default.Security,
                                 contentDescription = null,
-                                tint = AnchorColors.HarborPrimary.copy(alpha = 0.7f),
+                                tint = tokens.primary.copy(alpha = 0.7f),
                                 modifier = Modifier.size(13.dp),
                             )
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(
                                 text = "Foreground: ${currentForeground?.executableName}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = tokens.ink.copy(alpha = 0.6f),
                                 maxLines = 1,
                             )
                         }
@@ -567,7 +583,7 @@ fun DesktopBlockerScreen(
                             Text(
                                 text = "No class sessions configured yet. Add your weekly lectures to enable automatic Lecture Shield.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = tokens.ink.copy(alpha = 0.6f),
                             )
                         } else {
                             Row(
@@ -587,8 +603,8 @@ fun DesktopBlockerScreen(
                                     Surface(
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                                        color = if (isThisCourseActive) Color(0xFF4C1D1D) else Color.White.copy(alpha = 0.04f),
-                                        border = BorderStroke(1.dp, if (isThisCourseActive) AnchorColors.HarborAction else Color.White.copy(alpha = 0.08f)),
+                                        color = if (isThisCourseActive) tokens.clayRoseSoft else tokens.ink.copy(alpha = 0.04f),
+                                        border = BorderStroke(1.dp, if (isThisCourseActive) tokens.beacon else tokens.ink.copy(alpha = 0.08f)),
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(10.dp),
@@ -596,8 +612,8 @@ fun DesktopBlockerScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Column(modifier = Modifier.weight(1f)) {
-                                                Text(code, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White)
-                                                Text(timeSummary, style = MaterialTheme.typography.bodySmall, fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f))
+                                                Text(code, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = tokens.ink)
+                                                Text(timeSummary, style = MaterialTheme.typography.bodySmall, fontSize = 10.sp, color = tokens.ink.copy(alpha = 0.6f))
                                             }
                                             if (!isFocusActive && activeClass == null && !isStrictDailyLockdownActive) {
                                                 IconButton(
@@ -611,7 +627,7 @@ fun DesktopBlockerScreen(
                                                     Icon(
                                                         imageVector = Icons.Default.Delete,
                                                         contentDescription = "Remove $code schedule",
-                                                        tint = Color.White.copy(alpha = 0.4f),
+                                                        tint = tokens.ink.copy(alpha = 0.4f),
                                                         modifier = Modifier.size(13.dp),
                                                     )
                                                 }
@@ -629,11 +645,11 @@ fun DesktopBlockerScreen(
                             OutlinedButton(
                                 onClick = { showAddClassScheduleDialog = true },
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.4f)),
+                                border = BorderStroke(1.dp, tokens.primary.copy(alpha = 0.4f)),
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = AnchorColors.HarborPrimary, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Default.Add, contentDescription = null, tint = tokens.primary, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(5.dp))
-                                Text("+ Add Class Schedule", style = MaterialTheme.typography.labelSmall, color = AnchorColors.HarborPrimary)
+                                Text("+ Add Class Schedule", style = MaterialTheme.typography.labelSmall, color = tokens.primary)
                             }
                         }
                     }
@@ -655,7 +671,7 @@ fun DesktopBlockerScreen(
 
                     AlertDialog(
                         onDismissRequest = { showAddClassScheduleDialog = false },
-                        title = { Text("📅 Add Class Schedule Slot", fontWeight = FontWeight.Bold, color = Color.White) },
+                        title = { Text("📅 Add Class Schedule Slot", fontWeight = FontWeight.Bold, color = tokens.ink) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 OutlinedTextField(
@@ -676,12 +692,12 @@ fun DesktopBlockerScreen(
                                     listOf(1 to "M", 2 to "Tu", 3 to "W", 4 to "Th", 5 to "F").forEach { (d, label) ->
                                         Surface(
                                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                            color = if (dayOfWeekInput == d) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.08f),
+                                            color = if (dayOfWeekInput == d) tokens.primary else tokens.ink.copy(alpha = 0.08f),
                                             modifier = Modifier.clickable { dayOfWeekInput = d },
                                         ) {
                                             Text(
                                                 text = label,
-                                                color = if (dayOfWeekInput == d) Color(0xFF002A4A) else Color.White,
+                                                color = if (dayOfWeekInput == d) tokens.beaconInk else tokens.ink,
                                                 fontWeight = FontWeight.Bold,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -727,17 +743,17 @@ fun DesktopBlockerScreen(
                                     }
                                 },
                                 enabled = courseCodeInput.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborPrimary, contentColor = Color(0xFF002A4A)),
+                                colors = ButtonDefaults.buttonColors(containerColor = tokens.primary, contentColor = tokens.beaconInk),
                             ) {
                                 Text("Add Class", fontWeight = FontWeight.Bold)
                             }
                         },
                         dismissButton = {
                             OutlinedButton(onClick = { showAddClassScheduleDialog = false }) {
-                                Text("Cancel", color = Color.White)
+                                Text("Cancel", color = tokens.ink)
                             }
                         },
-                        containerColor = AnchorColors.HarborDock,
+                        containerColor = tokens.surface,
                     )
                 }
             }
@@ -749,10 +765,10 @@ fun DesktopBlockerScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = if (isEarnedLeisureActive) Color(0xFF102E20) else AnchorColors.HarborDock,
+            color = if (isEarnedLeisureActive) tokens.sageSoft else tokens.surface,
             border = BorderStroke(
                 1.dp,
-                if (isEarnedLeisureActive) AnchorColors.HarborGrowth else AnchorColors.HarborPrimary.copy(alpha = 0.25f),
+                if (isEarnedLeisureActive) tokens.sage else tokens.primary.copy(alpha = 0.25f),
             ),
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -769,13 +785,13 @@ fun DesktopBlockerScreen(
                         Surface(
                             modifier = Modifier.size(38.dp),
                             shape = CircleShape,
-                            color = if (isEarnedLeisureActive) AnchorColors.HarborGrowth.copy(alpha = 0.2f) else AnchorColors.HarborMist,
+                            color = if (isEarnedLeisureActive) tokens.sage.copy(alpha = 0.2f) else tokens.paper2,
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.AutoAwesome,
                                     contentDescription = null,
-                                    tint = if (isEarnedLeisureActive) AnchorColors.HarborFoliage else AnchorColors.HarborPrimary,
+                                    tint = if (isEarnedLeisureActive) tokens.sage else tokens.primary,
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
@@ -787,18 +803,18 @@ fun DesktopBlockerScreen(
                                     text = "Leisure Time-Bank",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = tokens.ink,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                    color = Color.White.copy(alpha = 0.08f),
+                                    color = tokens.ink.copy(alpha = 0.08f),
                                 ) {
                                     Text(
                                         text = "Anti-Idling Scaled Stack",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 10.sp,
-                                        color = AnchorColors.HarborPrimary,
+                                        color = tokens.primary,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                     )
                                 }
@@ -806,7 +822,7 @@ fun DesktopBlockerScreen(
                             Text(
                                 text = "Study to earn 30m of 24/7 unblocked leisure. Requirement scales up per tier to discourage idling.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.65f),
+                                color = tokens.ink.copy(alpha = 0.65f),
                             )
                         }
                     }
@@ -818,8 +834,8 @@ fun DesktopBlockerScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Surface(
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                color = AnchorColors.HarborGrowth.copy(alpha = 0.25f),
-                                border = BorderStroke(1.dp, AnchorColors.HarborGrowth),
+                                color = tokens.sage.copy(alpha = 0.25f),
+                                border = BorderStroke(1.dp, tokens.sage),
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -828,7 +844,7 @@ fun DesktopBlockerScreen(
                                     Icon(
                                         imageVector = Icons.Default.LockOpen,
                                         contentDescription = null,
-                                        tint = AnchorColors.HarborFoliage,
+                                        tint = tokens.sage,
                                         modifier = Modifier.size(14.dp),
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -838,15 +854,15 @@ fun DesktopBlockerScreen(
                                         text = String.format("Unlocked: %02d:%02d", remMin, remSec),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = AnchorColors.HarborFoliage,
+                                        color = tokens.sage,
                                     )
                                 }
                             }
                             OutlinedButton(
                                 onClick = handleCancelLeisure,
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.3f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.ink),
                             ) {
                                 Text("Lock Up & Save", fontSize = 11.sp)
                             }
@@ -857,10 +873,10 @@ fun DesktopBlockerScreen(
                             enabled = timeBankStatus.availableBankedMinutes >= 30 && activeClass == null,
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = AnchorColors.HarborGrowth,
-                                contentColor = Color(0xFF002A16),
-                                disabledContainerColor = Color.White.copy(alpha = 0.08f),
-                                disabledContentColor = Color.White.copy(alpha = 0.35f),
+                                containerColor = tokens.sage,
+                                contentColor = tokens.beaconInk,
+                                disabledContainerColor = tokens.ink.copy(alpha = 0.08f),
+                                disabledContentColor = tokens.ink.copy(alpha = 0.35f),
                             ),
                         ) {
                             Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -881,7 +897,7 @@ fun DesktopBlockerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
-                        .background(Color.White.copy(alpha = 0.03f))
+                        .background(tokens.ink.copy(alpha = 0.03f))
                         .padding(12.dp),
                 ) {
                     Row(
@@ -893,21 +909,21 @@ fun DesktopBlockerScreen(
                             text = "Next 30m Unlock Progress (Tier ${timeBankStatus.currentTier}):",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = tokens.ink.copy(alpha = 0.8f),
                         )
                         Text(
                             text = "${timeBankStatus.minutesIntoCurrentTier} / ${timeBankStatus.minutesRequiredForNextTier}m studied (${(timeBankStatus.nextTierProgress * 100).toInt()}%)",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = AnchorColors.HarborPrimary,
+                            color = tokens.primary,
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { timeBankStatus.nextTierProgress },
                         modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(4.dp)),
-                        color = AnchorColors.HarborPrimary,
-                        trackColor = Color.White.copy(alpha = 0.1f),
+                        color = tokens.primary,
+                        trackColor = tokens.ink.copy(alpha = 0.1f),
                     )
                 }
 
@@ -934,16 +950,16 @@ fun DesktopBlockerScreen(
                             Surface(
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                                 color = when {
-                                    isCompleted -> AnchorColors.HarborGrowth.copy(alpha = 0.2f)
-                                    isCurrent -> AnchorColors.HarborPrimary.copy(alpha = 0.2f)
-                                    else -> Color.White.copy(alpha = 0.04f)
+                                    isCompleted -> tokens.sage.copy(alpha = 0.2f)
+                                    isCurrent -> tokens.primary.copy(alpha = 0.2f)
+                                    else -> tokens.ink.copy(alpha = 0.04f)
                                 },
                                 border = BorderStroke(
                                     1.dp,
                                     when {
-                                        isCompleted -> AnchorColors.HarborGrowth.copy(alpha = 0.6f)
-                                        isCurrent -> AnchorColors.HarborPrimary
-                                        else -> Color.White.copy(alpha = 0.08f)
+                                        isCompleted -> tokens.sage.copy(alpha = 0.6f)
+                                        isCurrent -> tokens.primary
+                                        else -> tokens.ink.copy(alpha = 0.08f)
                                     },
                                 ),
                             ) {
@@ -952,14 +968,14 @@ fun DesktopBlockerScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     if (isCompleted) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = AnchorColors.HarborFoliage, modifier = Modifier.size(11.dp))
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = tokens.sage, modifier = Modifier.size(11.dp))
                                         Spacer(modifier = Modifier.width(3.dp))
                                     }
                                     Text(
                                         text = "T$tNum: $req → $leisure",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 10.sp,
-                                        color = if (isCompleted) AnchorColors.HarborFoliage else if (isCurrent) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.5f),
+                                        color = if (isCompleted) tokens.sage else if (isCurrent) tokens.primary else tokens.ink.copy(alpha = 0.5f),
                                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                                     )
                                 }
@@ -973,7 +989,7 @@ fun DesktopBlockerScreen(
                             text = "Base Rate:",
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 10.sp,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = tokens.ink.copy(alpha = 0.5f),
                         )
                         listOf(45 to "45m", 60 to "60m", 75 to "75m").forEach { (mins, label) ->
                             val isSelected = baseStudyMinutes == mins
@@ -982,14 +998,14 @@ fun DesktopBlockerScreen(
                                     .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
                                     .clickable { handleSetBaseStudyRatio(mins) },
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                color = if (isSelected) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.06f),
+                                color = if (isSelected) tokens.primary else tokens.ink.copy(alpha = 0.06f),
                             ) {
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontSize = 10.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) Color(0xFF002A4A) else Color.White.copy(alpha = 0.7f),
+                                    color = if (isSelected) tokens.beaconInk else tokens.ink.copy(alpha = 0.7f),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 )
                             }
@@ -1005,10 +1021,10 @@ fun DesktopBlockerScreen(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-            color = if (scopeSentinelEnabled) Color(0xFF131F2E) else AnchorColors.HarborDock,
+            color = if (scopeSentinelEnabled) tokens.captainSoft else tokens.surface,
             border = BorderStroke(
                 1.dp,
-                if (scopeSentinelEnabled) AnchorColors.HarborPrimary.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.1f),
+                if (scopeSentinelEnabled) tokens.primary.copy(alpha = 0.4f) else tokens.ink.copy(alpha = 0.1f),
             ),
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
@@ -1025,13 +1041,13 @@ fun DesktopBlockerScreen(
                         Surface(
                             modifier = Modifier.size(38.dp),
                             shape = CircleShape,
-                            color = AnchorColors.HarborPrimary.copy(alpha = 0.15f),
+                            color = tokens.primary.copy(alpha = 0.15f),
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Visibility,
                                     contentDescription = null,
-                                    tint = AnchorColors.HarborPrimary,
+                                    tint = tokens.primary,
                                     modifier = Modifier.size(20.dp),
                                 )
                             }
@@ -1043,18 +1059,18 @@ fun DesktopBlockerScreen(
                                     text = "AI Scope Sentinel & Distraction Tax",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = tokens.ink,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                    color = if (scopeSentinelEnabled) AnchorColors.HarborGrowth.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f),
+                                    color = if (scopeSentinelEnabled) tokens.sage.copy(alpha = 0.2f) else tokens.ink.copy(alpha = 0.08f),
                                 ) {
                                     Text(
                                         text = if (scopeSentinelEnabled) "Active in Focus" else "Paused",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontSize = 10.sp,
-                                        color = if (scopeSentinelEnabled) AnchorColors.HarborFoliage else Color.White.copy(alpha = 0.5f),
+                                        color = if (scopeSentinelEnabled) tokens.sage else tokens.ink.copy(alpha = 0.5f),
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                     )
                                 }
@@ -1062,7 +1078,7 @@ fun DesktopBlockerScreen(
                             Text(
                                 text = "Lightweight background checker detects out-of-scope browsing during study. Drains 1m banked leisure per minute.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.65f),
+                                color = tokens.ink.copy(alpha = 0.65f),
                             )
                         }
                     }
@@ -1074,10 +1090,10 @@ fun DesktopBlockerScreen(
                         onCheckedChange = handleToggleScopeSentinel,
                         colors =
                             SwitchDefaults.colors(
-                                checkedThumbColor = AnchorColors.HarborPrimary,
-                                checkedTrackColor = AnchorColors.HarborGrowth,
-                                uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
+                                checkedThumbColor = tokens.primary,
+                                checkedTrackColor = tokens.sage,
+                                uncheckedThumbColor = tokens.ink.copy(alpha = 0.5f),
+                                uncheckedTrackColor = tokens.ink.copy(alpha = 0.1f),
                             ),
                     )
                 }
@@ -1093,18 +1109,18 @@ fun DesktopBlockerScreen(
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                        color = Color(0xFF0F2618),
-                        border = BorderStroke(1.dp, AnchorColors.HarborGrowth.copy(alpha = 0.3f)),
+                        color = tokens.sageSoft,
+                        border = BorderStroke(1.dp, tokens.sage.copy(alpha = 0.3f)),
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("✓", color = AnchorColors.HarborFoliage, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("✓", color = tokens.sage, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "In-Scope Disciplines (Protected)",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = AnchorColors.HarborFoliage,
+                                    color = tokens.sage,
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1112,7 +1128,7 @@ fun DesktopBlockerScreen(
                                 text = "Current task topics and study workspaces. All academic subjects are supported.",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = tokens.ink.copy(alpha = 0.85f),
                                 lineHeight = 16.sp,
                             )
                         }
@@ -1122,18 +1138,18 @@ fun DesktopBlockerScreen(
                     Surface(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                        color = Color(0xFF2E1515),
-                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.3f)),
+                        color = tokens.clayRoseSoft,
+                        border = BorderStroke(1.dp, tokens.clayRose.copy(alpha = 0.3f)),
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("✕", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("✕", color = tokens.clayRose, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Out-of-Scope Triggers (-1m/min Tax)",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFFF8A80),
+                                    color = tokens.clayRose,
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1141,7 +1157,7 @@ fun DesktopBlockerScreen(
                                 text = "Activities clearly unrelated to the current task, as classified by you or the local model. Ambiguous titles are allowed.",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = tokens.ink.copy(alpha = 0.85f),
                                 lineHeight = 16.sp,
                             )
                         }
@@ -1154,7 +1170,7 @@ fun DesktopBlockerScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                    color = Color.White.copy(alpha = 0.04f),
+                    color = tokens.ink.copy(alpha = 0.04f),
                 ) {
                     Row(
                         modifier = Modifier
@@ -1168,14 +1184,14 @@ fun DesktopBlockerScreen(
                                 text = "Tax Rate: -1 min banked leisure per sustained minute out of scope",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = tokens.ink.copy(alpha = 0.6f),
                             )
                         }
                         Text(
                             text = "Taxed Today: ${scopeTaxMinutesToday}m deducted",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = if (scopeTaxMinutesToday > 0) Color(0xFFFF8A80) else AnchorColors.HarborPrimary,
+                            color = if (scopeTaxMinutesToday > 0) tokens.clayRose else tokens.primary,
                             fontSize = 11.sp,
                         )
                     }
@@ -1191,8 +1207,8 @@ fun DesktopBlockerScreen(
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-            color = AnchorColors.HarborDock,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            color = tokens.surface,
+            border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 // Row 1: Target Input + Type Toggle + Add Button
@@ -1206,7 +1222,7 @@ fun DesktopBlockerScreen(
                         placeholder = {
                             Text(
                                 if (selectedType == "APP") "Enter application process (e.g. discord.exe, steam.exe, game.exe)..." else "Enter domain to block (e.g. reddit.com, youtube.com, twitch.tv)...",
-                                color = Color.White.copy(alpha = 0.4f),
+                                color = tokens.ink.copy(alpha = 0.4f),
                                 fontSize = 13.sp,
                             )
                         },
@@ -1214,10 +1230,10 @@ fun DesktopBlockerScreen(
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                         colors =
                             OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AnchorColors.HarborPrimary,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = tokens.primary,
+                                unfocusedBorderColor = tokens.ink.copy(alpha = 0.2f),
+                                focusedTextColor = tokens.ink,
+                                unfocusedTextColor = tokens.ink,
                             ),
                         singleLine = true,
                     )
@@ -1227,16 +1243,16 @@ fun DesktopBlockerScreen(
                     // Type Selector Segmented Pill
                     Surface(
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                        color = Color.White.copy(alpha = 0.06f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        color = tokens.ink.copy(alpha = 0.06f),
+                        border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
                     ) {
                         Row(modifier = Modifier.padding(3.dp)) {
                             Button(
                                 onClick = { selectedType = "APP" },
                                 colors =
                                     ButtonDefaults.buttonColors(
-                                        containerColor = if (selectedType == "APP") AnchorColors.HarborPrimary else Color.Transparent,
-                                        contentColor = if (selectedType == "APP") Color(0xFF002A4A) else Color.White.copy(alpha = 0.7f),
+                                        containerColor = if (selectedType == "APP") tokens.primary else Color.Transparent,
+                                        contentColor = if (selectedType == "APP") tokens.beaconInk else tokens.ink.copy(alpha = 0.7f),
                                     ),
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
@@ -1247,8 +1263,8 @@ fun DesktopBlockerScreen(
                                 onClick = { selectedType = "WEB" },
                                 colors =
                                     ButtonDefaults.buttonColors(
-                                        containerColor = if (selectedType == "WEB") AnchorColors.HarborPrimary else Color.Transparent,
-                                        contentColor = if (selectedType == "WEB") Color(0xFF002A4A) else Color.White.copy(alpha = 0.7f),
+                                        containerColor = if (selectedType == "WEB") tokens.primary else Color.Transparent,
+                                        contentColor = if (selectedType == "WEB") tokens.beaconInk else tokens.ink.copy(alpha = 0.7f),
                                     ),
                                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
@@ -1276,7 +1292,7 @@ fun DesktopBlockerScreen(
                             }
                         },
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                        colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborAction),
+                        colors = ButtonDefaults.buttonColors(containerColor = tokens.beacon),
                         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
                     ) {
                         Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1296,14 +1312,14 @@ fun DesktopBlockerScreen(
                     Text(
                         text = "Protection Schedule:",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = tokens.ink.copy(alpha = 0.5f),
                         fontWeight = FontWeight.SemiBold,
                     )
 
                     val modes = listOf(
-                        Triple("FOCUS_ONLY", "⏱️ Focus Sessions Only", AnchorColors.HarborGrowth),
-                        Triple("ALWAYS_24_7", "🔒 24/7 Continuous Block", Color(0xFFE57373)),
-                        Triple("LEISURE_QUOTA", "⏳ Daily Quota (75m Allowance)", AnchorColors.HarborPrimary),
+                        Triple("FOCUS_ONLY", "Focus sessions only", tokens.sage),
+                        Triple("ALWAYS_24_7", "24/7 continuous block", tokens.clayRose),
+                        Triple("LEISURE_QUOTA", "Daily quota (75m allowance)", tokens.primary),
                     )
 
                     for ((modeId, label, color) in modes) {
@@ -1314,14 +1330,14 @@ fun DesktopBlockerScreen(
                                     .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
                                     .clickable { selectedSchedule = modeId },
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            color = if (isSelected) color.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.04f),
-                            border = BorderStroke(1.dp, if (isSelected) color else Color.White.copy(alpha = 0.08f)),
+                            color = if (isSelected) color.copy(alpha = 0.2f) else tokens.ink.copy(alpha = 0.04f),
+                            border = BorderStroke(1.dp, if (isSelected) color else tokens.ink.copy(alpha = 0.08f)),
                         ) {
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) color else Color.White.copy(alpha = 0.7f),
+                                color = if (isSelected) color else tokens.ink.copy(alpha = 0.7f),
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             )
                         }
@@ -1339,18 +1355,17 @@ fun DesktopBlockerScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "CONFIGURED RULES (${blockRules.size})",
+                text = "Configured rules (${blockRules.size})",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-                color = Color.White.copy(alpha = 0.6f),
+                color = tokens.ink.copy(alpha = 0.6f),
             )
 
             // Filter Tabs
             Surface(
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                color = Color.White.copy(alpha = 0.05f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                color = tokens.ink.copy(alpha = 0.05f),
+                border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
             ) {
                 Row(modifier = Modifier.padding(3.dp)) {
                     val tabs = listOf(
@@ -1364,8 +1379,8 @@ fun DesktopBlockerScreen(
                             onClick = { rulesFilterTab = index },
                             colors =
                                 ButtonDefaults.buttonColors(
-                                    containerColor = if (isSelected) AnchorColors.HarborPrimary else Color.Transparent,
-                                    contentColor = if (isSelected) Color(0xFF002A4A) else Color.White.copy(alpha = 0.7f),
+                                    containerColor = if (isSelected) tokens.primary else Color.Transparent,
+                                    contentColor = if (isSelected) tokens.beaconInk else tokens.ink.copy(alpha = 0.7f),
                                 ),
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -1388,26 +1403,25 @@ fun DesktopBlockerScreen(
                     // Blocked Apps Column
                     Surface(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                        color = AnchorColors.HarborDock.copy(alpha = 0.7f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        color = tokens.surface.copy(alpha = 0.7f),
+                        border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
                                 text = "BLOCKED APPLICATIONS (${appRules.size})",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
-                                color = AnchorColors.HarborPrimary,
+                                color = tokens.primary,
                             )
                             if (appRules.isEmpty()) {
                                 Surface(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
-                                    color = Color.White.copy(alpha = 0.03f),
+                                    color = tokens.ink.copy(alpha = 0.03f),
                                 ) {
                                     Text(
                                         text = "No applications configured. Add games or chat apps above.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.4f),
+                                        color = tokens.ink.copy(alpha = 0.4f),
                                         modifier = Modifier.padding(16.dp),
                                     )
                                 }
@@ -1427,7 +1441,7 @@ fun DesktopBlockerScreen(
                                         onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
                                         onUpdateAllowance = { newMinutes, lock24h ->
                                             if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                                showLockReason = "🔒 Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
+                                                showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
                                             } else {
                                                 scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
                                             }
@@ -1443,26 +1457,25 @@ fun DesktopBlockerScreen(
                     // Blocked Websites Column
                     Surface(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                        color = AnchorColors.HarborDock.copy(alpha = 0.7f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        color = tokens.surface.copy(alpha = 0.7f),
+                        border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
-                                text = "BLOCKED BROWSER SITES (${webRules.size})",
+                                text = "Blocked browser SITES (${webRules.size})",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
-                                color = AnchorColors.HarborAction,
+                                color = tokens.beacon,
                             )
                             if (webRules.isEmpty()) {
                                 Surface(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
-                                    color = Color.White.copy(alpha = 0.03f),
+                                    color = tokens.ink.copy(alpha = 0.03f),
                                 ) {
                                     Text(
                                         text = "No websites configured. Add social media or streaming sites above.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.4f),
+                                        color = tokens.ink.copy(alpha = 0.4f),
                                         modifier = Modifier.padding(16.dp),
                                     )
                                 }
@@ -1482,7 +1495,7 @@ fun DesktopBlockerScreen(
                                         onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
                                         onUpdateAllowance = { newMinutes, lock24h ->
                                             if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                                showLockReason = "🔒 Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
+                                                showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
                                             } else {
                                                 scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
                                             }
@@ -1500,16 +1513,15 @@ fun DesktopBlockerScreen(
                 // Apps Only (Full Width)
                 Surface(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                    color = AnchorColors.HarborDock.copy(alpha = 0.7f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                    color = tokens.surface.copy(alpha = 0.7f),
+                    border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
                 ) {
                     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             text = "BLOCKED APPLICATIONS (${appRules.size})",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp,
-                            color = AnchorColors.HarborPrimary,
+                            color = tokens.primary,
                         )
                         appRules.forEach { rule ->
                             val groupUsed = if (!rule.quotaGroup.isNullOrBlank()) {
@@ -1526,7 +1538,7 @@ fun DesktopBlockerScreen(
                                 onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
                                 onUpdateAllowance = { newMinutes, lock24h ->
                                     if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                        showLockReason = "🔒 Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
+                                        showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
                                     } else {
                                         scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
                                     }
@@ -1542,16 +1554,15 @@ fun DesktopBlockerScreen(
                 // Websites Only (Full Width)
                 Surface(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(AnchorSpacing.radiusCard)),
-                    color = AnchorColors.HarborDock.copy(alpha = 0.7f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                    color = tokens.surface.copy(alpha = 0.7f),
+                    border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.1f)),
                 ) {
                     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = "BLOCKED BROWSER SITES (${webRules.size})",
+                            text = "Blocked browser SITES (${webRules.size})",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp,
-                            color = AnchorColors.HarborAction,
+                            color = tokens.beacon,
                         )
                         webRules.forEach { rule ->
                             val groupUsed = if (!rule.quotaGroup.isNullOrBlank()) {
@@ -1568,7 +1579,7 @@ fun DesktopBlockerScreen(
                                 onAttemptToggleSchedule = { nextMode, isLocked -> attemptToggleSchedule(rule, nextMode, isLocked) },
                                 onUpdateAllowance = { newMinutes, lock24h ->
                                     if (isFocusActive || activeClass != null || isStrictDailyLockdownActive) {
-                                        showLockReason = "🔒 Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
+                                        showLockReason = "Locked: Allowances cannot be loosened while Focus, Class, or Strict Lockdown is active."
                                     } else {
                                         scope.launch { db.updateBlockRuleAllowance(rule.id, newMinutes, lock24h) }
                                     }
@@ -1622,20 +1633,20 @@ fun DesktopBlockerScreen(
             AlertDialog(
                 onDismissRequest = { showLockReason = null },
                 title = {
-                    Text("Protection Shield Locked", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Protection Shield Locked", fontWeight = FontWeight.Bold, color = tokens.ink)
                 },
                 text = {
-                    Text(lockReason, color = Color.White.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
+                    Text(lockReason, color = tokens.ink.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyMedium)
                 },
                 confirmButton = {
                     Button(
                         onClick = { showLockReason = null },
-                        colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborPrimary, contentColor = Color(0xFF002A4A)),
+                        colors = ButtonDefaults.buttonColors(containerColor = tokens.primary, contentColor = tokens.beaconInk),
                     ) {
                         Text("Understood", fontWeight = FontWeight.Bold)
                     }
                 },
-                containerColor = AnchorColors.HarborDock,
+                containerColor = tokens.surface,
             )
         }
 
@@ -1644,17 +1655,17 @@ fun DesktopBlockerScreen(
             AlertDialog(
                 onDismissRequest = { showConfirmLockdownDialog = false },
                 title = {
-                    Text("🔒 Engage Strict Daily Lockdown?", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Engage Strict Daily Lockdown?", fontWeight = FontWeight.Bold, color = tokens.ink)
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
                             "Are you sure you want to lock all distraction rules until tomorrow morning at 4:00 AM?",
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = tokens.ink.copy(alpha = 0.9f),
                         )
                         Text(
                             "• All active rules, 24/7 shields, and quotas are frozen.\n• Rules cannot be turned off, loosened, or deleted until 4:00 AM.\n• You can still ADD new block targets anytime.",
-                            color = Color(0xFFFFD54F),
+                            color = tokens.beacon,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -1669,7 +1680,7 @@ fun DesktopBlockerScreen(
                                 showConfirmLockdownDialog = false
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD54F), contentColor = Color.Black),
+                        colors = ButtonDefaults.buttonColors(containerColor = tokens.beacon, contentColor = tokens.beaconInk),
                     ) {
                         Text("Confirm & Lock Until 4:00 AM", fontWeight = FontWeight.Bold)
                     }
@@ -1677,12 +1688,12 @@ fun DesktopBlockerScreen(
                 dismissButton = {
                     OutlinedButton(
                         onClick = { showConfirmLockdownDialog = false },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = tokens.ink),
                     ) {
                         Text("Cancel")
                     }
                 },
-                containerColor = AnchorColors.HarborDock,
+                containerColor = tokens.surface,
             )
         }
     }
@@ -1700,6 +1711,7 @@ private fun RuleItemCard(
     onLockFor24Hours: () -> Unit,
     onAttemptDelete: (isLocked: Boolean) -> Unit,
 ) {
+    val tokens = LocalAnchorTokens.current
     val now = remember(rule.lockUntilEpoch, rule.enabled) { System.currentTimeMillis() }
     val isLocked = rule.lockUntilEpoch > now
     val is247 = rule.scheduleMode.equals("ALWAYS_24_7", ignoreCase = true) || rule.scheduleMode.equals("ALWAYS", ignoreCase = true)
@@ -1717,8 +1729,8 @@ private fun RuleItemCard(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
-        color = if (rule.enabled) AnchorColors.HarborBackground.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.03f),
-        border = BorderStroke(1.dp, if (rule.enabled) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.05f)),
+        color = if (rule.enabled) tokens.paper.copy(alpha = 0.8f) else tokens.ink.copy(alpha = 0.03f),
+        border = BorderStroke(1.dp, if (rule.enabled) tokens.ink.copy(alpha = 0.12f) else tokens.ink.copy(alpha = 0.05f)),
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Row(
@@ -1735,7 +1747,7 @@ private fun RuleItemCard(
                             text = rule.target,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (rule.enabled) Color.White else Color.White.copy(alpha = 0.4f),
+                            color = if (rule.enabled) tokens.ink else tokens.ink.copy(alpha = 0.4f),
                         )
 
                         // Mode Badge
@@ -1760,38 +1772,38 @@ private fun RuleItemCard(
                                     },
                             color =
                                 when {
-                                    is247 -> Color(0xFF5A1A00).copy(alpha = 0.8f)
-                                    isSharedPool -> AnchorColors.HarborGrowth.copy(alpha = 0.25f)
-                                    hasQuota -> AnchorColors.HarborPrimary.copy(alpha = 0.25f)
-                                    else -> AnchorColors.HarborGrowth.copy(alpha = 0.35f)
+                                    is247 -> tokens.clayRoseSoft.copy(alpha = 0.8f)
+                                    isSharedPool -> tokens.sage.copy(alpha = 0.25f)
+                                    hasQuota -> tokens.primary.copy(alpha = 0.25f)
+                                    else -> tokens.sage.copy(alpha = 0.35f)
                                 },
                             border =
                                 BorderStroke(
                                     1.dp,
                                     when {
-                                        is247 -> Color(0xFFFF5252).copy(alpha = 0.5f)
-                                        isSharedPool -> AnchorColors.HarborGrowth.copy(alpha = 0.6f)
-                                        hasQuota -> AnchorColors.HarborPrimary.copy(alpha = 0.6f)
-                                        else -> AnchorColors.HarborFoliage.copy(alpha = 0.4f)
+                                        is247 -> tokens.clayRose.copy(alpha = 0.5f)
+                                        isSharedPool -> tokens.sage.copy(alpha = 0.6f)
+                                        hasQuota -> tokens.primary.copy(alpha = 0.6f)
+                                        else -> tokens.sage.copy(alpha = 0.4f)
                                     },
                                 ),
                         ) {
                             Text(
                                 text =
                                     when {
-                                        is247 -> "🔒 24/7 Block"
-                                        isSharedPool -> "🌐 Shared 3.5h Pool"
-                                        hasQuota -> "⏳ Quota: ${quotaMinutes}m/d"
-                                        else -> "⏱️ Study Time"
+                                        is247 -> "24/7 block"
+                                        isSharedPool -> "Shared 3.5h Pool"
+                                        hasQuota -> "Quota: ${quotaMinutes}m/d"
+                                        else -> "Study Time"
                                     },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color =
                                     when {
-                                        is247 -> Color(0xFFFF8A80)
-                                        isSharedPool -> AnchorColors.HarborGrowth
-                                        hasQuota -> AnchorColors.HarborPrimary
-                                        else -> AnchorColors.HarborFoliage
+                                        is247 -> tokens.clayRose
+                                        isSharedPool -> tokens.sage
+                                        hasQuota -> tokens.primary
+                                        else -> tokens.sage
                                     },
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             )
@@ -1804,8 +1816,8 @@ private fun RuleItemCard(
                             val remainingMins = (remainingMillis % 3600_000L) / 60_000L
                             Surface(
                                 modifier = Modifier.clip(RoundedCornerShape(4.dp)),
-                                color = Color(0xFF4A3800).copy(alpha = 0.8f),
-                                border = BorderStroke(1.dp, Color(0xFFFFD54F).copy(alpha = 0.7f)),
+                                color = tokens.paper3.copy(alpha = 0.8f),
+                                border = BorderStroke(1.dp, tokens.beacon.copy(alpha = 0.7f)),
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -1815,14 +1827,14 @@ private fun RuleItemCard(
                                     Icon(
                                         imageVector = Icons.Default.Lock,
                                         contentDescription = null,
-                                        tint = Color(0xFFFFD54F),
+                                        tint = tokens.beacon,
                                         modifier = Modifier.size(11.dp),
                                     )
                                     Text(
                                         text = "24h Lock (${remainingHours}h ${remainingMins}m left)",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFFFD54F),
+                                        color = tokens.beacon,
                                     )
                                 }
                             }
@@ -1841,8 +1853,8 @@ private fun RuleItemCard(
                                         .fillMaxWidth(0.9f)
                                         .height(5.dp)
                                         .clip(RoundedCornerShape(3.dp)),
-                                color = if (isQuotaExhausted) Color(0xFFFF5252) else AnchorColors.HarborPrimary,
-                                trackColor = Color.White.copy(alpha = 0.12f),
+                                color = if (isQuotaExhausted) tokens.clayRose else tokens.primary,
+                                trackColor = tokens.ink.copy(alpha = 0.12f),
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Row(
@@ -1859,20 +1871,20 @@ private fun RuleItemCard(
                                 Text(
                                     text = labelText,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (isQuotaExhausted) Color(0xFFFF8A80) else Color.White.copy(alpha = 0.7f),
+                                    color = if (isQuotaExhausted) tokens.clayRose else tokens.ink.copy(alpha = 0.7f),
                                 )
                                 if (isQuotaExhausted) {
                                     Text(
-                                        text = "• ⚠️ Quota Exhausted (Locked until 4:00 AM reset)",
+                                        text = "• Quota Exhausted (Locked until 4:00 AM reset)",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFFF5252),
+                                        color = tokens.clayRose,
                                     )
                                 } else if (isSharedPool) {
                                     Text(
                                         text = "• Homework AI (Active)",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = AnchorColors.HarborGrowth.copy(alpha = 0.85f),
+                                        color = tokens.sage.copy(alpha = 0.85f),
                                     )
                                 }
                             }
@@ -1883,17 +1895,17 @@ private fun RuleItemCard(
                             text =
                                 when {
                                     !rule.enabled -> "Rule turned off"
-                                    isTrackOnly -> "⏱️ ${usedMinutes}m active today • Unmetered Homework Tracker (Blocked in class & curfew)"
+                                    isTrackOnly -> "${usedMinutes}m active today • Unmetered Homework Tracker (Blocked in class & curfew)"
                                     is247 -> "Always blocked (24/7 continuous guard)"
                                     else -> "Blocked during active study sessions only"
                                 },
                             style = MaterialTheme.typography.labelSmall,
                             color =
                                 when {
-                                    !rule.enabled -> Color.White.copy(alpha = 0.3f)
-                                    isTrackOnly -> AnchorColors.HarborGrowth.copy(alpha = 0.85f)
-                                    is247 -> Color(0xFFFFAB91).copy(alpha = 0.8f)
-                                    else -> AnchorColors.HarborPrimary.copy(alpha = 0.75f)
+                                    !rule.enabled -> tokens.ink.copy(alpha = 0.3f)
+                                    isTrackOnly -> tokens.sage.copy(alpha = 0.85f)
+                                    is247 -> tokens.clayRose.copy(alpha = 0.8f)
+                                    else -> tokens.primary.copy(alpha = 0.75f)
                                 },
                         )
                     }
@@ -1908,7 +1920,7 @@ private fun RuleItemCard(
                         Icon(
                             imageVector = Icons.Default.Tune,
                             contentDescription = "Configure Rule Quota & Lock",
-                            tint = Color.White.copy(alpha = 0.6f),
+                            tint = tokens.ink.copy(alpha = 0.6f),
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -1919,12 +1931,12 @@ private fun RuleItemCard(
                         onCheckedChange = { onAttemptToggle(isQuotaExhausted, isLocked) },
                         colors =
                             SwitchDefaults.colors(
-                                checkedThumbColor = if (is247) Color(0xFFFF8A80) else AnchorColors.HarborPrimary,
-                                checkedTrackColor = if (is247) Color(0xFF8B2500) else AnchorColors.HarborPrimary.copy(alpha = 0.4f),
-                                uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f),
-                                disabledCheckedThumbColor = Color.White.copy(alpha = 0.4f),
-                                disabledCheckedTrackColor = Color.White.copy(alpha = 0.2f),
+                                checkedThumbColor = if (is247) tokens.clayRose else tokens.primary,
+                                checkedTrackColor = if (is247) tokens.clayRoseSoft else tokens.primary.copy(alpha = 0.4f),
+                                uncheckedThumbColor = tokens.ink.copy(alpha = 0.5f),
+                                uncheckedTrackColor = tokens.ink.copy(alpha = 0.1f),
+                                disabledCheckedThumbColor = tokens.ink.copy(alpha = 0.4f),
+                                disabledCheckedTrackColor = tokens.ink.copy(alpha = 0.2f),
                             ),
                     )
 
@@ -1936,7 +1948,7 @@ private fun RuleItemCard(
                         Icon(
                             imageVector = if (isLocked || isHardLocked) Icons.Default.Lock else Icons.Default.Delete,
                             contentDescription = if (isLocked || isHardLocked) "Rule Locked (Cannot Delete)" else "Delete Rule",
-                            tint = if (isLocked || isHardLocked) Color(0xFFFFD54F).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.35f),
+                            tint = if (isLocked || isHardLocked) tokens.beacon.copy(alpha = 0.5f) else tokens.ink.copy(alpha = 0.35f),
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -1965,6 +1977,7 @@ private fun RuleSettingsDialog(
     onDismiss: () -> Unit,
     onSave: (quotaMinutes: Int, lock24Hours: Boolean) -> Unit,
 ) {
+    val tokens = LocalAnchorTokens.current
     var selectedQuota by remember { mutableStateOf(rule.dailyAllowanceMinutes) }
     var engageLock by remember { mutableStateOf(false) }
 
@@ -1975,7 +1988,7 @@ private fun RuleSettingsDialog(
                 Icon(
                     imageVector = Icons.Default.HourglassTop,
                     contentDescription = null,
-                    tint = AnchorColors.HarborPrimary,
+                    tint = tokens.primary,
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1983,7 +1996,7 @@ private fun RuleSettingsDialog(
                     text = "Allowance & Lock: ${rule.target}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = tokens.ink,
                 )
             }
         },
@@ -1992,15 +2005,15 @@ private fun RuleSettingsDialog(
                 Text(
                     text = "Configure daily screen time allowance for ${rule.target}. Once exhausted, it is automatically locked until the 4:00 AM daily reset.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = tokens.ink.copy(alpha = 0.8f),
                 )
 
                 // Presets
                 Text(
-                    text = "DAILY ALLOWANCE:",
+                    text = "Daily allowance",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = AnchorColors.HarborPrimary,
+                    color = tokens.primary,
                 )
 
                 val options = listOf(
@@ -2028,13 +2041,13 @@ private fun RuleSettingsDialog(
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                             colors =
                                 ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (selectedQuota == minutes) AnchorColors.HarborPrimary.copy(alpha = 0.3f) else Color.Transparent,
-                                    contentColor = if (selectedQuota == minutes) AnchorColors.HarborPrimary else Color.White,
+                                    containerColor = if (selectedQuota == minutes) tokens.primary.copy(alpha = 0.3f) else Color.Transparent,
+                                    contentColor = if (selectedQuota == minutes) tokens.primary else tokens.ink,
                                 ),
                             border =
                                 BorderStroke(
                                     1.dp,
-                                    if (selectedQuota == minutes) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.15f),
+                                    if (selectedQuota == minutes) tokens.primary else tokens.ink.copy(alpha = 0.15f),
                                 ),
                         ) {
                             Text(label, style = MaterialTheme.typography.labelSmall)
@@ -2055,13 +2068,13 @@ private fun RuleSettingsDialog(
                             shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                             colors =
                                 ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (selectedQuota == minutes) AnchorColors.HarborPrimary.copy(alpha = 0.3f) else Color.Transparent,
-                                    contentColor = if (selectedQuota == minutes) AnchorColors.HarborPrimary else Color.White,
+                                    containerColor = if (selectedQuota == minutes) tokens.primary.copy(alpha = 0.3f) else Color.Transparent,
+                                    contentColor = if (selectedQuota == minutes) tokens.primary else tokens.ink,
                                 ),
                             border =
                                 BorderStroke(
                                     1.dp,
-                                    if (selectedQuota == minutes) AnchorColors.HarborPrimary else Color.White.copy(alpha = 0.15f),
+                                    if (selectedQuota == minutes) tokens.primary else tokens.ink.copy(alpha = 0.15f),
                                 ),
                         ) {
                             Text(label, style = MaterialTheme.typography.labelSmall)
@@ -2073,8 +2086,8 @@ private fun RuleSettingsDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                    color = if (isLocked) Color(0xFF2E2200) else Color.White.copy(alpha = 0.05f),
-                    border = BorderStroke(1.dp, if (isLocked) Color(0xFFFFD54F).copy(alpha = 0.4f) else Color.White.copy(alpha = 0.1f)),
+                    color = if (isLocked) tokens.paper3 else tokens.ink.copy(alpha = 0.05f),
+                    border = BorderStroke(1.dp, if (isLocked) tokens.beacon.copy(alpha = 0.4f) else tokens.ink.copy(alpha = 0.1f)),
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         if (isLocked) {
@@ -2082,7 +2095,7 @@ private fun RuleSettingsDialog(
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = null,
-                                    tint = Color(0xFFFFD54F),
+                                    tint = tokens.beacon,
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -2090,14 +2103,14 @@ private fun RuleSettingsDialog(
                                     text = "24-Hour Cooling Lock Active",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFFFD54F),
+                                    color = tokens.beacon,
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Rule cannot be loosened, increased, or deleted until cooling period expires. You may shorten the quota at any time.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = tokens.ink.copy(alpha = 0.7f),
                             )
                         } else {
                             Row(
@@ -2110,12 +2123,12 @@ private fun RuleSettingsDialog(
                                         text = "Engage 24-Hour Cooling Lock",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        color = tokens.ink,
                                     )
                                     Text(
                                         text = "Prevents increasing allowance or disabling rule for 24 hours.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.6f),
+                                        color = tokens.ink.copy(alpha = 0.6f),
                                     )
                                 }
                                 Checkbox(
@@ -2123,8 +2136,8 @@ private fun RuleSettingsDialog(
                                     onCheckedChange = { engageLock = it },
                                     colors =
                                         CheckboxDefaults.colors(
-                                            checkedColor = Color(0xFFFFD54F),
-                                            checkmarkColor = Color.Black,
+                                            checkedColor = tokens.beacon,
+                                            checkmarkColor = tokens.beaconInk,
                                         ),
                                 )
                             }
@@ -2136,18 +2149,18 @@ private fun RuleSettingsDialog(
         confirmButton = {
             Button(
                 onClick = { onSave(selectedQuota, engageLock) },
-                colors = ButtonDefaults.buttonColors(containerColor = AnchorColors.HarborPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = tokens.primary),
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
             ) {
-                Text("Save Changes", color = Color(0xFF002A4A), fontWeight = FontWeight.Bold)
+                Text("Save Changes", color = tokens.beaconInk, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color.White.copy(alpha = 0.7f))
+                Text("Cancel", color = tokens.ink.copy(alpha = 0.7f))
             }
         },
-        containerColor = AnchorColors.HarborDock,
+        containerColor = tokens.surface,
     )
 }
 
@@ -2158,6 +2171,7 @@ private fun DesktopCoolingOffDialog(
     onConfirmPermanent: () -> Unit,
     onConfirmTemporary15Min: (() -> Unit)? = null,
 ) {
+    val tokens = LocalAnchorTokens.current
     var secondsRemaining by remember { mutableIntStateOf(30) }
     var reflectionNote by remember { mutableStateOf("") }
 
@@ -2178,7 +2192,7 @@ private fun DesktopCoolingOffDialog(
                 Icon(
                     imageVector = Icons.Default.Shield,
                     contentDescription = null,
-                    tint = AnchorColors.HarborAction,
+                    tint = tokens.beacon,
                     modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(10.dp))
@@ -2187,12 +2201,12 @@ private fun DesktopCoolingOffDialog(
                         text = "Anti-Impulse Cooling-Off Pause",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = tokens.ink,
                     )
                     Text(
                         text = "Intentional airlock before modifying protection",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = tokens.ink.copy(alpha = 0.6f),
                     )
                 }
             }
@@ -2202,21 +2216,21 @@ private fun DesktopCoolingOffDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                    color = Color.White.copy(alpha = 0.05f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                    color = tokens.ink.copy(alpha = 0.05f),
+                    border = BorderStroke(1.dp, tokens.ink.copy(alpha = 0.12f)),
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(
                             text = "Target Action:",
                             style = MaterialTheme.typography.labelSmall,
-                            color = AnchorColors.HarborPrimary,
+                            color = tokens.primary,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = action.actionDescription,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = tokens.ink,
                         )
                     }
                 }
@@ -2233,8 +2247,8 @@ private fun DesktopCoolingOffDialog(
                                 .fillMaxWidth()
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)),
-                        color = if (secondsRemaining == 0) AnchorColors.HarborGrowth else AnchorColors.HarborAction,
-                        trackColor = Color.White.copy(alpha = 0.1f),
+                        color = if (secondsRemaining == 0) tokens.sage else tokens.beacon,
+                        trackColor = tokens.ink.copy(alpha = 0.1f),
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     if (secondsRemaining > 0) {
@@ -2242,13 +2256,13 @@ private fun DesktopCoolingOffDialog(
                             text = "⏳ Pausing for $secondsRemaining seconds...",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = AnchorColors.HarborAction,
+                            color = tokens.beacon,
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "ADHD dopamine cravings peak in the first 20–30 seconds. Take 3 deep, slow breaths. Ask yourself: Is this an intentional choice, or a momentary impulse?",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = tokens.ink.copy(alpha = 0.8f),
                             textAlign = TextAlign.Center,
                         )
                     } else {
@@ -2256,12 +2270,12 @@ private fun DesktopCoolingOffDialog(
                             text = "✅ 30-Second Pause Complete",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = AnchorColors.HarborFoliage,
+                            color = tokens.sage,
                         )
                         Text(
                             text = "If this is a genuine, intentional choice, you may now proceed.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = tokens.ink.copy(alpha = 0.8f),
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -2273,7 +2287,7 @@ private fun DesktopCoolingOffDialog(
                     placeholder = {
                         Text(
                             "Optional: What are you intending to do?",
-                            color = Color.White.copy(alpha = 0.4f),
+                            color = tokens.ink.copy(alpha = 0.4f),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     },
@@ -2282,10 +2296,10 @@ private fun DesktopCoolingOffDialog(
                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                     colors =
                         OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = AnchorColors.HarborPrimary,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = tokens.primary,
+                            unfocusedBorderColor = tokens.ink.copy(alpha = 0.2f),
+                            focusedTextColor = tokens.ink,
+                            unfocusedTextColor = tokens.ink,
                         ),
                 )
             }
@@ -2299,10 +2313,10 @@ private fun DesktopCoolingOffDialog(
                         shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                         colors =
                             ButtonDefaults.outlinedButtonColors(
-                                contentColor = AnchorColors.HarborGrowth,
-                                disabledContentColor = Color.White.copy(alpha = 0.3f),
+                                contentColor = tokens.sage,
+                                disabledContentColor = tokens.ink.copy(alpha = 0.3f),
                             ),
-                        border = BorderStroke(1.dp, if (secondsRemaining == 0) AnchorColors.HarborGrowth else Color.White.copy(alpha = 0.15f)),
+                        border = BorderStroke(1.dp, if (secondsRemaining == 0) tokens.sage else tokens.ink.copy(alpha = 0.15f)),
                     ) {
                         Text(
                             if (secondsRemaining > 0) "15m Pass (${secondsRemaining}s)" else "Unblock 15m Only",
@@ -2316,10 +2330,10 @@ private fun DesktopCoolingOffDialog(
                     shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                     colors =
                         ButtonDefaults.buttonColors(
-                            containerColor = if (secondsRemaining == 0) Color(0xFF8B2500) else Color.White.copy(alpha = 0.1f),
-                            contentColor = Color.White,
-                            disabledContainerColor = Color.White.copy(alpha = 0.08f),
-                            disabledContentColor = Color.White.copy(alpha = 0.3f),
+                            containerColor = if (secondsRemaining == 0) tokens.clayRoseSoft else tokens.ink.copy(alpha = 0.1f),
+                            contentColor = tokens.ink,
+                            disabledContainerColor = tokens.ink.copy(alpha = 0.08f),
+                            disabledContentColor = tokens.ink.copy(alpha = 0.3f),
                         ),
                 ) {
                     Text(
@@ -2335,14 +2349,14 @@ private fun DesktopCoolingOffDialog(
                 shape = RoundedCornerShape(AnchorSpacing.radiusPill),
                 colors =
                     ButtonDefaults.buttonColors(
-                        containerColor = AnchorColors.HarborPrimary,
-                        contentColor = Color(0xFF002A4A),
+                        containerColor = tokens.primary,
+                        contentColor = tokens.beaconInk,
                     ),
             ) {
                 Text("Keep Protected (Cancel)", fontWeight = FontWeight.Bold)
             }
         },
-        containerColor = AnchorColors.HarborDock,
+        containerColor = tokens.surface,
     )
 }
 

@@ -1,25 +1,25 @@
 package com.anchor.adhd.desktop.blocker
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,15 +30,11 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -59,15 +54,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.anchor.adhd.desktop.theme.AnchorColors
-import com.anchor.adhd.desktop.theme.AnchorSpacing
 import com.anchor.adhd.desktop.db.DesktopThoughtCaptureState
+import com.anchor.adhd.ui.components.AnchorFocalPlate
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.components.AnchorQuietButton
+import com.anchor.adhd.ui.components.AnchorSectionHeader
+import com.anchor.adhd.ui.components.AnchorWell
+import com.anchor.adhd.ui.components.HarborCtaButton
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 import kotlinx.coroutines.delay
 
+internal fun rescueOverlayHeadline(reason: String): String =
+    when {
+        reason.contains("Lecture Shield Active", ignoreCase = true) -> "Lecture shield active"
+        reason.contains("Night Curfew", ignoreCase = true) -> "Night curfew engaged"
+        reason.contains("Daily Allowance Reached", ignoreCase = true) -> "Daily quota exhausted"
+        reason.contains("Out-of-Scope", ignoreCase = true) -> "Focus scope guard"
+        else -> "Take a breath"
+    }
+
 /**
- * Fullscreen or floating always-on-top Gentle Rescue Window for Windows 11.
- * Appears whenever an active distraction (Discord, YouTube, Reddit, etc.) is detected during a focus session.
+ * Fullscreen or floating always-on-top rescue window for Windows.
  */
 @Composable
 fun DesktopRescueOverlay(
@@ -87,15 +95,53 @@ fun DesktopRescueOverlay(
     onUnlockWithTimeBank: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    DesktopRescueOverlaySurface(
+        detection = detection,
+        taskTitle = taskTitle,
+        remainingMinutes = remainingMinutes,
+        onReturnToFocus = onReturnToFocus,
+        onEmergencyPass = onEmergencyPass,
+        thoughtCaptureState = thoughtCaptureState,
+        onThoughtDraftChange = onThoughtDraftChange,
+        onCaptureThought = onCaptureThought,
+        onQuickPass = onQuickPass,
+        quickPassesRemaining = quickPassesRemaining,
+        onCloseTab = onCloseTab,
+        onSwitchTabGrace = onSwitchTabGrace,
+        timeBankStatus = timeBankStatus,
+        onUnlockWithTimeBank = onUnlockWithTimeBank,
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun DesktopRescueOverlaySurface(
+    detection: BlockerDetection,
+    taskTitle: String,
+    remainingMinutes: Int,
+    onReturnToFocus: () -> Unit,
+    onEmergencyPass: (String) -> Unit,
+    thoughtCaptureState: DesktopThoughtCaptureState = DesktopThoughtCaptureState(),
+    onThoughtDraftChange: (String) -> Unit = {},
+    onCaptureThought: () -> Unit = {},
+    onQuickPass: ((String) -> Unit)? = null,
+    quickPassesRemaining: Int = 5,
+    onCloseTab: (() -> Unit)? = null,
+    onSwitchTabGrace: (() -> Unit)? = null,
+    timeBankStatus: TimeBankStatus? = null,
+    onUnlockWithTimeBank: ((Int) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = LocalAnchorTokens.current
     var holdProgress by remember { mutableFloatStateOf(0f) }
     var isHolding by remember { mutableStateOf(false) }
-
     val prevApp =
         detection.previousWorkContext
             ?.executableName
             ?.removeSuffix(".exe")
             ?.replaceFirstChar { it.uppercase() }
     val prevTitle = detection.previousWorkContext?.windowTitle?.take(45)
+    val isLecture = detection.reason.contains("Lecture Shield Active", ignoreCase = true)
 
     LaunchedEffect(isHolding) {
         if (isHolding) {
@@ -118,427 +164,237 @@ fun DesktopRescueOverlay(
         }
     }
 
-    Box(
+    BoxWithConstraints(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(AnchorColors.HarborBackground.copy(alpha = 0.95f))
+                .background(tokens.paper)
                 .padding(AnchorSpacing.screenHorizontal),
         contentAlignment = Alignment.Center,
     ) {
+        val compact = maxWidth < 520.dp
         Column(
             modifier =
                 Modifier
-                    .width(490.dp)
-                    .clip(RoundedCornerShape(AnchorSpacing.radiusScene))
-                    .background(AnchorColors.HarborDock.copy(alpha = 0.95f))
-                    .border(
-                        1.dp,
-                        AnchorColors.HarborMist,
-                        RoundedCornerShape(AnchorSpacing.radiusScene),
-                    )
-                    .verticalScroll(rememberScrollState())
-                    .padding(28.dp),
+                    .widthIn(max = if (compact) maxWidth else 490.dp)
+                    .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Calm Shield Icon
-            Box(
-                modifier =
-                    Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(AnchorColors.HarborMist),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Shield,
-                    contentDescription = null,
-                    tint = AnchorColors.HarborPrimary,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val isLecture = detection.reason.contains("Lecture Shield Active", ignoreCase = true)
-            val isCurfew = detection.reason.contains("Night Curfew", ignoreCase = true)
-            val isQuota = detection.reason.contains("Daily Allowance Reached", ignoreCase = true)
-            val isScope = detection.reason.contains("Out-of-Scope", ignoreCase = true)
-
-            val headline = when {
-                isLecture -> "⚓ Lecture Shield Active"
-                isCurfew -> "🌙 Night Curfew Engaged"
-                isQuota -> "⏳ Daily Quota Exhausted"
-                isScope -> "🧭 Focus Scope Guard"
-                else -> "Take a breath..."
-            }
-
-            // Gentle Header & Context Bridge
-            Text(
-                text = headline,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                color = if (isLecture) Color(0xFF3B1818) else Color.White.copy(alpha = 0.06f),
-                border = BorderStroke(1.dp, if (isLecture) AnchorColors.HarborAction else Color.White.copy(alpha = 0.12f)),
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = detection.reason,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isLecture) AnchorColors.HarborAction else AnchorColors.HarborPrimary,
-                        textAlign = TextAlign.Center,
-                    )
-                    if (detection.isWebDistraction) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Preserves your other browser tabs • Only closes the distracting tab",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            color = Color.White.copy(alpha = 0.55f),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+            AnchorFocalPlate {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Shield, contentDescription = null, tint = tokens.primary, modifier = Modifier.size(32.dp))
                 }
-            }
 
-            if (prevApp != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
+                Spacer(Modifier.height(14.dp))
+
+                Text(
+                    text = rescueOverlayHeadline(detection.reason),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.ink,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AnchorSpacing.radiusChip),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = detection.reason,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isLecture) tokens.clayRose else tokens.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (detection.isWebDistraction) {
+                    Text(
+                        text = "Preserves your other browser tabs. Only closes the distracting tab.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tokens.muted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    )
+                }
+
+                if (prevApp != null) {
+                    Spacer(Modifier.height(10.dp))
+                    AnchorWell {
                         Text(
-                            text = "You opened ${detection.appOrSiteName}, but you were just working in:",
+                            "You opened ${detection.appOrSiteName}, but you were just working in:",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = tokens.muted,
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "$prevApp — \"$prevTitle\"",
+                            "$prevApp — \"$prevTitle\"",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
-                            color = AnchorColors.HarborPrimary,
+                            color = tokens.primary,
                         )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Anchored Task Card
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                color = AnchorColors.HarborBackground.copy(alpha = 0.8f),
-                border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.25f)),
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = "CURRENT ANCHOR",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 1.5.sp,
-                        color = AnchorColors.HarborAction,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = taskTitle.ifBlank { "Deep Work" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (remainingMinutes > 0) "$remainingMinutes min remaining" else "Standing Shield Active (No Timer)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.6f),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Action Buttons: Specialized for Web Distraction (preserve tabs) vs App Distraction
-            if (detection.isWebDistraction) {
-                // 1. Primary Action: Close only the distracting tab
-                Button(
-                    onClick = {
-                        if (onCloseTab != null) {
-                            onCloseTab()
+                Spacer(Modifier.height(14.dp))
+                AnchorSectionHeader("Current focus")
+                Text(
+                    text = taskTitle.ifBlank { "Deep work" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = tokens.ink,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text =
+                        if (remainingMinutes > 0) {
+                            "$remainingMinutes min remaining"
                         } else {
-                            onReturnToFocus()
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = AnchorColors.HarborPrimary,
-                            contentColor = Color(0xFF002A4A),
-                        ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Close Blocked Tab (Keeps Other Tabs Open)",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
+                            "Standing shield active (no timer)"
+                        },
+                    style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                    color = tokens.muted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
-                // 2. Secondary Action: 15s Grace Window to manually switch tabs
-                if (onSwitchTabGrace != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedButton(
-                        onClick = onSwitchTabGrace,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(42.dp),
-                        shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                        border = BorderStroke(1.dp, AnchorColors.HarborPrimary.copy(alpha = 0.5f)),
-                        colors =
-                            ButtonDefaults.outlinedButtonColors(
-                                contentColor = AnchorColors.HarborPrimary,
-                            ),
+                Spacer(Modifier.height(18.dp))
+
+                if (detection.isWebDistraction) {
+                    HarborCtaButton(
+                        onClick = {
+                            if (onCloseTab != null) onCloseTab() else onReturnToFocus()
+                        },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Bolt,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Switch Tab Manually (15s Grace Window)",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
+                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Close blocked tab (keep other tabs)", style = MaterialTheme.typography.labelLarge)
+                    }
+                    if (onSwitchTabGrace != null) {
+                        Spacer(Modifier.height(10.dp))
+                        AnchorQuietButton(
+                            label = "Switch tab manually (15s grace)",
+                            onClick = onSwitchTabGrace,
+                            leadingIcon = { Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
                         )
                     }
-                }
-
-                // 3. Tertiary: Minimize entire browser
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onReturnToFocus() }
-                            .padding(vertical = 4.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Or minimize entire browser",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.45f),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            } else {
-                // Desktop App Distraction: Standard minimize & resume
-                val returnLabel =
-                    if (prevApp != null) {
-                        "⚡ Return to $prevApp & Resume"
-                    } else if (remainingMinutes > 0) {
-                        "Return to Focus"
-                    } else {
-                        "Return to Task & Dismiss"
-                    }
-                Button(
-                    onClick = onReturnToFocus,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = AnchorColors.HarborPrimary,
-                            contentColor = Color(0xFF002A4A),
-                        ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Bolt,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = returnLabel,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Scaled Time-Bank (Earned Leisure Break from study)
-            if (timeBankStatus != null && !isLecture) {
-                if (timeBankStatus.availableBankedMinutes >= 30) {
-                    Surface(
+                    Spacer(Modifier.height(8.dp))
+                    AnchorQuietButton(
+                        label = "Minimize entire browser",
+                        onClick = onReturnToFocus,
+                        outlined = false,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                        color = Color(0xFF133324),
-                        border = BorderStroke(1.dp, AnchorColors.HarborGrowth),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = AnchorColors.HarborFoliage,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Earned Leisure Available: ${timeBankStatus.availableBankedMinutes}m Banked!",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { onUnlockWithTimeBank?.invoke(30) },
-                                modifier = Modifier.fillMaxWidth().height(40.dp),
-                                shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = AnchorColors.HarborGrowth,
-                                    contentColor = Color(0xFF002A16),
-                                ),
-                            ) {
-                                Text("Unlock for 30m (Spend 30m Banked)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
+                    )
                 } else {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                        color = Color.White.copy(alpha = 0.04f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    val returnLabel =
+                        if (prevApp != null) {
+                            "Return to $prevApp"
+                        } else if (remainingMinutes > 0) {
+                            "Return to focus"
+                        } else {
+                            "Return to task and dismiss"
+                        }
+                    HarborCtaButton(
+                        onClick = onReturnToFocus,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
+                        Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(returnLabel, style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+
+                if (timeBankStatus != null && !isLecture) {
+                    Spacer(Modifier.height(14.dp))
+                    AnchorHairline()
+                    Spacer(Modifier.height(10.dp))
+                    if (timeBankStatus.availableBankedMinutes >= 30) {
+                        AnchorWell {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = tokens.sage, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "Earned leisure: ${timeBankStatus.availableBankedMinutes}m banked",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                                    color = tokens.ink,
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            HarborCtaButton(
+                                onClick = { onUnlockWithTimeBank?.invoke(30) },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+                            ) {
+                                Text("Unlock for 30m (spend 30m banked)", style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    } else {
+                        Column {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    text = "Time-Bank Progress (Tier ${timeBankStatus.currentTier}):",
+                                    "Time-bank progress (tier ${timeBankStatus.currentTier})",
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White.copy(alpha = 0.85f),
+                                    color = tokens.ink2,
                                 )
                                 Text(
-                                    text = "${timeBankStatus.minutesIntoCurrentTier} / ${timeBankStatus.minutesRequiredForNextTier}m studied",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = AnchorColors.HarborPrimary,
+                                    "${timeBankStatus.minutesIntoCurrentTier} / ${timeBankStatus.minutesRequiredForNextTier}m studied",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                                    color = tokens.primary,
                                 )
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(Modifier.height(6.dp))
                             LinearProgressIndicator(
                                 progress = { timeBankStatus.nextTierProgress },
                                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                                color = AnchorColors.HarborPrimary,
-                                trackColor = Color.White.copy(alpha = 0.1f),
+                                color = tokens.primary,
+                                trackColor = tokens.rule,
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
                 }
-            }
 
-            val submitThought = {
-                if (thoughtCaptureState.draft.isNotBlank() && !thoughtCaptureState.isSaving) {
-                    onCaptureThought()
+                val submitThought = {
+                    if (thoughtCaptureState.draft.isNotBlank() && !thoughtCaptureState.isSaving) {
+                        onCaptureThought()
+                    }
                 }
-            }
 
-            // Quick Thought Scribe (Dopamine dump: record thought to inbox without opening distraction)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                color = Color.White.copy(alpha = 0.04f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
-                    Text(
-                        text = "Had a sudden thought? Dump it here to stay focused:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.6f),
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
+                Spacer(Modifier.height(14.dp))
+                AnchorWell {
+                    Text("Had a sudden thought? Capture it here to stay focused.", style = MaterialTheme.typography.labelSmall, color = tokens.muted)
+                    Spacer(Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = thoughtCaptureState.draft,
                             onValueChange = onThoughtDraftChange,
                             readOnly = thoughtCaptureState.isSaving,
-                            placeholder = {
-                                Text(
-                                    "e.g. Look up bus times, reply to email later...",
-                                    fontSize = 11.sp,
-                                    color = Color.White.copy(alpha = 0.35f),
-                                )
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                            placeholder = { Text("e.g. Look up bus times later…", color = tokens.muted) },
+                            modifier = Modifier.weight(1f).heightIn(min = 40.dp),
+                            shape = RoundedCornerShape(AnchorSpacing.radiusChip),
                             colors =
                                 OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AnchorColors.HarborPrimary,
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
+                                    focusedBorderColor = tokens.fieldEdge,
+                                    unfocusedBorderColor = tokens.rule,
+                                    focusedTextColor = tokens.ink,
+                                    unfocusedTextColor = tokens.ink,
+                                    cursorColor = tokens.primary,
                                 ),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             keyboardActions = KeyboardActions(onDone = { submitThought() }),
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
+                        Spacer(Modifier.width(8.dp))
+                        HarborCtaButton(
                             onClick = submitThought,
                             enabled = thoughtCaptureState.draft.isNotBlank() && !thoughtCaptureState.isSaving,
-                            shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = AnchorColors.HarborAction,
-                                    contentColor = Color.White,
-                                ),
+                            modifier = Modifier.heightIn(min = 40.dp),
                         ) {
-                            Text(if (thoughtCaptureState.isSaving) "Saving…" else "Scribe", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                if (thoughtCaptureState.isSaving) "Saving…" else "Scribe",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
                         }
                     }
                     thoughtCaptureState.feedback?.let { feedback ->
@@ -546,73 +402,43 @@ fun DesktopRescueOverlay(
                         Text(
                             feedback,
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (thoughtCaptureState.isError) Color(0xFFFFB4AB) else AnchorColors.HarborFoliage,
+                            color = if (thoughtCaptureState.isError) tokens.clayRose else tokens.sage,
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
                 }
-            }
 
-            var quickDropPhrase by remember { mutableStateOf("") }
-            val expectedPhrase = "Just dropping a file and returning to work"
-            val isPhraseMatching = quickDropPhrase.trim().equals(expectedPhrase, ignoreCase = true)
+                var quickDropPhrase by remember { mutableStateOf("") }
+                val expectedPhrase = "Just dropping a file and returning to work"
+                val isPhraseMatching = quickDropPhrase.trim().equals(expectedPhrase, ignoreCase = true)
 
-            // Quick File Drop (2m utility trip, e.g. for Discord)
-            if (onQuickPass != null && !isLecture) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AnchorSpacing.radiusCard),
-                    color = Color.White.copy(alpha = 0.04f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                if (onQuickPass != null && !isLecture) {
+                    Spacer(Modifier.height(14.dp))
+                    AnchorWell {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Quick file drop (2m pass)", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = tokens.ink)
                             Text(
-                                text = "Quick File Drop (2m pass):",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White.copy(alpha = 0.85f),
-                            )
-                            Text(
-                                text = "$quickPassesRemaining of 5 left today",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (quickPassesRemaining > 0) AnchorColors.HarborPrimary else Color.Red.copy(alpha = 0.7f),
+                                "$quickPassesRemaining of 5 left today",
+                                style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                                color = if (quickPassesRemaining > 0) tokens.primary else tokens.clayRose,
                             )
                         }
-
                         if (quickPassesRemaining > 0) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Type to unlock: \"$expectedPhrase\"",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.45f),
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Type to unlock: \"$expectedPhrase\"", style = MaterialTheme.typography.labelSmall, color = tokens.muted)
+                            Spacer(Modifier.height(6.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedTextField(
                                     value = quickDropPhrase,
                                     onValueChange = { quickDropPhrase = it },
-                                    placeholder = {
-                                        Text(
-                                            "Type confirmation phrase...",
-                                            fontSize = 11.sp,
-                                            color = Color.White.copy(alpha = 0.35f),
-                                        )
-                                    },
+                                    placeholder = { Text("Type confirmation phrase…", color = tokens.muted) },
                                     modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
+                                    shape = RoundedCornerShape(AnchorSpacing.radiusChip),
                                     colors =
                                         OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = AnchorColors.HarborPrimary,
-                                            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White,
+                                            focusedBorderColor = tokens.fieldEdge,
+                                            unfocusedBorderColor = tokens.rule,
+                                            focusedTextColor = tokens.ink,
+                                            unfocusedTextColor = tokens.ink,
                                         ),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -626,8 +452,9 @@ fun DesktopRescueOverlay(
                                             },
                                         ),
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Button(
+                                Spacer(Modifier.width(8.dp))
+                                AnchorQuietButton(
+                                    label = "Pass 2m",
                                     onClick = {
                                         if (isPhraseMatching) {
                                             onQuickPass(detection.appOrSiteName)
@@ -635,58 +462,40 @@ fun DesktopRescueOverlay(
                                         }
                                     },
                                     enabled = isPhraseMatching,
-                                    shape = RoundedCornerShape(AnchorSpacing.radiusPill),
-                                    colors =
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = AnchorColors.HarborPrimary,
-                                            contentColor = Color(0xFF002A4A),
-                                        ),
-                                ) {
-                                    Text("Pass 2m", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
+                                    modifier = Modifier.heightIn(min = 40.dp),
+                                )
                             }
                         } else {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "All 5 quick passes used for today. Resets at 4:00 AM.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
-                                color = Color.White.copy(alpha = 0.5f),
-                            )
+                            Text("All 5 quick passes used today. Resets at 4:00 AM.", style = MaterialTheme.typography.labelSmall, color = tokens.muted)
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // 7-Second Emergency Pass to disarm impulsivity (disabled during strict Lecture Shield)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+                Spacer(Modifier.height(14.dp))
                 Text(
-                    text = if (isLecture) "Lecture Shield is strictly active during class (emergency passes disabled)." else "Need urgent access? Hold for 7 seconds:",
+                    text =
+                        if (isLecture) {
+                            "Lecture shield is active during class (emergency passes disabled)."
+                        } else {
+                            "Need urgent access? Hold for 7 seconds."
+                        },
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = tokens.muted,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
                 )
 
                 if (!isLecture) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
+                    Spacer(Modifier.height(8.dp))
                     Box(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(AnchorSpacing.radiusPill))
-                                .background(if (isHolding) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f))
-                                .border(
-                                    1.dp,
-                                    if (isHolding) AnchorColors.HarborAction else Color.White.copy(alpha = 0.15f),
-                                    RoundedCornerShape(AnchorSpacing.radiusPill),
-                                ).pointerInput(detection.appOrSiteName) {
+                                .heightIn(min = 42.dp)
+                                .clip(RoundedCornerShape(AnchorSpacing.radiusChip))
+                                .background(if (isHolding) tokens.paper3 else tokens.paper2)
+                                .border(1.dp, if (isHolding) tokens.beacon else tokens.rule, RoundedCornerShape(AnchorSpacing.radiusChip))
+                                .pointerInput(detection.appOrSiteName) {
                                     awaitEachGesture {
                                         awaitFirstDown(requireUnconsumed = false)
                                         isHolding = true
@@ -702,28 +511,28 @@ fun DesktopRescueOverlay(
                         if (holdProgress > 0f) {
                             LinearProgressIndicator(
                                 progress = { holdProgress },
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(AnchorSpacing.radiusPill)),
-                                color = AnchorColors.HarborAction.copy(alpha = 0.6f),
-                                trackColor = Color.Transparent,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(AnchorSpacing.radiusChip)),
+                                color = tokens.beacon.copy(alpha = 0.6f),
+                                trackColor = tokens.rule.copy(alpha = 0.3f),
                             )
                         }
-
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Lock,
+                                Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = if (isHolding) AnchorColors.HarborAction else Color.White.copy(alpha = 0.7f),
+                                tint = if (isHolding) tokens.beacon else tokens.muted,
                                 modifier = Modifier.size(14.dp),
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text(
-                                text = if (holdProgress > 0f) "Hold to unlock: ${(holdProgress * 100).toInt()}%" else "Hold for Emergency Pass",
+                                text =
+                                    if (holdProgress > 0f) {
+                                        "Hold to unlock: ${(holdProgress * 100).toInt()}%"
+                                    } else {
+                                        "Hold for emergency pass"
+                                    },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium,
+                                color = tokens.ink2,
                             )
                         }
                     }

@@ -4,29 +4,34 @@ package com.anchor.adhd.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,16 +43,28 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import com.anchor.adhd.ui.theme.AnchorColors
+import com.anchor.adhd.ui.components.AnchorChip
+import com.anchor.adhd.ui.components.AnchorHairline
+import com.anchor.adhd.ui.components.AnchorQuietButton
+import com.anchor.adhd.ui.components.AnchorWell
+import com.anchor.adhd.ui.components.AnchorWellTone
+import com.anchor.adhd.ui.components.HarborCtaButton
+import com.anchor.adhd.ui.components.HarborEmptyState
+import com.anchor.adhd.ui.theme.AnchorSpacing
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
 import com.anchor.adhd.ui.vm.AnchorViewModel
 
 @Composable
 fun ChatScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
+    val tokens = LocalAnchorTokens.current
     val messages by vm.chatMessages.collectAsStateWithLifecycle()
     val busy by vm.chatBusy.collectAsStateWithLifecycle()
     val lastTask by vm.lastChatTaskTitle.collectAsStateWithLifecycle()
@@ -69,8 +86,8 @@ fun ChatScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
 
     Scaffold(
         modifier = modifier,
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             ChatInputBar(
                 input = input,
@@ -81,9 +98,9 @@ fun ChatScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                         input = ""
                     }
                 },
-                enabled = !busy
+                enabled = !busy,
             )
-        }
+        },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (panic) {
@@ -92,49 +109,78 @@ fun ChatScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
                     onValueChange = { panicInput = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Dump — commas or new lines") },
-                    minLines = 2
+                        .padding(horizontal = AnchorSpacing.screenHorizontal, vertical = 8.dp),
+                    placeholder = { Text("Dump — commas or new lines", color = tokens.muted) },
+                    minLines = 2,
+                    shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = tokens.captain,
+                        unfocusedBorderColor = tokens.fieldEdge,
+                        focusedTextColor = tokens.ink,
+                        unfocusedTextColor = tokens.ink,
+                        focusedContainerColor = tokens.surface,
+                        unfocusedContainerColor = tokens.surface,
+                        cursorColor = tokens.captain,
+                    ),
                 )
                 FlowRow(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AnchorSpacing.screenHorizontal),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(
+                    HarborCtaButton(
                         onClick = {
                             if (panicInput.isNotBlank()) {
                                 vm.panicDump(panicInput)
                                 panicInput = ""
                             }
                         },
-                        enabled = panicInput.isNotBlank()
-                    ) { Text("Add to Today") }
-                    AssistChip(onClick = { vm.setThinkMode() }, label = { Text("Think about this") })
+                        enabled = panicInput.isNotBlank(),
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text("Add to today", style = MaterialTheme.typography.labelLarge)
+                    }
+                    AnchorChip(
+                        label = "Think about this",
+                        selected = false,
+                        onClick = { vm.setThinkMode() },
+                        captainAccent = true,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
                 }
             }
+
             SuggestionChips(chips = chips, onPick = { vm.sendChat(it) }, enabled = !busy)
+
             if (messages.isEmpty() && !busy) {
                 ChatEmptyState(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                        .padding(horizontal = AnchorSpacing.screenHorizontal),
                 )
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
                     reverseLayout = true,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp
-                    )
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        horizontal = AnchorSpacing.screenHorizontal,
+                        vertical = 10.dp,
+                    ),
                 ) {
                     if (busy) {
                         item(key = "typing") { TypingIndicator() }
                     }
                     items(messages, key = { it.id }) { msg ->
-                        ChatBubble(msg, onAction = { vm.actOnChatAction(it) }, onUndo = { vm.undoChat() })
+                        ChatBubble(
+                            msg = msg,
+                            onAction = { vm.actOnChatAction(it) },
+                            onUndo = { vm.undoChat() },
+                        )
                     }
                 }
             }
@@ -144,120 +190,203 @@ fun ChatScreen(vm: AnchorViewModel, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ChatEmptyState(modifier: Modifier = Modifier) {
+    val tokens = LocalAnchorTokens.current
+    val captainTextColor = if (tokens.isDark) tokens.captain else tokens.captainInk
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
     ) {
-        Text(
-            "Hey — I'm Anchor.",
-            style = MaterialTheme.typography.headlineSmall,
-            color = AnchorColors.HarborAi
+        HarborEmptyState(
+            title = "Ask Harbor Captain",
+            message = "Dump what's in your head. I'll add it, remind you, break it down, or start a focus session.",
         )
-        Text(
-            "Dump what's in your head. I'll add it, remind you, break it down, or start a focus.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-        Text(
-            "Try: “buy milk, call mom”\n“what's today?”\n“remind me at 5 to email”\n“break down my essay”",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 16.dp)
-        )
+        AnchorWell(
+            tone = AnchorWellTone.Captain,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "Try asking",
+                style = MaterialTheme.typography.labelLarge,
+                color = captainTextColor,
+            )
+            Text(
+                text = "“buy milk, call mom”\n“what's today?”\n“remind me at 5 to email”\n“break down my essay”",
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.ink2,
+            )
+        }
     }
 }
 
 @Composable
 private fun TypingIndicator(modifier: Modifier = Modifier) {
+    val tokens = LocalAnchorTokens.current
+    val captainTextColor = if (tokens.isDark) tokens.captain else tokens.captainInk
+
     Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.Start
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.Start,
     ) {
-        Box(
-            Modifier
-                .background(AnchorColors.HarborAi.copy(alpha = 0.18f), RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp))
-                .padding(horizontal = 14.dp, vertical = 12.dp)
+        AnchorWell(
+            tone = AnchorWellTone.Captain,
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.widthIn(max = 220.dp),
         ) {
-            Text("Thinking…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                    color = captainTextColor,
+                )
+                Text(
+                    text = "Thinking…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = captainTextColor,
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun SuggestionChips(chips: List<String>, onPick: (String) -> Unit, enabled: Boolean) {
+    if (chips.isEmpty()) return
     FlowRow(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = AnchorSpacing.screenHorizontal, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         chips.forEach { chip ->
-            AssistChip(
+            AnchorChip(
+                label = chip,
+                selected = false,
                 onClick = { onPick(chip) },
+                captainAccent = true,
                 enabled = enabled,
-                label = { Text(chip) }
+                modifier = Modifier.heightIn(min = 48.dp),
             )
         }
     }
 }
 
 @Composable
-private fun ChatBubble(msg: ChatMessageUi, onAction: (ChatAction) -> Unit, onUndo: () -> Unit) {
+private fun ChatBubble(
+    msg: ChatMessageUi,
+    onAction: (ChatAction) -> Unit,
+    onUndo: () -> Unit,
+) {
+    val tokens = LocalAnchorTokens.current
+    val captainTextColor = if (tokens.isDark) tokens.captain else tokens.captainInk
+    val captainButtonContent = if (tokens.isDark) tokens.captainInk else tokens.surface
+
     if (msg.fromUser) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
-            Box(
-                Modifier
-                    .widthIn(max = 300.dp)
-                    .background(AnchorColors.HarborAction.copy(alpha = 0.25f), RoundedCornerShape(18.dp, 4.dp, 18.dp, 18.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AnchorWell(
+                tone = AnchorWellTone.Neutral,
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                modifier = Modifier.widthIn(max = 300.dp),
             ) {
-                Text(msg.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = msg.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.ink,
+                )
             }
             Text(
-                formatTime(msg.timestampMillis),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp, end = 4.dp)
+                text = formatTime(msg.timestampMillis),
+                style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                color = tokens.muted,
+                modifier = Modifier.padding(end = 4.dp),
             )
         }
     } else {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-            Column(
-                Modifier.widthIn(max = 320.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AnchorWell(
+                tone = AnchorWellTone.Captain,
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.widthIn(max = 320.dp),
             ) {
-                Box(
-                    Modifier
-                        .background(AnchorColors.HarborAi.copy(alpha = 0.18f), RoundedCornerShape(4.dp, 18.dp, 18.dp, 18.dp))
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Text(msg.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                }
+                Text(
+                    text = "Harbor Captain",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = captainTextColor,
+                )
+                Text(
+                    text = msg.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.ink,
+                )
                 msg.action?.let { action ->
-                    Button(
-                        onClick = { onAction(action) },
-                        modifier = Modifier.padding(top = 8.dp)
-                    ) {
-                        Text(actionLabel(action))
+                    if (action is ChatAction.StartFocus) {
+                        HarborCtaButton(
+                            onClick = { onAction(action) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(
+                                text = actionLabel(action),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = { onAction(action) },
+                            shape = RoundedCornerShape(AnchorSpacing.radiusButton),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = tokens.captain,
+                                contentColor = captainButtonContent,
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 0.dp,
+                                pressedElevation = 0.dp,
+                                focusedElevation = 0.dp,
+                                hoveredElevation = 0.dp,
+                                disabledElevation = 0.dp,
+                            ),
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(
+                                text = actionLabel(action),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
                     }
                 }
                 if (msg.undoable) {
-                    TextButton(
+                    AnchorQuietButton(
+                        label = "Undo",
                         onClick = onUndo,
-                        modifier = Modifier.padding(top = 6.dp)
-                    ) {
-                        Text("Undo")
-                    }
+                        outlined = false,
+                        tint = captainTextColor,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
                 }
-                Text(
-                    formatTime(msg.timestampMillis),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp, start = 4.dp)
-                )
             }
+            Text(
+                text = formatTime(msg.timestampMillis),
+                style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                color = tokens.muted,
+                modifier = Modifier.padding(start = 4.dp),
+            )
         }
     }
 }
@@ -269,7 +398,7 @@ private fun formatTime(millis: Long): String {
 }
 
 private fun actionLabel(action: ChatAction): String = when (action) {
-    is ChatAction.ApplyBreakdown -> "Add to Today"
+    is ChatAction.ApplyBreakdown -> "Add to today"
     is ChatAction.ApplyBrainDump -> "Add tasks"
     is ChatAction.ApplyTriage -> "Apply order"
     is ChatAction.ApplyReplan -> "Apply replan"
@@ -281,29 +410,71 @@ private fun ChatInputBar(
     input: String,
     onInput: (String) -> Unit,
     onSend: () -> Unit,
-    enabled: Boolean
+    enabled: Boolean,
 ) {
-    Row(
-        Modifier
+    val tokens = LocalAnchorTokens.current
+    val captainButtonContent = if (tokens.isDark) tokens.captainInk else tokens.surface
+    val canSend = enabled && input.isNotBlank()
+
+    Column(
+        modifier = Modifier
             .fillMaxWidth()
             .imePadding()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .background(tokens.paper2),
     ) {
-        OutlinedTextField(
-            value = input,
-            onValueChange = onInput,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Ask or add a task…") },
-            maxLines = 4,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { onSend() }),
-            shape = RoundedCornerShape(24.dp)
-        )
-        FilledTonalButton(onClick = onSend, enabled = enabled && input.isNotBlank()) {
-            Icon(Icons.Default.Send, contentDescription = "Send")
+        AnchorHairline()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = onInput,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Ask Captain or add a task…", color = tokens.muted) },
+                maxLines = 4,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { onSend() }),
+                shape = RoundedCornerShape(AnchorSpacing.radiusChip),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = tokens.captain,
+                    unfocusedBorderColor = tokens.fieldEdge,
+                    focusedTextColor = tokens.ink,
+                    unfocusedTextColor = tokens.ink,
+                    focusedContainerColor = tokens.surface,
+                    unfocusedContainerColor = tokens.surface,
+                    cursorColor = tokens.captain,
+                ),
+            )
+            Button(
+                onClick = onSend,
+                enabled = canSend,
+                shape = RoundedCornerShape(AnchorSpacing.radiusButton),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = tokens.captain,
+                    contentColor = captainButtonContent,
+                    disabledContainerColor = tokens.captain.copy(alpha = 0.45f),
+                    disabledContentColor = captainButtonContent.copy(alpha = 0.45f),
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp,
+                    disabledElevation = 0.dp,
+                ),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send",
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }

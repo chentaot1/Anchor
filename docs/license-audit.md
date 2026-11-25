@@ -21,6 +21,7 @@ The Android debug/release and Windows runtime configurations resolve to **152 di
 - Skiko 0.8.18: Apache-2.0; its pinned Skia build `m126-6bfb13368b` is BSD. Upstream notices for its packaged graphics dependencies are included from the matching Windows Skia archive.
 - Microsoft OpenJDK 17.0.20.1+1-LTS: GPL-2.0 with Classpath exception. Windows retains the complete `runtime/legal` directory. The installed runtime's source identifier matches [commit 3a8c0bd1eefc84208d0d3abd89d01ef0a63a5002](https://github.com/microsoft/openjdk-jdk17u/tree/3a8c0bd1eefc84208d0d3abd89d01ef0a63a5002); the corresponding source archive accompanies the release.
 - Android MiniCPM5 Q8_0 weights: the [exact GGUF publisher](https://huggingface.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF), fine-tuned model and OpenBMB base model declare Apache-2.0. The model is separately attributed and checksum-verified. This does not independently verify training-data provenance. Windows does not bundle weights or `llama-server`.
+- Bundled UI fonts (`app` and `desktopApp`): **Newsreader** (Production Type, Copyright 2020 The Newsreader Project Authors) and **Atkinson Hyperlegible** (Braille Institute of America, Inc.), both licensed under **SIL Open Font License 1.1 (OFL-1.1)**. Full license text is retained in `licenses/OFL-1.1.txt` and attributed in `licenses/THIRD_PARTY_NOTICES.txt`.
 
 ### Notices and source
 

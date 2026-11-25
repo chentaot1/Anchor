@@ -108,7 +108,7 @@ fun AnchorTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
     androidx.compose.runtime.CompositionLocalProvider(LocalAnchorExtras provides AnchorExtrasDark) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = anchorTypography(display = NunitoFontFamily, body = AtkinsonFontFamily),
+            typography = anchorTypography(display = NewsreaderFontFamily, body = AtkinsonFontFamily),
             shapes = AnchorShapes,
             content = content,
         )

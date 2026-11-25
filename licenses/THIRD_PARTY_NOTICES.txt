@@ -10,6 +10,8 @@ The release also supplies that source archive. Build instructions: doc/building.
 Android model: MiniCPM5-1B-Claude-Opus-Fable5-Thinking-Q8_0, GnLOLot / OpenBMB, Apache-2.0.
 Model publisher: https://huggingface.co/GnLOLot/MiniCPM5-1B-Claude-Opus-Fable5-Thinking-GGUF
 Model SHA-256: 8125095ae223278e728adb4148a8a466cec920929c1de5a5f5ebcb479ec31a2c
+Bundled display font: Newsreader (Production Type, Copyright 2020 The Newsreader Project Authors, https://github.com/productiontype/Newsreader), SIL Open Font License 1.1; see OFL-1.1.txt.
+Bundled body font: Atkinson Hyperlegible (Braille Institute of America, Inc., Copyright 2020 Braille Institute of America, Inc., https://www.brailleinstitute.org/freefont/), SIL Open Font License 1.1; see OFL-1.1.txt.
 
 androidx.activity:activity-compose:1.9.3 [app]: The Apache Software License, Version 2.0
 androidx.activity:activity-ktx:1.9.3 [app]: The Apache Software License, Version 2.0

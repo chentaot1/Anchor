@@ -6,8 +6,9 @@
   "licenses/LLVM-exception.txt": "e34c58338bd89d43e709e226610d8f32b3e3c47f4ad9a99a8dc1d4ac7842488e",
   "licenses/MIT-previous.txt": "87960f32513b0cb4a4cad2dcebca9f50bc7c5e32a3a1b6ce6072a542c5998370",
   "licenses/MIT.txt": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+  "licenses/OFL-1.1.txt": "fdfad38143ec470553cae82a1e45320bdd1b9ec70415d37bd0171051d8a4ded8",
   "licenses/Skia-BSD.txt": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd",
   "licenses/Skiko-Apache.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-  "licenses/THIRD_PARTY_NOTICES.txt": "6afee3ebe997d48b0b0662f85c2255ce2cc19e1991b129c259a86d75a0a5a340",
+  "licenses/THIRD_PARTY_NOTICES.txt": "208c458841c219f1d7b82327519a771192766864948476dc6f4f980c9a5586ff",
   "licenses/llama.cpp-MIT.txt": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
 }

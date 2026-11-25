@@ -7,360 +7,310 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.anchor.adhd.ui.theme.AnchorColors
+import androidx.compose.ui.unit.min
+import com.anchor.adhd.ui.theme.AnchorMotion
+import com.anchor.adhd.ui.theme.LocalAnchorTokens
+import com.anchor.adhd.ui.theme.LocalReducedMotion
 import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.sin
 
+internal fun formatFocusCountdown(remainingSeconds: Long): String {
+    val safeSeconds = remainingSeconds.coerceAtLeast(0L)
+    val mins = safeSeconds / 60
+    val secs = safeSeconds % 60
+    val minsStr = if (mins < 10) "0$mins" else "$mins"
+    val secsStr = if (secs < 10) "0$secs" else "$secs"
+    return "$minsStr:$secsStr"
+}
+
+/**
+ * Living Tide focus chronometer shared by Android and desktop.
+ * Adapts to Morning Harbor (Light) and Night Harbor (Dark) via [LocalAnchorTokens],
+ * and freezes to a calm static water horizon with zero infinite transition when
+ * [LocalReducedMotion] is enabled.
+ */
 @Composable
 fun FocusCanvas(
     progress: Float,
     modifier: Modifier = Modifier,
     isWorkPhase: Boolean = true,
     remainingSeconds: Long = 0L,
-    taskTitle: String? = null
+    taskTitle: String? = null,
 ) {
-    // 0.1 Hz breathing resonance (10-second full cycle = 10,000ms)
-    val infiniteTransition = rememberInfiniteTransition(label = "luminousHarbor")
-    val timeState by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2.0 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "tidePhase"
-    )
+    val tokens = LocalAnchorTokens.current
+    val reducedMotion = LocalReducedMotion.current
 
-    // Pre-allocated reusable geometry objects to guarantee zero allocation per frame
+    // Only instantiate the 0.1 Hz tide transition when motion is allowed.
+    val tidePhaseState = if (!reducedMotion) {
+        val infiniteTransition = rememberInfiniteTransition(label = "livingTide")
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = (2.0 * PI).toFloat(),
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = AnchorMotion.TIDE_MS, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "tidePhase",
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
     val wavePath1 = remember { Path() }
     val wavePath2 = remember { Path() }
-    val waveCrest1 = remember { Path() }
-    val waveCrest2 = remember { Path() }
     val clipCirclePath = remember { Path() }
 
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    val clampedProgress = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
+    val timeText = formatFocusCountdown(remainingSeconds)
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append(if (isWorkPhase) "Focus timer: " else "Break timer: ")
+                    append(timeText)
+                    if (!taskTitle.isNullOrBlank()) {
+                        append(", ")
+                        append(taskTitle)
+                    }
+                    append(", ")
+                    append((clampedProgress * 100).toInt())
+                    append(" percent complete")
+                }
+            },
+        contentAlignment = Alignment.Center,
     ) {
+        val minDim = min(maxWidth, maxHeight)
+        val hudHorizontalPadding = (minDim * 0.13f).coerceIn(16.dp, 36.dp)
+        val displayScale = (minDim / 250.dp).coerceIn(0.62f, 1f)
+        val baseDisplay = MaterialTheme.typography.displayLarge
+        val timerStyle = if (displayScale < 0.999f) {
+            baseDisplay.copy(
+                fontSize = baseDisplay.fontSize * displayScale,
+                lineHeight = baseDisplay.lineHeight * displayScale,
+                fontFeatureSettings = "tnum",
+            )
+        } else {
+            baseDisplay.copy(fontFeatureSettings = "tnum")
+        }
+
         Spacer(
             modifier = Modifier
                 .fillMaxSize()
                 .drawWithCache {
                     val width = size.width
                     val height = size.height
-                    val baseRadius = (width.coerceAtMost(height) / 2f) * 0.74f
                     val center = Offset(width / 2f, height / 2f)
+                    val ringStrokePx = 5.dp.toPx()
+                    val ringRadius = ((width.coerceAtMost(height) / 2f) - ringStrokePx - 6.dp.toPx())
+                        .coerceAtLeast(1f)
+                    val innerRadius = (ringRadius - ringStrokePx * 0.5f - 4.dp.toPx())
+                        .coerceAtLeast(1f)
 
-                    val a1Px = 9.dp.toPx()
-                    val a2Px = 6.dp.toPx()
-                    val lambda1 = (width * 0.75f).coerceAtLeast(1f)
-                    val lambda2 = (width * 0.48f).coerceAtLeast(1f)
+                    val a1Px = 7.dp.toPx()
+                    val a2Px = 5.dp.toPx()
+                    val lambda1 = (innerRadius * 2.2f).coerceAtLeast(1f)
+                    val lambda2 = (innerRadius * 1.5f).coerceAtLeast(1f)
+                    val stepX = 12.dp.toPx().coerceAtLeast(1f)
+                    val staticLayerOffset = 3.dp.toPx()
+                    val frontWaveOffset = 4.dp.toPx()
 
-                    // Palettes
-                    val primaryAuraColor = if (isWorkPhase) AnchorColors.HarborPrimary else AnchorColors.HarborFoliage
-                    val accentAuraColor = if (isWorkPhase) AnchorColors.HarborAction else AnchorColors.HarborGrowth
-                    val arcStartColor = if (isWorkPhase) Color(0xFF38BDF8) else Color(0xFF34D399)
-                    val arcEndColor = if (isWorkPhase) Color(0xFFF59E0B) else Color(0xFF10B981)
+                    // Soft readability veil over rising water so Newsreader digits remain
+                    // WCAG AA/AAA legible across 0%..100% progress in both Light and Dark.
+                    val centerReadabilityVeil = Brush.radialGradient(
+                        colorStops = arrayOf(
+                            0.0f to tokens.tideBack.copy(alpha = 0.56f),
+                            0.55f to tokens.tideBack.copy(alpha = 0.36f),
+                            1.0f to Color.Transparent,
+                        ),
+                        center = center,
+                        radius = (innerRadius * 0.92f).coerceAtLeast(1f),
+                    )
+
+                    val trackColor = tokens.paper3
+                    val basinRuleColor = tokens.rule
+                    val progressArcColor = if (isWorkPhase) tokens.beacon else tokens.sage
+                    val tideBackColor = tokens.tideBack
+                    val backWaveColor = (if (isWorkPhase) tokens.tideWave1 else tokens.tideBreakWave1)
+                        .copy(alpha = 0.75f)
+                    val frontWaveColor = (if (isWorkPhase) tokens.tideWave2 else tokens.tideBreakWave2)
+                        .copy(alpha = 0.55f)
+                    val horizonColor = (if (isWorkPhase) tokens.tideWave2 else tokens.tideBreakWave2)
+                        .copy(alpha = 0.75f)
 
                     onDrawBehind {
                         if (width <= 1f || height <= 1f) return@onDrawBehind
-                        val t = timeState
-                        // 0.1 Hz sine modulation for radius dilation and alpha pulsing
-                        val breathProgress = ((1f + sin(t - (PI / 2.0).toFloat())) / 2f) // 0f .. 1f
-                        val breathAlpha = 0.25f + 0.45f * breathProgress
-                        val dynamicRadius = baseRadius * (1.0f + 0.025f * sin(t - (PI / 2.0).toFloat()))
-                        val clampedProgress = if (progress.isFinite()) progress.coerceIn(0f, 1f) else 0f
 
-                        // 1. Outer Breathing Resonance Halos (0.1 Hz)
-                        drawCircle(
-                            color = primaryAuraColor.copy(alpha = 0.08f + 0.12f * breathProgress),
-                            radius = dynamicRadius + 24.dp.toPx(),
-                            center = center
-                        )
-                        drawCircle(
-                            color = primaryAuraColor.copy(alpha = 0.15f + 0.18f * breathProgress),
-                            radius = dynamicRadius + 12.dp.toPx(),
-                            center = center
-                        )
-                        drawCircle(
-                            color = accentAuraColor.copy(alpha = 0.18f + 0.22f * breathProgress),
-                            radius = dynamicRadius + 4.dp.toPx(),
-                            center = center
-                        )
+                        val phase = tidePhaseState.value
 
-                        // 2. Gauge Track Ring
-                        drawCircle(
-                            color = Color(0xFF1E293B).copy(alpha = 0.90f),
-                            radius = dynamicRadius,
-                            center = center,
-                            style = Stroke(width = 3.dp.toPx())
-                        )
+                        // 1. Clipped Circular Tide Basin
+                        val circleLeft = center.x - innerRadius
+                        val circleTop = center.y - innerRadius
+                        val circleRight = center.x + innerRadius
+                        val circleBottom = center.y + innerRadius
 
-                        // 3. 60 Chronometer Graduation Ticks
-                        for (i in 0 until 60) {
-                            val tickAngleDeg = -90f + i * 6f
-                            val tickAngleRad = (tickAngleDeg * PI / 180.0).toFloat()
-                            val cosA = cos(tickAngleRad)
-                            val sinA = sin(tickAngleRad)
-
-                            val isMajor = (i % 5 == 0)
-                            val tickLength = if (isMajor) 9.dp.toPx() else 4.5f.dp.toPx()
-                            val tickWidth = if (isMajor) 2.dp.toPx() else 1.dp.toPx()
-
-                            val tickProgressFraction = i / 60f
-                            val isCompleted = clampedProgress >= tickProgressFraction
-
-                            val tickColor = when {
-                                isCompleted && isMajor -> accentAuraColor
-                                isCompleted -> primaryAuraColor.copy(alpha = 0.70f)
-                                isMajor -> Color(0xFF475569)
-                                else -> Color(0xFF334155).copy(alpha = 0.45f)
-                            }
-
-                            val innerR = dynamicRadius - tickLength
-                            val outerR = dynamicRadius + 1.dp.toPx()
-
-                            val pStart = Offset(center.x + innerR * cosA, center.y + innerR * sinA)
-                            val pEnd = Offset(center.x + outerR * cosA, center.y + outerR * sinA)
-
-                            drawLine(
-                                color = tickColor,
-                                start = pStart,
-                                end = pEnd,
-                                strokeWidth = tickWidth,
-                                cap = StrokeCap.Round
-                            )
-                        }
-
-                        // 4. Luminous Neon Progress Arc & Head Bead
-                        val sweepAngle = clampedProgress * 360f
-                        if (sweepAngle > 0.5f) {
-                            val arcRect = Rect(
-                                center.x - dynamicRadius,
-                                center.y - dynamicRadius,
-                                center.x + dynamicRadius,
-                                center.y + dynamicRadius
-                            )
-
-                            // Outer glowing arc bloom
-                            drawArc(
-                                color = primaryAuraColor.copy(alpha = 0.30f),
-                                startAngle = -90f,
-                                sweepAngle = sweepAngle,
-                                useCenter = false,
-                                topLeft = arcRect.topLeft,
-                                size = arcRect.size,
-                                style = Stroke(width = 9.dp.toPx(), cap = StrokeCap.Round)
-                            )
-
-                            // Core neon progress arc
-                            drawArc(
-                                brush = Brush.sweepGradient(
-                                    listOf(arcStartColor, arcEndColor),
-                                    center = center
-                                ),
-                                startAngle = -90f,
-                                sweepAngle = sweepAngle,
-                                useCenter = false,
-                                topLeft = arcRect.topLeft,
-                                size = arcRect.size,
-                                style = Stroke(width = 4.5f.dp.toPx(), cap = StrokeCap.Round)
-                            )
-
-                            // Glowing Head Bead at current progress
-                            val headRad = ((-90f + sweepAngle) * PI / 180.0).toFloat()
-                            val headX = center.x + dynamicRadius * cos(headRad)
-                            val headY = center.y + dynamicRadius * sin(headRad)
-                            val headOffset = Offset(headX, headY)
-
-                            drawCircle(
-                                color = arcEndColor.copy(alpha = 0.55f),
-                                radius = 7.dp.toPx(),
-                                center = headOffset
-                            )
-                            drawCircle(
-                                color = Color.White,
-                                radius = 3.5f.dp.toPx(),
-                                center = headOffset
-                            )
-                        }
-
-                        // 5. Inner Harbor Reservoir & Waves
-                        val innerRadius = dynamicRadius - 6.dp.toPx()
                         clipCirclePath.rewind()
                         clipCirclePath.addOval(
-                            Rect(
-                                center.x - innerRadius,
-                                center.y - innerRadius,
-                                center.x + innerRadius,
-                                center.y + innerRadius
-                            )
+                            Rect(circleLeft, circleTop, circleRight, circleBottom),
                         )
 
                         clipPath(clipCirclePath) {
-                            // Deep nocturnal reservoir backdrop
                             drawRect(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(Color(0xFF0F1B2E), Color(0xFF060A12)),
-                                    center = Offset(center.x, center.y - innerRadius * 0.4f),
-                                    radius = innerRadius * 1.5f
-                                )
+                                color = tideBackColor,
+                                topLeft = Offset(circleLeft, circleTop),
+                                size = Size(innerRadius * 2f, innerRadius * 2f),
                             )
 
-                            // Bioluminescent water particles
-                            val particleY1 = center.y + innerRadius * 0.4f + 6.dp.toPx() * sin(t * 1.1f)
-                            val particleY2 = center.y + innerRadius * 0.6f + 4.dp.toPx() * cos(t * 0.8f)
-                            val particleY3 = center.y + innerRadius * 0.2f + 5.dp.toPx() * sin(t * 0.9f + 1f)
-                            drawCircle(primaryAuraColor.copy(alpha = 0.35f), 1.5f.dp.toPx(), Offset(center.x - innerRadius * 0.45f, particleY1))
-                            drawCircle(accentAuraColor.copy(alpha = 0.40f), 2.dp.toPx(), Offset(center.x + innerRadius * 0.35f, particleY2))
-                            drawCircle(primaryAuraColor.copy(alpha = 0.30f), 1.5f.dp.toPx(), Offset(center.x + innerRadius * 0.10f, particleY3))
-
-                            // Baseline tide level: rises from bottom (35% filled at 0%) to top (90% filled at 100%)
-                            val circleBottom = center.y + innerRadius
-                            val circleTop = center.y - innerRadius
                             val reservoirHeight = circleBottom - circleTop
-                            val waterHeight = reservoirHeight * (0.35f + 0.55f * clampedProgress)
+                            val waterHeight = reservoirHeight * (0.18f + 0.68f * clampedProgress)
                             val baseLevel = circleBottom - waterHeight
-                            val stepX = 16.dp.toPx().coerceAtLeast(1f)
 
-                            // Wave 1: Deep Current (A1 = 9dp, λ1 = 0.75W, ω1 = 1.25 rad/s)
-                            wavePath1.rewind()
-                            waveCrest1.rewind()
-                            wavePath1.moveTo(0f, height)
-                            var x = 0f
-                            val k1 = (2f * PI.toFloat()) / lambda1
-                            var isFirst1 = true
-                            while (x <= width + stepX) {
-                                val y = baseLevel + a1Px * sin(k1 * x + 1.25f * t)
-                                wavePath1.lineTo(x, y)
-                                if (isFirst1) {
-                                    waveCrest1.moveTo(x, y)
-                                    isFirst1 = false
-                                } else {
-                                    waveCrest1.lineTo(x, y)
+                            if (reducedMotion) {
+                                // Calm flat static water horizon with layered depth band
+                                val backTop = (baseLevel - staticLayerOffset).coerceIn(circleTop, circleBottom)
+                                val frontTop = (baseLevel + staticLayerOffset).coerceIn(circleTop, circleBottom)
+                                drawRect(
+                                    color = backWaveColor,
+                                    topLeft = Offset(circleLeft, backTop),
+                                    size = Size(innerRadius * 2f, (circleBottom - backTop).coerceAtLeast(0f)),
+                                )
+                                drawRect(
+                                    color = frontWaveColor,
+                                    topLeft = Offset(circleLeft, frontTop),
+                                    size = Size(innerRadius * 2f, (circleBottom - frontTop).coerceAtLeast(0f)),
+                                )
+                                drawLine(
+                                    color = horizonColor,
+                                    start = Offset(circleLeft, backTop),
+                                    end = Offset(circleRight, backTop),
+                                    strokeWidth = 1.dp.toPx(),
+                                )
+                            } else {
+                                // Back wave
+                                wavePath1.rewind()
+                                wavePath1.moveTo(circleLeft, circleBottom)
+                                val k1 = (2f * PI.toFloat()) / lambda1
+                                var x = circleLeft
+                                while (x <= circleRight + stepX) {
+                                    val y = baseLevel + a1Px * sin(k1 * (x - circleLeft) + phase)
+                                    wavePath1.lineTo(x, y)
+                                    x += stepX
                                 }
-                                x += stepX
-                            }
-                            wavePath1.lineTo(width, height)
-                            wavePath1.close()
+                                wavePath1.lineTo(x, circleBottom)
+                                wavePath1.close()
+                                drawPath(wavePath1, color = backWaveColor)
 
-                            val wave1Brush = Brush.verticalGradient(
-                                colors = if (isWorkPhase) {
-                                    listOf(Color(0xD91E40AF), Color(0xF20B192C))
-                                } else {
-                                    listOf(Color(0xD915803D), Color(0xF20B2015))
-                                },
-                                startY = baseLevel - a1Px,
-                                endY = circleBottom
-                            )
-                            drawPath(wavePath1, wave1Brush)
-                            drawPath(
-                                waveCrest1,
-                                if (isWorkPhase) Color(0xFF60A5FA).copy(alpha = 0.75f) else Color(0xFF86EFAC).copy(alpha = 0.75f),
-                                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-                            )
-
-                            // Wave 2: Glassy Surface Ripple (A2 = 6dp, λ2 = 0.48W, ω2 = 0.95 rad/s, phase offset π/3)
-                            wavePath2.rewind()
-                            waveCrest2.rewind()
-                            wavePath2.moveTo(0f, height)
-                            x = 0f
-                            val k2 = (2f * PI.toFloat()) / lambda2
-                            val phi2 = (PI / 3.0).toFloat()
-                            var isFirst2 = true
-                            while (x <= width + stepX) {
-                                val y = baseLevel + a2Px * sin(k2 * x - 0.95f * t + phi2)
-                                wavePath2.lineTo(x, y)
-                                if (isFirst2) {
-                                    waveCrest2.moveTo(x, y)
-                                    isFirst2 = false
-                                } else {
-                                    waveCrest2.lineTo(x, y)
+                                // Front counter-wave
+                                wavePath2.rewind()
+                                wavePath2.moveTo(circleLeft, circleBottom)
+                                val k2 = (2f * PI.toFloat()) / lambda2
+                                val phi2 = (PI / 3.0).toFloat()
+                                x = circleLeft
+                                while (x <= circleRight + stepX) {
+                                    val y = baseLevel + frontWaveOffset + a2Px * sin(k2 * (x - circleLeft) - phase + phi2)
+                                    wavePath2.lineTo(x, y)
+                                    x += stepX
                                 }
-                                x += stepX
+                                wavePath2.lineTo(x, circleBottom)
+                                wavePath2.close()
+                                drawPath(wavePath2, color = frontWaveColor)
                             }
-                            wavePath2.lineTo(width, height)
-                            wavePath2.close()
 
-                            val wave2Brush = Brush.verticalGradient(
-                                colors = if (isWorkPhase) {
-                                    listOf(Color(0x9938BDF8), Color(0x400284C7))
-                                } else {
-                                    listOf(Color(0x9934D399), Color(0x40059669))
-                                },
-                                startY = baseLevel - a2Px,
-                                endY = circleBottom
+                            // Soft center veil to protect timer legibility as the tide rises
+                            drawCircle(
+                                brush = centerReadabilityVeil,
+                                radius = (innerRadius * 0.92f).coerceAtLeast(1f),
+                                center = center,
                             )
-                            drawPath(wavePath2, wave2Brush)
-                            drawPath(
-                                waveCrest2,
-                                if (isWorkPhase) Color(0xFFBAE6FD).copy(alpha = 0.85f) else Color(0xFFA7F3D0).copy(alpha = 0.85f),
-                                style = Stroke(width = 1.5f.dp.toPx(), cap = StrokeCap.Round)
+                        }
+
+                        // Subtle structural hairline around the inner basin
+                        drawCircle(
+                            color = basinRuleColor,
+                            radius = innerRadius,
+                            center = center,
+                            style = Stroke(width = 1.dp.toPx()),
+                        )
+
+                        // 2. Outer Track Ring
+                        drawCircle(
+                            color = trackColor,
+                            radius = ringRadius,
+                            center = center,
+                            style = Stroke(width = ringStrokePx),
+                        )
+
+                        // 3. Solid Progress Arc
+                        val sweepAngle = clampedProgress * 360f
+                        if (sweepAngle > 0.5f) {
+                            drawArc(
+                                color = progressArcColor,
+                                startAngle = -90f,
+                                sweepAngle = sweepAngle,
+                                useCenter = false,
+                                topLeft = Offset(center.x - ringRadius, center.y - ringRadius),
+                                size = Size(ringRadius * 2f, ringRadius * 2f),
+                                style = Stroke(width = ringStrokePx, cap = StrokeCap.Round),
                             )
                         }
                     }
-                }
+                },
         )
 
-        // Center HUD: Countdown timer digits & task title
+        // Center HUD: Newsreader tabular countdown & optional task title
         Column(
-            modifier = Modifier
-                .padding(horizontal = 48.dp),
+            modifier = Modifier.padding(horizontal = hudHorizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
-            val safeSeconds = remainingSeconds.coerceAtLeast(0L)
-            val mins = safeSeconds / 60
-            val secs = safeSeconds % 60
-            val minsStr = if (mins < 10) "0$mins" else "$mins"
-            val secsStr = if (secs < 10) "0$secs" else "$secs"
-            val timeText = "$minsStr:$secsStr"
-
             Text(
                 text = timeText,
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 54.sp,
-                    letterSpacing = 0.5.sp
-                ),
-                color = Color.White,
-                textAlign = TextAlign.Center
+                style = timerStyle,
+                color = tokens.ink,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                softWrap = false,
             )
 
             if (!taskTitle.isNullOrBlank()) {
-                Spacer(modifier = Modifier.padding(top = 8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = taskTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = AnchorColors.HarborPrimary.copy(alpha = 0.9f),
-                    maxLines = 1,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tokens.ink2,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
             }
         }
